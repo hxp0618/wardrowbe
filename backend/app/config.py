@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     # Authentication - OIDC
     oidc_issuer_url: str | None = Field(default=None)
     oidc_client_id: str | None = Field(default=None)
-    oidc_client_secret: str | None = Field(default=None)
+    oidc_client_secret: str | None = None
+    oidc_mobile_client_id: str | None = None
 
     # Forward Auth (TinyAuth, Authelia, etc.)
     # When True, trusts Remote-User/Remote-Email headers from proxy

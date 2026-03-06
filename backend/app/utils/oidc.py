@@ -38,7 +38,7 @@ async def _fetch_jwks(issuer_url: str) -> dict:
 async def validate_oidc_id_token(
     id_token: str,
     issuer_url: str,
-    client_id: str,
+    client_id: str | list[str],
 ) -> dict:
     try:
         jwks = await _fetch_jwks(issuer_url)
@@ -46,12 +46,14 @@ async def validate_oidc_id_token(
         logger.error("Failed to fetch OIDC JWKS from %s: %s", issuer_url, e)
         raise ValueError(f"Failed to contact OIDC provider: {e}") from None
 
+    audience = [client_id] if isinstance(client_id, str) else client_id
+
     try:
         payload = jwt.decode(
             id_token,
             jwks,
             algorithms=["RS256", "ES256"],
-            audience=client_id,
+            audience=audience,
             issuer=issuer_url,
             options={"verify_exp": True},
         )

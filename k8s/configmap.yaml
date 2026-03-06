@@ -15,6 +15,10 @@ data:
   # OIDC Provider URL (Authentik, Pocket ID, Keycloak, etc.)
   OIDC_ISSUER_URL: "https://auth.example.com"
 
+  # Optional: separate OIDC client ID for mobile app
+  # If unset, the web OIDC_CLIENT_ID is used for both
+  OIDC_MOBILE_CLIENT_ID: ""
+
   # AI Configuration
   # Use any OpenAI-compatible API (OpenAI, Ollama, LocalAI, etc.)
   AI_BASE_URL: "https://api.openai.com/v1"

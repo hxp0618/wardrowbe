@@ -8,7 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import DEFAULT_SECRET_KEY, get_settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import AuthStatusResponse, UserResponse, UserSyncRequest, UserSyncResponse
+from app.schemas.user import (
+    AuthConfigOIDC,
+    AuthConfigResponse,
+    AuthStatusResponse,
+    UserResponse,
+    UserSyncRequest,
+    UserSyncResponse,
+)
 from app.services.user_service import UserEmailConflictError, UserService
 from app.utils.auth import get_current_user
 from app.utils.oidc import validate_oidc_id_token
@@ -37,6 +44,22 @@ def _is_dev_mode() -> bool:
 
 def _oidc_configured() -> bool:
     return bool(settings.oidc_issuer_url and settings.oidc_client_id)
+
+
+@router.get("/config", response_model=AuthConfigResponse)
+async def get_auth_config() -> AuthConfigResponse:
+    oidc_enabled = _oidc_configured()
+    return AuthConfigResponse(
+        oidc=AuthConfigOIDC(
+            enabled=oidc_enabled,
+            issuer_url=settings.oidc_issuer_url if oidc_enabled else None,
+            client_id=(settings.oidc_mobile_client_id or settings.oidc_client_id)
+            if oidc_enabled
+            else None,
+        ),
+        dev_mode=_is_dev_mode(),
+        forward_auth=settings.auth_trust_header,
+    )
 
 
 @router.get("/status", response_model=AuthStatusResponse)
@@ -68,11 +91,18 @@ async def sync_user(
                 detail="OIDC id_token is required for authentication",
             )
 
+        valid_audiences = [settings.oidc_client_id]
+        if (
+            settings.oidc_mobile_client_id
+            and settings.oidc_mobile_client_id != settings.oidc_client_id
+        ):
+            valid_audiences.append(settings.oidc_mobile_client_id)
+
         try:
             oidc_claims = await validate_oidc_id_token(
                 sync_data.id_token,
                 settings.oidc_issuer_url,
-                settings.oidc_client_id,
+                valid_audiences,
             )
         except ValueError as e:
             raise HTTPException(

@@ -36,6 +36,25 @@ class TestJWTToken:
         assert exc_info.value.status_code == 401
 
 
+class TestAuthConfig:
+    @pytest.mark.asyncio
+    async def test_get_auth_config(self, client: AsyncClient):
+        response = await client.get("/api/v1/auth/config")
+        assert response.status_code == 200
+        data = response.json()
+        assert "oidc" in data
+        assert "dev_mode" in data
+        assert "forward_auth" in data
+        assert isinstance(data["oidc"]["enabled"], bool)
+
+    @pytest.mark.asyncio
+    async def test_auth_config_dev_mode(self, client: AsyncClient):
+        response = await client.get("/api/v1/auth/config")
+        data = response.json()
+        assert data["dev_mode"] is True
+        assert data["oidc"]["enabled"] is False
+
+
 class TestAuthSync:
     """Tests for auth sync endpoint."""
 

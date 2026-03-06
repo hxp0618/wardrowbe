@@ -50,6 +50,7 @@ class UserSyncRequest(BaseModel):
     id_token: str | None = Field(
         None, description="OIDC ID token for verification (required when OIDC is configured)"
     )
+    provider: str | None = Field(None, description="Auth provider (e.g. 'oidc'), omit for default")
 
 
 class UserSyncResponse(BaseModel):
@@ -76,3 +77,15 @@ class AuthStatusResponse(BaseModel):
     configured: bool
     mode: str
     error: str | None = None
+
+
+class AuthConfigOIDC(BaseModel):
+    enabled: bool
+    issuer_url: str | None = None
+    client_id: str | None = None
+
+
+class AuthConfigResponse(BaseModel):
+    oidc: AuthConfigOIDC
+    dev_mode: bool = False
+    forward_auth: bool = False

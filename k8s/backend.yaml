@@ -119,6 +119,12 @@ spec:
                 secretKeyRef:
                   name: wardrobe-secrets
                   key: oidc-client-secret
+            - name: OIDC_MOBILE_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: wardrobe-config
+                  key: OIDC_MOBILE_CLIENT_ID
+                  optional: true
             - name: APP_URL
               valueFrom:
                 configMapKeyRef:
