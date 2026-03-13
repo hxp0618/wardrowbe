@@ -13,6 +13,7 @@ export interface ItemTags {
   brand?: string;
   condition?: string;
   features?: string[];
+  logprobs_confidence?: number;
 }
 
 export interface Item {

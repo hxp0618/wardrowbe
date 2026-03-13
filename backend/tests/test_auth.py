@@ -44,7 +44,6 @@ class TestAuthConfig:
         data = response.json()
         assert "oidc" in data
         assert "dev_mode" in data
-        assert "forward_auth" in data
         assert isinstance(data["oidc"]["enabled"], bool)
 
     @pytest.mark.asyncio

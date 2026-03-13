@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from jose import jwt
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import DEFAULT_SECRET_KEY, get_settings
@@ -19,6 +19,7 @@ from app.schemas.user import (
 from app.services.user_service import UserEmailConflictError, UserService
 from app.utils.auth import get_current_user
 from app.utils.oidc import validate_oidc_id_token
+from app.utils.rate_limit import rate_limit_by_ip
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 settings = get_settings()
@@ -58,7 +59,6 @@ async def get_auth_config() -> AuthConfigResponse:
             else None,
         ),
         dev_mode=_is_dev_mode(),
-        forward_auth=settings.auth_trust_header,
     )
 
 
@@ -71,7 +71,7 @@ async def auth_status() -> AuthStatusResponse:
             mode=mode,
             error=(
                 "No authentication method configured. "
-                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or AUTH_TRUST_HEADER=true, or enable DEBUG mode."
+                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or enable DEBUG mode."
             ),
         )
     return AuthStatusResponse(configured=True, mode=mode)
@@ -79,9 +79,11 @@ async def auth_status() -> AuthStatusResponse:
 
 @router.post("/sync", response_model=UserSyncResponse)
 async def sync_user(
+    request: Request,
     sync_data: UserSyncRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserSyncResponse:
+    await rate_limit_by_ip(request, "auth_sync", 10, 60)
     if _is_dev_mode():
         pass
     elif _oidc_configured():
@@ -115,8 +117,24 @@ async def sync_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token subject does not match external_id",
             )
-    elif settings.auth_trust_header:
-        pass
+
+        claims_email = oidc_claims.get("email", "").lower().strip()
+        request_email = sync_data.email.lower().strip()
+        if claims_email and request_email and claims_email != request_email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token email does not match request email",
+            )
+
+        # Check provider migration: different external_id, same email requires verified email
+        user_service_check = UserService(db)
+        existing_user = await user_service_check.get_by_email(request_email)
+        if existing_user and existing_user.external_id != sync_data.external_id:
+            if oidc_claims.get("email_verified") is not True:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Email already associated with another account. Verified email required for migration.",
+                )
     else:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

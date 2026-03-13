@@ -193,11 +193,11 @@ async def bulk_create_items(
     current_user: Annotated[User, Depends(get_current_user)],
     images: list[UploadFile] = File(..., description="Multiple image files to upload"),
 ) -> BulkUploadResponse:
-    # if len(images) > 20:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Maximum 20 images per bulk upload",
-    #     )
+    if len(images) > 20:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 20 images per bulk upload",
+        )
 
     if len(images) == 0:
         raise HTTPException(

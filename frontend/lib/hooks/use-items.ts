@@ -36,7 +36,6 @@ export function useItems(filters: ItemFilter = {}, page = 1, pageSize = 20) {
 
       return api.get<ItemListResponse>('/items', { params });
     },
-    // Fetch when session is loaded (works with both NextAuth and forward auth)
     enabled: status !== 'loading',
     // Poll more frequently when items are processing (every 5 seconds), otherwise every 30 seconds
     refetchInterval: (query) => {

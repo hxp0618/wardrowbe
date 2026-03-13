@@ -12,6 +12,15 @@ class NtfyConfig(BaseModel):
     topic: str
     token: str | None = None
 
+    @field_validator("server")
+    @classmethod
+    def validate_server(cls, v: str) -> str:
+        if not v.startswith("http://") and not v.startswith("https://"):
+            raise ValueError("Server URL must start with http:// or https://")
+        if len(v) > 500:
+            raise ValueError("Server URL must be 500 characters or fewer")
+        return v.rstrip("/")
+
     @field_validator("topic")
     @classmethod
     def validate_topic(cls, v: str) -> str:
@@ -86,6 +95,9 @@ class NotificationSettingsResponse(NotificationSettingsBase):
         from_attributes = True
 
 
+VALID_OCCASIONS = {"casual", "office", "formal", "date", "sporty", "outdoor", "work", "party"}
+
+
 # Schedule schemas
 class ScheduleBase(BaseModel):
     day_of_week: int  # 0=Monday, 6=Sunday (day to WEAR the outfit)
@@ -93,6 +105,16 @@ class ScheduleBase(BaseModel):
     occasion: str = "casual"
     enabled: bool = True
     notify_day_before: bool = False  # If True, notification comes evening before
+
+    @field_validator("occasion")
+    @classmethod
+    def validate_occasion(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in VALID_OCCASIONS:
+            raise ValueError(
+                f"Invalid occasion. Must be one of: {', '.join(sorted(VALID_OCCASIONS))}"
+            )
+        return v
 
     @field_validator("day_of_week")
     @classmethod
@@ -118,6 +140,17 @@ class ScheduleUpdate(BaseModel):
     occasion: str | None = None
     enabled: bool | None = None
     notify_day_before: bool | None = None
+
+    @field_validator("occasion")
+    @classmethod
+    def validate_occasion(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip().lower()
+            if v not in VALID_OCCASIONS:
+                raise ValueError(
+                    f"Invalid occasion. Must be one of: {', '.join(sorted(VALID_OCCASIONS))}"
+                )
+        return v
 
     @field_validator("notification_time")
     @classmethod

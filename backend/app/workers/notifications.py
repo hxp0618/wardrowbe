@@ -208,6 +208,8 @@ async def process_scheduled_notification(ctx: dict, schedule_id: str):
             occasion=schedule.occasion,
             source=OutfitSource.scheduled,
             weather_override=weather_override,
+            time_of_day="full day" if is_for_tomorrow else None,
+            single_outfit=True,
         )
 
         app_url = os.getenv("APP_URL", "http://localhost:3000")

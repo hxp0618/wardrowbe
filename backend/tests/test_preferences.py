@@ -72,9 +72,9 @@ class TestAIEndpointPreferences:
         assert data["ai_endpoints"][0]["name"] == "local-ollama"
 
     @pytest.mark.asyncio
-    async def test_test_ai_endpoint(self, client: AsyncClient, test_user, auth_headers):
-        """Test AI endpoint connectivity check."""
-        # This would fail without a real Ollama instance, but we test the endpoint exists
+    async def test_test_ai_endpoint_rejects_private(
+        self, client: AsyncClient, test_user, auth_headers
+    ):
         response = await client.post(
             "/api/v1/users/me/preferences/test-ai-endpoint",
             json={
@@ -83,8 +83,8 @@ class TestAIEndpointPreferences:
             },
             headers=auth_headers,
         )
-        # May fail due to no Ollama, but endpoint should exist
-        assert response.status_code in [200, 500, 503]
+        assert response.status_code == 400
+        assert "private/internal" in response.json()["detail"]
 
 
 class TestPreferenceValidation:

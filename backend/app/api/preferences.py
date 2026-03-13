@@ -1,4 +1,7 @@
+import ipaddress
+import socket
 from typing import Annotated
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
@@ -12,6 +15,23 @@ from app.services.preference_service import PreferenceService
 from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/users/me/preferences", tags=["Preferences"])
+
+
+def _validate_url_not_private(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("Only HTTP and HTTPS URLs are allowed")
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("URL has no hostname")
+    try:
+        addrs = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        raise ValueError(f"Could not resolve hostname: {hostname}") from None
+    for _, _, _, _, addr in addrs:
+        ip = ipaddress.ip_address(addr[0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            raise ValueError("URL resolves to private/internal address")
 
 
 def _build_preference_response(preferences) -> PreferenceResponse:
@@ -118,6 +138,14 @@ async def test_ai_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="URL is required",
         )
+
+    try:
+        _validate_url_not_private(url)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from None
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:

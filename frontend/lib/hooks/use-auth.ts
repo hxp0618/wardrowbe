@@ -6,18 +6,6 @@ import { useSession, signOut } from 'next-auth/react';
 import { api, setAccessToken, ApiError } from '@/lib/api';
 import type { UserProfile } from './use-user';
 
-/**
- * Auth hook that works in both NextAuth and forward auth modes.
- *
- * In forward auth mode (TinyAuth/HTTP Basic Auth via nginx):
- * - No NextAuth session exists
- * - Backend authenticates via Remote-User header
- * - We try to fetch user profile to check if authenticated
- *
- * In NextAuth mode (OIDC):
- * - NextAuth session contains accessToken
- * - Backend authenticates via Bearer token
- */
 export function useAuth() {
   const { data: session, status } = useSession();
   const signingOut = useRef(false);
@@ -28,7 +16,6 @@ export function useAuth() {
   }
 
   // Try to fetch user profile - only when we have a valid token
-  // For forward auth mode, users need to configure AUTH_TRUST_PROXY
   const hasToken = !!session?.accessToken;
 
   const userQuery = useQuery({

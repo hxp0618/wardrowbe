@@ -1,24 +1,19 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request, status
+import jwt
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import AuthSession, TokenPayload
-from app.schemas.user import UserSyncRequest
 from app.services.user_service import UserService
 
 settings = get_settings()
 
 bearer_scheme = HTTPBearer(auto_error=False)
-
-REMOTE_USER_HEADER = "Remote-User"
-REMOTE_EMAIL_HEADER = "Remote-Email"
-REMOTE_NAME_HEADER = "Remote-Name"
 
 
 def decode_token(token: str) -> TokenPayload:
@@ -30,16 +25,16 @@ def decode_token(token: str) -> TokenPayload:
             options={"verify_exp": True},
         )
         return TokenPayload(**payload)
-    except JWTError as e:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {e!s}",
+            detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token payload: {e!s}",
+            detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
 
@@ -60,34 +55,13 @@ async def get_current_user_optional(
 
 
 async def get_current_user(
-    request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     user_service = UserService(db)
     user = None
 
-    # Forward auth headers (TinyAuth, Authelia, etc.)
-    if settings.auth_trust_header:
-        remote_user = request.headers.get(REMOTE_USER_HEADER)
-        remote_email = request.headers.get(REMOTE_EMAIL_HEADER)
-        remote_name = request.headers.get(REMOTE_NAME_HEADER)
-
-        if remote_user:
-            user = await user_service.get_by_external_id(remote_user)
-
-            if not user and remote_email:
-                user = await user_service.get_by_email(remote_email)
-
-            sync_data = UserSyncRequest(
-                external_id=remote_user,
-                email=remote_email or (user.email if user else f"{remote_user}@example.com"),
-                display_name=remote_name or (user.display_name if user else remote_user),
-            )
-            user, _ = await user_service.sync_from_oidc(sync_data)
-
-    # Fall back to JWT Bearer token
-    if not user and credentials:
+    if credentials:
         token_data = decode_token(credentials.credentials)
         user = await user_service.get_by_external_id(token_data.sub)
 

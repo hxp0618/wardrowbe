@@ -1,9 +1,12 @@
 import os
 
-# Set test environment
+# Set test environment — clear OIDC vars so auth tests run with a known state
 os.environ["DEBUG"] = "true"
 os.environ["SECRET_KEY"] = "change-me-in-production"
 os.environ["STORAGE_PATH"] = "/tmp/wardrobe_test"
+os.environ.pop("OIDC_ISSUER_URL", None)
+os.environ.pop("OIDC_CLIENT_ID", None)
+os.environ.pop("OIDC_CLIENT_SECRET", None)
 
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -12,9 +15,11 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.api.auth import create_access_token
+from app.config import get_settings
 from app.database import Base, get_db
 from app.main import app
 from app.models import User, UserPreference
@@ -72,6 +77,19 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _clear_rate_limits():
+    settings = get_settings()
+    try:
+        redis = Redis.from_url(str(settings.redis_url))
+        keys = await redis.keys("rate_limit:*")
+        if keys:
+            await redis.delete(*keys)
+        await redis.aclose()
+    except Exception:
+        pass
 
 
 @pytest_asyncio.fixture

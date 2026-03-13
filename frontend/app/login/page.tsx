@@ -18,40 +18,6 @@ function OIDCLoginButton({ callbackUrl }: { callbackUrl: string }) {
     </button>
   );
 }
-function ForwardAuthLogin({ callbackUrl }: { callbackUrl: string }) {
-  const router = useRouter();
-
-  // In forward auth mode, user is already authenticated via TinyAuth/nginx.
-  // Try to access the API directly - if it works, redirect to dashboard.
-  useEffect(() => {
-    async function checkForwardAuth() {
-      try {
-        const response = await fetch('/api/v1/users/me', { credentials: 'include' });
-        if (response.ok) {
-          // Already authenticated via forward auth, redirect to dashboard
-          router.push(callbackUrl);
-        }
-      } catch {
-        // Not authenticated or error, stay on login page
-      }
-    }
-    checkForwardAuth();
-  }, [callbackUrl, router]);
-
-  return (
-    <div className="text-center space-y-4">
-      <div className="flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-      <p className="text-muted-foreground">
-        Authenticating...
-      </p>
-      <p className="text-sm text-muted-foreground">
-        If you&apos;re not redirected, please check your TinyAuth configuration.
-      </p>
-    </div>
-  );
-}
 
 function DevLogin({ callbackUrl }: { callbackUrl: string }) {
   const [email, setEmail] = useState('dev@wardrobe.local');
@@ -159,7 +125,7 @@ function LoginContent() {
   const syncError = session?.syncError;
 
   // Detect auth mode based on available providers
-  const [authMode, setAuthMode] = useState<'loading' | 'forward-auth' | 'oidc' | 'dev'>('loading');
+  const [authMode, setAuthMode] = useState<'loading' | 'oidc' | 'dev'>('loading');
 
   useEffect(() => {
     getProviders().then((providers) => {
@@ -168,8 +134,6 @@ function LoginContent() {
         setAuthMode('oidc');
       } else if (providers?.['dev-credentials']) {
         setAuthMode('dev');
-      } else if (providers?.['forward-auth']) {
-        setAuthMode('forward-auth');
       } else {
         // Fallback to dev mode
         setAuthMode('dev');
@@ -205,7 +169,6 @@ function LoginContent() {
 
       <div className="space-y-4">
         {authMode === 'oidc' && <OIDCLoginButton callbackUrl={callbackUrl} />}
-        {authMode === 'forward-auth' && <ForwardAuthLogin callbackUrl={callbackUrl} />}
         {authMode === 'dev' && <DevLogin callbackUrl={callbackUrl} />}
 
       </div>

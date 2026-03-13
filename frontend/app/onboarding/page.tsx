@@ -325,7 +325,6 @@ function LocationStep({
 
     setSaving(true);
     try {
-      // Set token if available (NextAuth mode), otherwise forward auth headers are used
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
@@ -759,7 +758,6 @@ function CompleteStep({ onFinish, completing }: { onFinish: () => void; completi
 export default function OnboardingPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  // Use unified auth hook that works in both NextAuth and forward auth modes
   const { user, isAuthenticated, isLoading, session } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [completing, setCompleting] = useState(false);
@@ -770,7 +768,6 @@ export default function OnboardingPage() {
   const completeOnboarding = async () => {
     setCompleting(true);
     try {
-      // Set token if available (NextAuth mode), otherwise forward auth headers are used
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }

@@ -21,7 +21,6 @@ async def readiness_check(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
         "database": "unhealthy",
     }
 
-    # Check database
     try:
         await db.execute(text("SELECT 1"))
         checks["database"] = "healthy"
@@ -39,4 +38,18 @@ async def readiness_check(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
 @router.get("/health/ai")
 async def ai_health_check() -> dict[str, Any]:
     ai_service = get_ai_service()
-    return await ai_service.check_health()
+    raw = await ai_service.check_health()
+
+    sanitized_endpoints = []
+    for ep in raw.get("endpoints", []):
+        sanitized_endpoints.append(
+            {
+                "name": ep.get("name"),
+                "status": ep.get("status"),
+            }
+        )
+
+    return {
+        "status": raw.get("status", "unknown"),
+        "endpoints": sanitized_endpoints,
+    }

@@ -40,17 +40,14 @@ class Settings(BaseSettings):
     oidc_client_secret: str | None = None
     oidc_mobile_client_id: str | None = None
 
-    # Forward Auth (TinyAuth, Authelia, etc.)
-    # When True, trusts Remote-User/Remote-Email headers from proxy
-    auth_trust_header: bool = Field(default=False)
-
     # AI Service (OpenAI-compatible API - supports Ollama, OpenAI, etc.)
     ai_base_url: str = Field(default="")
-    ai_api_key: str | None = Field(default=None)  # API key for authenticated AI endpoints
-    ai_vision_model: str = Field(default="gpt-4o")  # For image analysis
-    ai_text_model: str = Field(default="gpt-4o")  # For text generation (recommendations)
+    ai_api_key: str | None = Field(default=None)
+    ai_vision_model: str = Field(default="gpt-4o")  # comma-separated for model rotation
+    ai_text_model: str = Field(default="gpt-4o")  # comma-separated for model rotation
     ai_timeout: int = Field(default=120)
     ai_max_retries: int = Field(default=3)
+    ai_max_tokens: int = Field(default=8000)
 
     # Weather
     openmeteo_url: str = Field(default="https://api.open-meteo.com/v1")
@@ -91,10 +88,10 @@ class Settings(BaseSettings):
 
         oidc_configured = oidc_issuer and oidc_client
         is_dev = self.debug and self.secret_key == DEFAULT_SECRET_KEY
-        if not self.auth_trust_header and not oidc_configured and not is_dev:
+        if not oidc_configured and not is_dev:
             return (
                 "No authentication method configured. "
-                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or AUTH_TRUST_HEADER=true, or enable DEBUG mode."
+                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or enable DEBUG mode."
             )
 
         return None
@@ -104,8 +101,6 @@ class Settings(BaseSettings):
             return "dev"
         if self.oidc_issuer_url and self.oidc_client_id:
             return "oidc"
-        if self.auth_trust_header:
-            return "forward-auth"
         return "unknown"
 
 

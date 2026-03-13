@@ -20,7 +20,6 @@ export function useFamily() {
   return useQuery({
     queryKey: ['family'],
     queryFn: () => api.get<Family>('/families/me'),
-    // Fetch when session is loaded (works with both NextAuth and forward auth)
     enabled: status !== 'loading',
     retry: false, // Don't retry on 404 (user not in family)
   });

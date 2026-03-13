@@ -24,7 +24,9 @@ class TestTagParsing:
         assert tags.colors == ["blue", "white"]
         assert tags.pattern == "striped"
         assert tags.material == "cotton"
-        assert tags.confidence == 0.85
+        # Confidence is now computed by compute_tag_completeness (not AI self-reported)
+        # type(0.25) + primary_color(0.20) + pattern(0.15) + formality(0.15) + material(0.10) + colors(0.05) = 0.90
+        assert tags.confidence == 0.9
 
     def test_parse_json_in_markdown(self):
         """Test parsing JSON wrapped in markdown code block."""
@@ -95,8 +97,8 @@ class TestTagParsing:
         assert tags.type == "unknown"
         assert tags.raw_response == response
 
-    def test_parse_confidence_out_of_range(self):
-        """Test that out-of-range confidence is normalized."""
+    def test_parse_confidence_computed_from_completeness(self):
+        """Test that confidence is computed from tag completeness, not AI self-reported value."""
         service = AIService()
         response = """
         {
@@ -105,8 +107,8 @@ class TestTagParsing:
         }
         """
         tags = service._parse_tags_from_response(response)
-        # Out of range confidence should default to 0.5
-        assert tags.confidence == 0.5
+        # Confidence is now computed by compute_tag_completeness: type only = 0.25
+        assert tags.confidence == 0.25
 
     def test_parse_valid_formality(self):
         """Test parsing formality levels."""

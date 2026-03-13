@@ -18,7 +18,6 @@ export default function DashboardLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Use unified auth hook that works in both NextAuth and forward auth modes
   const { user, isAuthenticated, isLoading, error } = useAuth();
 
   useEffect(() => {

@@ -19,6 +19,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.item import ClothingItem
 from app.models.learning import (
@@ -95,10 +96,9 @@ class LearningService:
 
         await self.db.commit()
 
-        # Always recompute learning profile after feedback
-        # This ensures the user sees updated data immediately
-        logger.info(f"Triggering learning profile recomputation for user {user_id}")
-        await self.recompute_learning_profile(user_id)
+        # Incremental EMA update instead of full recomputation
+        signal = self._get_outfit_signal(outfit)
+        await self._update_profile_incremental(user_id, outfit, signal)
 
     async def _update_outfit_performance(self, outfit: Outfit) -> None:
         """Compute and store outfit performance metrics."""
@@ -143,7 +143,7 @@ class LearningService:
         if scores:
             total_weight = sum(weights)
             performance_score = (
-                sum(s * w for s, w in zip(scores, weights, strict=True)) / total_weight
+                sum(s * w for s, w in zip(scores, weights, strict=False)) / total_weight
             )
         else:
             performance_score = 0.5  # Neutral score if no data
@@ -633,6 +633,59 @@ class LearningService:
                     signal -= 0.2
 
         return max(-1.0, min(1.0, signal))
+
+    EMA_ALPHA = 0.15
+
+    async def _update_profile_incremental(
+        self, user_id: UUID, outfit: Outfit, signal: float
+    ) -> None:
+        profile = await self._get_or_create_profile(user_id)
+        alpha = self.EMA_ALPHA
+
+        new_color_scores = dict(profile.learned_color_scores or {})
+        for oi in outfit.items:
+            color = oi.item.primary_color
+            if color:
+                old = new_color_scores.get(color, 0.0)
+                new_color_scores[color] = round(old * (1 - alpha) + signal * alpha, 3)
+        profile.learned_color_scores = new_color_scores
+        flag_modified(profile, "learned_color_scores")
+
+        new_style_scores = dict(profile.learned_style_scores or {})
+        for oi in outfit.items:
+            for style in oi.item.style or []:
+                old = new_style_scores.get(style, 0.0)
+                new_style_scores[style] = round(old * (1 - alpha) + signal * alpha, 3)
+        profile.learned_style_scores = new_style_scores
+        flag_modified(profile, "learned_style_scores")
+
+        occasion = outfit.occasion
+        new_occasion_patterns = dict(profile.learned_occasion_patterns or {})
+        occ_data = dict(new_occasion_patterns.get(occasion, {}))
+
+        occ_colors = dict(occ_data.get("colors", occ_data.get("preferred_colors_scores", {})))
+        for oi in outfit.items:
+            color = oi.item.primary_color
+            if color and signal > 0:
+                occ_colors[color] = occ_colors.get(color, 0) + 1
+
+        old_rate = occ_data.get("success_rate", 0.5)
+        positive_signal = 1.0 if signal > 0 else 0.0
+        new_rate = round(old_rate * (1 - alpha) + positive_signal * alpha, 2)
+
+        top_colors = sorted(occ_colors.items(), key=lambda x: x[1], reverse=True)[:3]
+        occ_data["preferred_colors"] = [c for c, _ in top_colors]
+        occ_data["success_rate"] = new_rate
+        new_occasion_patterns[occasion] = occ_data
+        profile.learned_occasion_patterns = new_occasion_patterns
+        flag_modified(profile, "learned_occasion_patterns")
+
+        profile.feedback_count = (profile.feedback_count or 0) + 1
+        profile.last_computed_at = datetime.now(UTC)
+
+        await self.db.commit()
+        await self.db.refresh(profile)
+        logger.info(f"Incremental learning update for user {user_id}")
 
     async def _get_or_create_profile(self, user_id: UUID) -> UserLearningProfile:
         """Get existing profile or create a new one."""

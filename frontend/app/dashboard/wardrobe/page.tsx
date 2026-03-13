@@ -148,6 +148,7 @@ function ItemCard({
             <p className="text-xs text-muted-foreground capitalize">
               {item.type}
               {item.subtype && ` • ${item.subtype}`}
+              {item.tags?.logprobs_confidence != null && ` · ${Math.round(item.tags.logprobs_confidence * 100)}% confident`}
             </p>
           </div>
           {colorInfo && (
@@ -177,7 +178,7 @@ function ItemCard({
         ) : null}
         {item.ai_confidence !== undefined && item.ai_confidence > 0 && item.status === 'ready' && (
           <p className="text-xs text-muted-foreground mt-1">
-            AI confidence: {Math.round(item.ai_confidence * 100)}%
+            AI completeness: {Math.round(item.ai_confidence * 100)}%
           </p>
         )}
       </CardContent>

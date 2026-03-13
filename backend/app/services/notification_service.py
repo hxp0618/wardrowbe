@@ -1,3 +1,4 @@
+import html as html_mod
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -469,13 +470,15 @@ class NotificationDispatcher:
         if outfit.weather_data:
             weather = outfit.weather_data
             forecast_note = " (forecast)" if for_tomorrow else ""
+            condition = html_mod.escape(str(weather.get("condition", "Unknown")))
             weather_html = f"""
             <p style="color: #6B7280; margin: 0;">
-                {weather.get("temperature", "?")}C, {weather.get("condition", "Unknown")}{forecast_note}
+                {weather.get("temperature", "?")}C, {condition}{forecast_note}
             </p>
             """
 
         day_label = "Tomorrow" if for_tomorrow else "Today"
+        occasion_escaped = html_mod.escape(outfit.occasion.title())
 
         # Build highlights HTML
         highlights_html = ""
@@ -485,7 +488,8 @@ class NotificationDispatcher:
 
         if highlights and isinstance(highlights, list):
             items_html = "".join(
-                f'<li style="color: #4B5563; margin: 5px 0;">{h}</li>' for h in highlights[:3]
+                f'<li style="color: #4B5563; margin: 5px 0;">{html_mod.escape(str(h))}</li>'
+                for h in highlights[:3]
             )
             highlights_html = f"""
             <ul style="margin: 15px 0; padding-left: 20px;">
@@ -499,10 +503,14 @@ class NotificationDispatcher:
             styling_tip_html = f"""
             <div style="background: #F3F4F6; border-radius: 8px; padding: 12px; margin: 15px 0; border: 1px solid #E5E7EB;">
                 <p style="color: #4B5563; margin: 0;">
-                    <strong style="color: #1F2937;">Tip:</strong> {outfit.style_notes}
+                    <strong style="color: #1F2937;">Tip:</strong> {html_mod.escape(outfit.style_notes)}
                 </p>
             </div>
             """
+
+        reasoning_escaped = (
+            html_mod.escape(outfit.reasoning) if outfit.reasoning else "Your outfit is ready!"
+        )
 
         html_body = f"""
         <!DOCTYPE html>
@@ -518,14 +526,14 @@ class NotificationDispatcher:
 
             <div style="background: #F9FAFB; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
                 <h2 style="color: #1F2937; margin: 0 0 10px 0;">
-                    {day_label}'s Outfit: {outfit.occasion.title()}
+                    {day_label}'s Outfit: {occasion_escaped}
                 </h2>
                 {weather_html}
             </div>
 
             <div style="background: #F3F4F6; border-radius: 8px; padding: 15px; margin: 20px 0;">
                 <p style="color: #1F2937; font-weight: 600; margin: 0 0 10px 0;">
-                    {outfit.reasoning or "Your outfit is ready!"}
+                    {reasoning_escaped}
                 </p>
                 {highlights_html}
             </div>
@@ -576,7 +584,7 @@ class NotificationDispatcher:
 
         return EmailMessage(
             to=to,
-            subject=f"{day_label}'s Outfit: {outfit.occasion.title()}",
+            subject=f"{day_label}'s Outfit: {occasion_escaped}",
             html_body=html_body,
             text_body=text_body,
         )

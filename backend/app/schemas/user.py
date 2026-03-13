@@ -88,4 +88,3 @@ class AuthConfigOIDC(BaseModel):
 class AuthConfigResponse(BaseModel):
     oidc: AuthConfigOIDC
     dev_mode: bool = False
-    forward_auth: bool = False

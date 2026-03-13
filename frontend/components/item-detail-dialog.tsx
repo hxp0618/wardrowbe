@@ -748,7 +748,12 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                         AI Analysis
                         {item.ai_confidence !== undefined && item.ai_confidence > 0 && (
                           <Badge variant="secondary" className="text-xs">
-                            {Math.round(item.ai_confidence * 100)}% confident
+                            {Math.round(item.ai_confidence * 100)}% complete
+                          </Badge>
+                        )}
+                        {item.tags?.logprobs_confidence != null && (
+                          <Badge variant="outline" className="text-xs">
+                            {Math.round(item.tags.logprobs_confidence * 100)}% confident
                           </Badge>
                         )}
                       </div>

@@ -28,6 +28,8 @@ def tags_to_item_fields(tags: ClothingTags, raw_response: str | None = None) -> 
         "condition": tags.condition,
         "features": tags.features or [],
     }
+    if tags.logprobs_confidence is not None:
+        tags_jsonb["logprobs_confidence"] = tags.logprobs_confidence
 
     fields = {
         "type": tags.type,
