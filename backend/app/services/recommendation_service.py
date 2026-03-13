@@ -2,14 +2,15 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.item import ClothingItem, ItemHistory, ItemStatus
+from app.models.item import ClothingItem, ItemStatus
 from app.models.learning import ItemPairScore, UserLearningProfile
 from app.models.outfit import (
     FamilyOutfitRating,
@@ -22,11 +23,38 @@ from app.models.outfit import (
 from app.models.preference import UserPreference
 from app.models.user import User
 from app.services.ai_service import AIService
+from app.services.item_scorer import get_season, score_items
+from app.services.suggestion_cache import pop_suggestion, push_suggestions
 from app.services.weather_service import WeatherData, WeatherService, WeatherServiceError
 from app.utils.prompts import load_prompt
 from app.utils.timezone import get_user_today
 
 logger = logging.getLogger(__name__)
+
+SINGLE_OUTFIT_FORMAT = (
+    "Respond with valid JSON:\n"
+    '{{"items": [item numbers], "headline": "Short catchy outfit title (max 5 words)", '
+    '"highlights": ["One short sentence each — vary your reasoning across color, texture, '
+    'proportion, occasion, weather, or time of day"], '
+    '"styling_tip": "One specific, actionable styling detail — do not suggest rolling up '
+    'sleeves every time, vary your advice"}}'
+)
+
+
+def get_time_of_day(user: User) -> str:
+    try:
+        user_tz = ZoneInfo(user.timezone or "UTC")
+    except Exception:
+        user_tz = ZoneInfo("UTC")
+    hour = datetime.now(UTC).astimezone(user_tz).hour
+    if 6 <= hour < 12:
+        return "morning"
+    elif 12 <= hour < 17:
+        return "afternoon"
+    elif 17 <= hour < 21:
+        return "evening"
+    else:
+        return "night"
 
 
 @dataclass
@@ -38,34 +66,6 @@ class RecommendationContext:
     exclude_items: list[UUID]
     include_items: list[UUID]
 
-
-# Formality mapping for occasions
-OCCASION_FORMALITY = {
-    "casual": ["very-casual", "casual", "smart-casual"],
-    "work": ["smart-casual", "business-casual", "formal"],
-    "office": ["smart-casual", "business-casual", "formal"],
-    "formal": ["business-casual", "formal", "very-formal"],
-    "sporty": ["very-casual", "casual"],
-    "outdoor": ["very-casual", "casual"],
-    "date": ["smart-casual", "business-casual", "formal"],
-    "party": ["smart-casual", "business-casual", "formal"],
-}
-
-# Season mapping based on month
-MONTH_TO_SEASON = {
-    1: "winter",
-    2: "winter",
-    3: "spring",
-    4: "spring",
-    5: "spring",
-    6: "summer",
-    7: "summer",
-    8: "summer",
-    9: "fall",
-    10: "fall",
-    11: "fall",
-    12: "winter",
-}
 
 RECOMMENDATION_PROMPT = load_prompt("recommendation")
 
@@ -83,7 +83,6 @@ class RecommendationService:
         preferences: UserPreference | None,
         exclude_items: list[UUID],
     ) -> list[ClothingItem]:
-        # Get all ready, non-archived items
         query = select(ClothingItem).where(
             and_(
                 ClothingItem.user_id == user.id,
@@ -98,10 +97,9 @@ class RecommendationService:
         if not items:
             return []
 
-        # Exclude items that need washing
         items = [i for i in items if not i.needs_wash]
+        items = [i for i in items if i.type and i.type != "unknown"]
 
-        # Only exclude explicitly excluded items (user request or preferences)
         if exclude_items:
             exclude_set = set(exclude_items)
             items = [i for i in items if i.id not in exclude_set]
@@ -110,117 +108,35 @@ class RecommendationService:
             excluded = set(preferences.excluded_item_ids)
             items = [i for i in items if i.id not in excluded]
 
-        # Exclude recently worn items (user preference)
-        if preferences and preferences.avoid_repeat_days:
-            items = await self._exclude_recently_worn(items, user, preferences.avoid_repeat_days)
-
         return items
 
-    def _filter_by_season(self, items: list[ClothingItem], user: User) -> list[ClothingItem]:
-        user_today = get_user_today(user)
-        current_season = MONTH_TO_SEASON[user_today.month]
-
-        filtered = []
-        for item in items:
-            seasons = item.season or []
-            # Include if no season specified (all-season) or matches current
-            if not seasons or current_season in seasons:
-                filtered.append(item)
-
-        return filtered
-
-    def _filter_by_weather(
-        self,
-        items: list[ClothingItem],
-        weather: WeatherData,
-        preferences: UserPreference | None,
-    ) -> list[ClothingItem]:
-        temp = weather.temperature
-
-        # Get thresholds from preferences or use defaults
-        cold_threshold = 10
-        hot_threshold = 25
-
-        if preferences:
-            if preferences.cold_threshold is not None:
-                cold_threshold = preferences.cold_threshold
-            if preferences.hot_threshold is not None:
-                hot_threshold = preferences.hot_threshold
-
-            # Adjust for sensitivity
-            if preferences.temperature_sensitivity == "cold":
-                cold_threshold += 5  # Feel cold earlier
-            elif preferences.temperature_sensitivity == "warm":
-                hot_threshold -= 5  # Feel warm earlier
-
-        filtered = []
-        for item in items:
-            item_type = item.type.lower() if item.type else ""
-            material = (item.material or "").lower()
-            seasons = item.season or []
-
-            if temp < cold_threshold:
-                # Cold weather: need warm items
-                if item_type in ["outerwear", "sweater"]:
-                    filtered.append(item)
-                elif "winter" in seasons:
-                    filtered.append(item)
-                elif material in ["wool", "fleece", "knit"]:
-                    filtered.append(item)
-                elif item_type not in ["shorts", "tank-top", "sandals"]:
-                    filtered.append(item)
-            elif temp > hot_threshold:
-                # Hot weather: need light items
-                if "summer" in seasons:
-                    filtered.append(item)
-                elif material in ["cotton", "linen", "silk"]:
-                    filtered.append(item)
-                elif item_type not in ["outerwear", "sweater", "boots"]:
-                    filtered.append(item)
-            else:
-                # Moderate weather: most items okay
-                filtered.append(item)
-
-        return filtered
-
-    def _filter_by_formality(self, items: list[ClothingItem], occasion: str) -> list[ClothingItem]:
-        allowed_formality = OCCASION_FORMALITY.get(occasion.lower(), ["casual", "smart-casual"])
-
-        filtered = []
-        for item in items:
-            item_formality = (item.formality or "casual").lower()
-            if item_formality in allowed_formality:
-                filtered.append(item)
-
-        return filtered
-
-    async def _exclude_recently_worn(
-        self, items: list[ClothingItem], user: User, avoid_days: int
-    ) -> list[ClothingItem]:
-        if avoid_days <= 0:
-            return items
-
-        # Use user's current date for the cutoff
-        user_today = get_user_today(user)
-        cutoff_date = user_today - timedelta(days=avoid_days)
-
-        # Get recently worn item IDs
-        query = (
-            select(ItemHistory.item_id)
-            .join(ClothingItem)
-            .where(
+    async def _get_recently_worn_dates(self, user: User) -> dict[UUID, date]:
+        result = await self.db.execute(
+            select(ClothingItem.id, ClothingItem.last_worn_at).where(
                 and_(
                     ClothingItem.user_id == user.id,
-                    ItemHistory.worn_at >= cutoff_date,
+                    ClothingItem.last_worn_at.is_not(None),
+                )
+            )
+        )
+        return {row[0]: row[1] for row in result.all()}
+
+    async def _get_today_rejected_item_ids(self, user: User, occasion: str) -> set[UUID]:
+        user_today = get_user_today(user)
+        result = await self.db.execute(
+            select(OutfitItem.item_id)
+            .join(Outfit, OutfitItem.outfit_id == Outfit.id)
+            .where(
+                and_(
+                    Outfit.user_id == user.id,
+                    Outfit.status == OutfitStatus.rejected,
+                    Outfit.scheduled_for == user_today,
+                    Outfit.occasion == occasion,
                 )
             )
             .distinct()
         )
-
-        result = await self.db.execute(query)
-        recently_worn = set(result.scalars().all())
-
-        return [i for i in items if i.id not in recently_worn]
+        return set(result.scalars().all())
 
     async def _get_recently_worn_outfit_combinations(
         self, user: User, days: int = 7
@@ -231,7 +147,6 @@ class RecommendationService:
         user_today = get_user_today(user)
         cutoff_date = user_today - timedelta(days=days)
 
-        # Get outfits that were marked as worn in the cutoff period
         query = (
             select(Outfit)
             .join(UserFeedback, Outfit.id == UserFeedback.outfit_id)
@@ -247,60 +162,89 @@ class RecommendationService:
         result = await self.db.execute(query)
         worn_outfits = list(result.scalars().all())
 
-        # Build set of item combinations
         combinations = set()
         for outfit in worn_outfits:
             item_ids = frozenset(outfit_item.item_id for outfit_item in outfit.items)
-            if len(item_ids) >= 2:  # Only track if it's a real outfit
+            if len(item_ids) >= 2:
                 combinations.add(item_ids)
 
         logger.info(f"Found {len(combinations)} worn outfit combinations in last {days} days")
         return combinations
 
-    def _format_items_for_prompt(self, items: list[ClothingItem]) -> tuple[str, dict[int, UUID]]:
+    def _format_items_for_prompt(
+        self,
+        scored_items: list,
+        good_pairs: dict[UUID, list[UUID]],
+        user_today: date,
+    ) -> tuple[str, dict[int, UUID]]:
         lines = []
         number_map: dict[int, UUID] = {}
 
-        for i, item in enumerate(items, 1):
+        items_with_numbers: list[tuple[int, ClothingItem]] = []
+        for i, si in enumerate(scored_items, 1):
+            item = si.item if hasattr(si, "item") else si
             number_map[i] = item.id
+            items_with_numbers.append((i, item))
 
-            # Build detailed item description
+        id_to_number = {item.id: num for num, item in items_with_numbers}
+
+        for num, item in items_with_numbers:
             parts = []
 
-            # Type and subtype
             item_type = item.type or "item"
             if item.subtype:
                 parts.append(f"{item.subtype} ({item_type})")
             else:
                 parts.append(item_type)
 
-            # Colors
             if item.colors and len(item.colors) > 1:
                 parts.append(f"colors: {', '.join(item.colors)}")
             elif item.primary_color:
                 parts.append(item.primary_color)
 
-            # Pattern
             if item.pattern and item.pattern != "solid":
                 parts.append(item.pattern)
 
-            # Material
+            item_size = getattr(item, "size", None)
+            if item_size:
+                parts.append(f"size {item_size}")
+
             if item.material:
                 parts.append(item.material)
 
-            # Formality
             if item.formality:
                 parts.append(item.formality)
 
-            # Style tags
             if item.style:
                 parts.append(f"style: {', '.join(item.style)}")
 
-            # Name if set
+            if item.season:
+                parts.append(f"season: {', '.join(item.season)}")
+
+            fit = item.tags.get("fit") if item.tags else None
+            if fit:
+                parts.append(f"{fit} fit")
+
             if item.name:
                 parts.insert(0, f'"{item.name}"')
 
-            line = f"[{i}] {' | '.join(parts)}"
+            # Recency annotation
+            if item.last_worn_at:
+                days_ago = (user_today - item.last_worn_at).days
+                if 0 <= days_ago <= 14:
+                    parts.append(f"worn {days_ago} days ago")
+            else:
+                parts.append("never worn")
+
+            # Pair annotation
+            partners = good_pairs.get(item.id, [])
+            if partners:
+                pair_nums = sorted([id_to_number[p] for p in partners if p in id_to_number])[:3]
+                if pair_nums:
+                    refs = ", ".join(f"[{n}]" for n in pair_nums)
+                    parts.append(f"pairs well with: {refs}")
+
+            line = f"[{num}] {' | '.join(parts)}"
             lines.append(line)
 
         return "\n".join(lines), number_map
@@ -311,19 +255,66 @@ class RecommendationService:
         learned_prefs: dict | None = None,
         worn_combinations: set[frozenset[UUID]] | None = None,
         number_map: dict[int, UUID] | None = None,
+        occasion: str | None = None,
+        body_measurements: dict | None = None,
     ) -> str:
         lines = []
 
-        # Explicit user preferences
+        if body_measurements:
+            m = body_measurements
+            body_parts = []
+            if m.get("height"):
+                body_parts.append(f"height {m['height']}cm")
+            if m.get("weight"):
+                body_parts.append(f"weight {m['weight']}kg")
+            if m.get("chest"):
+                body_parts.append(f"chest {m['chest']}cm")
+            if m.get("waist"):
+                body_parts.append(f"waist {m['waist']}cm")
+            if m.get("hips"):
+                body_parts.append(f"hips {m['hips']}cm")
+            if m.get("inseam"):
+                body_parts.append(f"inseam {m['inseam']}cm")
+            if m.get("shirt_size"):
+                body_parts.append(f"shirt size {m['shirt_size']}")
+            if m.get("pants_size"):
+                body_parts.append(f"pants size {m['pants_size']}")
+            if m.get("shoe_size"):
+                body_parts.append(f"shoe size {m['shoe_size']}")
+            if body_parts:
+                lines.append(f"- Body: {', '.join(body_parts)}")
+
         if preferences:
             if preferences.color_favorites:
                 lines.append(f"- Favorite colors: {', '.join(preferences.color_favorites)}")
             if preferences.color_avoid:
                 lines.append(f"- Colors to avoid: {', '.join(preferences.color_avoid)}")
+            if preferences.style_profile:
+                profile = preferences.style_profile
+                strong = sorted(
+                    [(k, v) for k, v in profile.items() if isinstance(v, (int, float)) and v > 60],
+                    key=lambda x: x[1],
+                    reverse=True,
+                )
+                weak = [k for k, v in profile.items() if isinstance(v, (int, float)) and v < 30]
+                if strong:
+                    desc = ", ".join(f"{k} ({v}%)" for k, v in strong)
+                    lines.append(f"- Preferred styles: {desc}")
+                if weak:
+                    lines.append(f"- Less preferred styles: {', '.join(weak)}")
             if preferences.variety_level:
                 lines.append(f"- Variety preference: {preferences.variety_level}")
+            if preferences.layering_preference and preferences.layering_preference != "moderate":
+                lines.append(f"- Layering preference: {preferences.layering_preference}")
+            if (
+                preferences.temperature_sensitivity
+                and preferences.temperature_sensitivity != "normal"
+            ):
+                lines.append(
+                    f"- Temperature sensitivity: {preferences.temperature_sensitivity} "
+                    f"(user {'feels cold/hot easily' if preferences.temperature_sensitivity == 'high' else 'tolerates temperature extremes well'})"
+                )
 
-        # Learned preferences (from feedback history)
         if learned_prefs:
             if learned_prefs.get("learned_favorite_colors"):
                 colors = learned_prefs["learned_favorite_colors"]
@@ -335,9 +326,19 @@ class RecommendationService:
                 styles = learned_prefs["learned_preferred_styles"]
                 lines.append(f"- Learned preferred styles: {', '.join(styles)}")
 
-        # Recently worn outfit combinations to deprioritize
+            if occasion and learned_prefs.get("occasion_insights"):
+                occ_data = learned_prefs["occasion_insights"].get(occasion)
+                if occ_data:
+                    pref_colors = occ_data.get("preferred_colors", [])
+                    if pref_colors:
+                        lines.append(f"- For {occasion}, user prefers: {', '.join(pref_colors)}")
+                    success_rate = occ_data.get("success_rate")
+                    if success_rate is not None and success_rate < 0.5:
+                        lines.append(
+                            f"- Low success rate for {occasion} outfits — try different approaches"
+                        )
+
         if worn_combinations and number_map:
-            # Map UUIDs back to item numbers
             uuid_to_number = {uuid: num for num, uuid in number_map.items()}
             worn_sets = []
             for combo in worn_combinations:
@@ -353,7 +354,7 @@ class RecommendationService:
             return "\nUSER PREFERENCES:\n" + "\n".join(lines)
         return ""
 
-    async def _get_learned_preferences(self, user_id: UUID) -> dict:
+    async def _get_learned_preferences(self, user_id: UUID, occasion: str | None = None) -> dict:
         result = await self.db.execute(
             select(UserLearningProfile).where(UserLearningProfile.user_id == user_id)
         )
@@ -364,7 +365,6 @@ class RecommendationService:
 
         preferences = {}
 
-        # Top liked colors
         if profile.learned_color_scores:
             liked_colors = sorted(
                 [(c, s) for c, s in profile.learned_color_scores.items() if s > 0.2],
@@ -381,7 +381,6 @@ class RecommendationService:
             if disliked_colors:
                 preferences["learned_avoid_colors"] = [c for c, _ in disliked_colors]
 
-        # Top liked styles
         if profile.learned_style_scores:
             liked_styles = sorted(
                 [(s, score) for s, score in profile.learned_style_scores.items() if score > 0.2],
@@ -390,6 +389,11 @@ class RecommendationService:
             )[:3]
             if liked_styles:
                 preferences["learned_preferred_styles"] = [s for s, _ in liked_styles]
+
+        if occasion and profile.learned_occasion_patterns:
+            occ_data = profile.learned_occasion_patterns.get(occasion)
+            if occ_data:
+                preferences["occasion_insights"] = {occasion: occ_data}
 
         return preferences
 
@@ -408,7 +412,6 @@ class RecommendationService:
         )
         pairs = list(result.scalars().all())
 
-        # Build adjacency list of good pairs
         good_pairs: dict[UUID, list[UUID]] = {}
         for pair in pairs:
             if pair.item1_id not in good_pairs:
@@ -423,25 +426,20 @@ class RecommendationService:
 
     def _parse_ai_response(self, content: str) -> dict:
         def strip_comments(json_str: str) -> str:
-            # Remove single-line comments (// ...)
             json_str = re.sub(r"//[^\n]*", "", json_str)
-            # Remove multi-line comments (/* ... */)
             json_str = re.sub(r"/\*[\s\S]*?\*/", "", json_str)
             return json_str
 
-        # Try direct JSON parse
         try:
             return json.loads(content.strip())
         except json.JSONDecodeError:
             pass
 
-        # Try with comments stripped
         try:
             return json.loads(strip_comments(content.strip()))
         except json.JSONDecodeError:
             pass
 
-        # Try extracting JSON from markdown code block
         json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
         if json_match:
             extracted = json_match.group(1)
@@ -449,13 +447,11 @@ class RecommendationService:
                 return json.loads(extracted)
             except json.JSONDecodeError:
                 pass
-            # Try with comments stripped
             try:
                 return json.loads(strip_comments(extracted))
             except json.JSONDecodeError:
                 pass
 
-        # Try finding JSON object with balanced braces
         start_idx = content.find("{")
         if start_idx != -1:
             brace_count = 0
@@ -470,13 +466,11 @@ class RecommendationService:
                             return json.loads(json_str)
                         except json.JSONDecodeError:
                             pass
-                        # Try with comments stripped
                         try:
                             return json.loads(strip_comments(json_str))
                         except json.JSONDecodeError:
                             break
 
-        # Try finding JSON array with balanced brackets (small models sometimes return arrays)
         start_idx = content.find("[")
         if start_idx != -1:
             bracket_count = 0
@@ -489,17 +483,115 @@ class RecommendationService:
                         json_str = content[start_idx : i + 1]
                         try:
                             result = json.loads(json_str)
-                            # If it's an array of dicts, return the first one
                             if isinstance(result, list) and len(result) > 0:
                                 if isinstance(result[0], dict):
                                     return result[0]
-                                # If it's an array of numbers (item IDs), wrap it
                                 return {"items": result}
                             return result
                         except json.JSONDecodeError:
                             break
 
         raise ValueError(f"Could not parse AI response as JSON: {content[:200]}")
+
+    def _parse_multi_outfit_response(self, content: str) -> list[dict]:
+        parsed = self._parse_ai_response(content)
+
+        if isinstance(parsed, dict) and "outfits" in parsed:
+            outfits = parsed["outfits"]
+            if isinstance(outfits, list) and outfits:
+                return outfits
+
+        if isinstance(parsed, list) and parsed:
+            return parsed
+
+        if isinstance(parsed, dict) and "items" in parsed:
+            return [parsed]
+
+        return [parsed]
+
+    async def _materialize_outfit(
+        self,
+        outfit_data: dict,
+        user: User,
+        weather: WeatherData,
+        occasion: str,
+        source: OutfitSource,
+        number_map: dict[int, UUID],
+    ) -> Outfit:
+        selected_numbers = outfit_data.get("items", [])
+        valid_ids = []
+
+        for num in selected_numbers:
+            try:
+                num_int = int(num)
+                if num_int in number_map:
+                    valid_ids.append(number_map[num_int])
+                else:
+                    logger.warning(f"AI selected invalid item number: {num}")
+            except (ValueError, TypeError):
+                logger.warning(f"AI returned non-numeric item: {num}")
+
+        seen = set()
+        unique_ids = []
+        for item_id in valid_ids:
+            if item_id not in seen:
+                seen.add(item_id)
+                unique_ids.append(item_id)
+        valid_ids = unique_ids
+
+        if not valid_ids:
+            raise AIRecommendationError("AI did not select any valid items")
+
+        reasoning = outfit_data.get("headline") or outfit_data.get("reasoning")
+        style_notes = outfit_data.get("styling_tip") or outfit_data.get("style_notes")
+
+        outfit = Outfit(
+            user_id=user.id,
+            occasion=occasion,
+            weather_data=weather.to_dict(),
+            scheduled_for=get_user_today(user),
+            reasoning=reasoning,
+            style_notes=style_notes,
+            ai_raw_response=outfit_data,
+            source=source,
+            status=OutfitStatus.pending,
+        )
+
+        self.db.add(outfit)
+        await self.db.flush()
+
+        layers = outfit_data.get("layers", {})
+        for position, item_id in enumerate(valid_ids):
+            layer_type = None
+            for layer_name, layer_id in layers.items():
+                if layer_id == str(item_id):
+                    layer_type = layer_name
+                    break
+
+            outfit_item = OutfitItem(
+                outfit_id=outfit.id,
+                item_id=item_id,
+                position=position,
+                layer_type=layer_type,
+            )
+            self.db.add(outfit_item)
+
+        await self.db.commit()
+        await self.db.refresh(outfit)
+
+        result = await self.db.execute(
+            select(Outfit)
+            .where(Outfit.id == outfit.id)
+            .options(
+                selectinload(Outfit.items).selectinload(OutfitItem.item),
+                selectinload(Outfit.feedback),
+                selectinload(Outfit.family_ratings).selectinload(FamilyOutfitRating.user),
+            )
+        )
+        outfit = result.scalar_one()
+
+        logger.info(f"Created outfit {outfit.id} with {len(valid_ids)} items")
+        return outfit
 
     async def generate_recommendation(
         self,
@@ -509,9 +601,23 @@ class RecommendationService:
         exclude_items: list[UUID] | None = None,
         include_items: list[UUID] | None = None,
         source: OutfitSource = OutfitSource.on_demand,
+        time_of_day: str | None = None,
+        single_outfit: bool = False,
     ) -> Outfit:
         exclude_items = exclude_items or []
         include_items = include_items or []
+
+        if not time_of_day:
+            time_of_day = get_time_of_day(user)
+
+        # Determine cache eligibility before auto-merge
+        use_cache = not exclude_items and not include_items and not single_outfit
+
+        # Auto-exclude today's rejected items for this occasion
+        rejected_ids = await self._get_today_rejected_item_ids(user, occasion)
+        if rejected_ids:
+            exclude_items = list(set(exclude_items) | rejected_ids)
+            logger.info(f"Auto-excluding {len(rejected_ids)} rejected items for user {user.id}")
 
         # Get weather
         if weather_override:
@@ -529,16 +635,14 @@ class RecommendationService:
                     "Could not fetch weather data. Please try again or provide weather manually."
                 ) from e
 
-        # Get preferences
         preferences = user.preferences
 
-        # Create AI service with user's configured endpoints
         ai_endpoints = None
         if preferences and preferences.ai_endpoints:
             ai_endpoints = preferences.ai_endpoints
         ai_service = AIService(endpoints=ai_endpoints)
 
-        # Get candidate items
+        # Get candidate items (hard exclusions only)
         candidates = await self.get_candidate_items(
             user=user,
             weather=weather,
@@ -547,14 +651,13 @@ class RecommendationService:
             exclude_items=exclude_items,
         )
 
-        # Force-include specific items if requested (fetch and add to candidates)
+        # Force-include specific items
         if include_items:
             include_set = set(include_items)
             existing_ids = {item.id for item in candidates}
             missing_ids = include_set - existing_ids
 
             if missing_ids:
-                # Fetch the missing items from database
                 result = await self.db.execute(
                     select(ClothingItem).where(
                         and_(
@@ -575,25 +678,69 @@ class RecommendationService:
                 "Please add more items or adjust filters."
             )
 
-        # Get learned preferences from feedback history
-        learned_prefs = await self._get_learned_preferences(user.id)
+        # Check cache for pre-generated suggestions
+        if use_cache:
+            cached = await pop_suggestion(user.id, occasion)
+            if cached:
+                cached_number_map = cached.get("_number_map", {})
+                number_map = {int(k): UUID(v) for k, v in cached_number_map.items()}
+
+                cached_item_ids = set()
+                for num in cached.get("items", []):
+                    str_num = str(int(num))
+                    if str_num in cached_number_map:
+                        cached_item_ids.add(UUID(cached_number_map[str_num]))
+
+                if cached_item_ids & rejected_ids:
+                    logger.info("Cached suggestion contains rejected items, skipping")
+                else:
+                    logger.info(f"Using cached suggestion for user {user.id}, occasion: {occasion}")
+                    return await self._materialize_outfit(
+                        cached, user, weather, occasion, source, number_map
+                    )
+
+        # Fetch scoring context
+        recently_worn_dates = await self._get_recently_worn_dates(user)
+        good_pairs = await self._get_good_item_pairs(user.id)
+        learned_prefs = await self._get_learned_preferences(user.id, occasion=occasion)
         if learned_prefs:
             logger.info(
                 f"Using learned preferences for user {user.id}: {list(learned_prefs.keys())}"
             )
 
-        # Build prompt with numbered items
-        items_text, number_map = self._format_items_for_prompt(candidates)
+        # Score items (replaces old filter approach)
+        user_today = get_user_today(user)
+        lat = float(user.location_lat) if user.location_lat is not None else None
+        current_season = get_season(user_today.month, lat)
+        scored = score_items(
+            items=candidates,
+            weather=weather,
+            occasion=occasion,
+            preferences=preferences,
+            user_today=user_today,
+            current_season=current_season,
+            learned_prefs=learned_prefs,
+            good_pairs=good_pairs,
+            recently_worn_dates=recently_worn_dates,
+        )
 
-        # Get recently worn outfit combinations to deprioritize
+        # Format enriched prompt
+        items_text, number_map = self._format_items_for_prompt(scored, good_pairs, user_today)
+
         worn_combinations = await self._get_recently_worn_outfit_combinations(user, days=7)
 
         preferences_text = self._format_preferences_for_prompt(
-            preferences, learned_prefs, worn_combinations, number_map
+            preferences,
+            learned_prefs,
+            worn_combinations,
+            number_map,
+            occasion=occasion,
+            body_measurements=getattr(user, "body_measurements", None),
         )
 
         prompt = RECOMMENDATION_PROMPT.format(
             occasion=occasion,
+            time_of_day=time_of_day,
             temperature=weather.temperature,
             feels_like=weather.feels_like,
             condition=weather.condition,
@@ -602,9 +749,18 @@ class RecommendationService:
             items_text=items_text,
         )
 
-        # Generate recommendation using AI
+        # For single_outfit mode (notifications), replace multi-outfit format
+        if single_outfit:
+            prompt = re.sub(
+                r"Respond with valid JSON containing exactly 3.*$",
+                SINGLE_OUTFIT_FORMAT,
+                prompt,
+                flags=re.DOTALL,
+            )
+
         logger.info(
-            f"Generating recommendation for user {user.id}, occasion: {occasion}, items: {len(candidates)}"
+            f"Generating recommendation for user {user.id}, "
+            f"occasion: {occasion}, items: {len(scored)}"
         )
 
         try:
@@ -613,98 +769,51 @@ class RecommendationService:
                 f"AI recommendation generated (model: {result.model}, endpoint: {result.endpoint})"
             )
             logger.debug(f"AI raw response: {result.content[:500]}")
-            outfit_data = self._parse_ai_response(result.content)
-            # Handle case where AI returns a list instead of object
-            if isinstance(outfit_data, list) and len(outfit_data) > 0:
-                outfit_data = outfit_data[0]
-            if not isinstance(outfit_data, dict):
-                raise ValueError(f"Expected dict, got {type(outfit_data)}")
-            # Add model info to outfit data for storage
-            outfit_data["_ai_model"] = result.model
-            outfit_data["_ai_endpoint"] = result.endpoint
+
+            if single_outfit:
+                outfit_data = self._parse_ai_response(result.content)
+                if isinstance(outfit_data, list) and len(outfit_data) > 0:
+                    outfit_data = outfit_data[0]
+                if not isinstance(outfit_data, dict):
+                    raise ValueError(f"Expected dict, got {type(outfit_data)}")
+                outfit_data["_ai_model"] = result.model
+                outfit_data["_ai_endpoint"] = result.endpoint
+                return await self._materialize_outfit(
+                    outfit_data, user, weather, occasion, source, number_map
+                )
+
+            # Multi-outfit parse
+            outfit_list = self._parse_multi_outfit_response(result.content)
+
+            first = outfit_list[0]
+            first["_ai_model"] = result.model
+            first["_ai_endpoint"] = result.endpoint
+
+            outfit = await self._materialize_outfit(
+                first, user, weather, occasion, source, number_map
+            )
+
+            # Cache remaining outfits for "Try Another"
+            if len(outfit_list) > 1:
+                serializable_map = {str(k): str(v) for k, v in number_map.items()}
+                to_cache = []
+                for od in outfit_list[1:]:
+                    od["_number_map"] = serializable_map
+                    od["_ai_model"] = result.model
+                    od["_ai_endpoint"] = result.endpoint
+                    to_cache.append(od)
+                await push_suggestions(user.id, occasion, to_cache)
+                logger.info(f"Cached {len(to_cache)} additional suggestions for user {user.id}")
+
+            return outfit
+
+        except AIRecommendationError:
+            raise
         except Exception as e:
             logger.error(f"AI recommendation failed: {e}")
             raise AIRecommendationError(
                 "AI service is not available. Please check your AI endpoint configuration in Settings."
             ) from e
-
-        # Convert item numbers back to UUIDs
-        selected_numbers = outfit_data.get("items", [])
-        valid_ids = []
-
-        for num in selected_numbers:
-            # Handle both int and string numbers
-            try:
-                num_int = int(num)
-                if num_int in number_map:
-                    valid_ids.append(number_map[num_int])
-                else:
-                    logger.warning(f"AI selected invalid item number: {num}")
-            except (ValueError, TypeError):
-                logger.warning(f"AI returned non-numeric item: {num}")
-
-        if not valid_ids:
-            raise AIRecommendationError("AI did not select any valid items")
-
-        # Create outfit record
-        # Map structured AI response:
-        # - headline → reasoning (for backwards compat with notifications)
-        # - highlights → stored in ai_raw_response
-        # - styling_tip → style_notes
-        reasoning = outfit_data.get("headline") or outfit_data.get("reasoning")
-        style_notes = outfit_data.get("styling_tip") or outfit_data.get("style_notes")
-
-        outfit = Outfit(
-            user_id=user.id,
-            occasion=occasion,
-            weather_data=weather.to_dict(),
-            scheduled_for=get_user_today(user),
-            reasoning=reasoning,
-            style_notes=style_notes,
-            ai_raw_response=outfit_data,
-            source=source,
-            status=OutfitStatus.pending,
-        )
-
-        self.db.add(outfit)
-        await self.db.flush()  # Get the outfit ID
-
-        # Add outfit items
-        layers = outfit_data.get("layers", {})
-        for position, item_id in enumerate(valid_ids):
-            # Determine layer type
-            layer_type = None
-            for layer_name, layer_id in layers.items():
-                if layer_id == str(item_id):
-                    layer_type = layer_name
-                    break
-
-            outfit_item = OutfitItem(
-                outfit_id=outfit.id,
-                item_id=item_id,
-                position=position,
-                layer_type=layer_type,
-            )
-            self.db.add(outfit_item)
-
-        await self.db.commit()
-        await self.db.refresh(outfit)
-
-        # Load relationships for response
-        result = await self.db.execute(
-            select(Outfit)
-            .where(Outfit.id == outfit.id)
-            .options(
-                selectinload(Outfit.items).selectinload(OutfitItem.item),
-                selectinload(Outfit.feedback),
-                selectinload(Outfit.family_ratings).selectinload(FamilyOutfitRating.user),
-            )
-        )
-        outfit = result.scalar_one()
-
-        logger.info(f"Created outfit {outfit.id} with {len(valid_ids)} items")
-
-        return outfit
 
 
 class InsufficientWardrobeError(Exception):

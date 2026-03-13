@@ -67,11 +67,10 @@ async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promis
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new ApiError(
-      data.detail || data.error?.message || 'An error occurred',
-      response.status,
-      data
-    );
+    const message = (typeof data.detail === 'string' ? data.detail : data.detail?.message)
+      || data.error?.message
+      || 'An error occurred';
+    throw new ApiError(message, response.status, data);
   }
 
   if (response.status === 204) {

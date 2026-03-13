@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -43,6 +43,7 @@ import {
 import { api, ApiError, setAccessToken } from '@/lib/api';
 import { OCCASIONS, Outfit, SuggestRequest } from '@/lib/types';
 import { useWeather, Weather } from '@/lib/hooks/use-weather';
+import { usePreferences } from '@/lib/hooks/use-preferences';
 import { cn } from '@/lib/utils';
 
 // Map occasion values to icons and colors
@@ -288,12 +289,14 @@ function OutfitResult({
   occasion,
   onAccept,
   onReject,
+  onTryAnother,
   onNewRequest,
 }: {
   outfit: Outfit;
   occasion: string;
   onAccept: () => void;
   onReject: () => void;
+  onTryAnother: () => void;
   onNewRequest: () => void;
 }) {
   return (
@@ -396,7 +399,7 @@ function OutfitResult({
 
       {/* Action buttons */}
       <div className="flex gap-3 justify-center">
-        <Button variant="outline" size="lg" onClick={onReject} className="gap-2">
+        <Button variant="outline" size="lg" onClick={onTryAnother} className="gap-2">
           <RefreshCw className="h-4 w-4" />
           Try Another
         </Button>
@@ -415,11 +418,20 @@ function OutfitResult({
 export default function SuggestPage() {
   const { data: session } = useSession();
   const { data: weather, isLoading: weatherLoading } = useWeather();
+  const { data: prefs } = usePreferences();
   const [selectedOccasion, setSelectedOccasion] = useState<string | null>(null);
+  const [occasionInitialized, setOccasionInitialized] = useState(false);
   const [weatherOverride, setWeatherOverride] = useState<WeatherOverride | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [outfit, setOutfit] = useState<Outfit | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (prefs?.default_occasion && !occasionInitialized && !selectedOccasion) {
+      setSelectedOccasion(prefs.default_occasion);
+      setOccasionInitialized(true);
+    }
+  }, [prefs, occasionInitialized, selectedOccasion]);
 
   const handleGenerate = async () => {
     if (!selectedOccasion) return;
@@ -474,6 +486,11 @@ export default function SuggestPage() {
     } catch (err) {
       console.error('Accept error:', err);
     }
+  };
+
+  const handleTryAnother = () => {
+    setOutfit(null);
+    handleGenerate();
   };
 
   const handleReject = async () => {
@@ -569,6 +586,7 @@ export default function SuggestPage() {
           occasion={selectedOccasion || 'casual'}
           onAccept={handleAccept}
           onReject={handleReject}
+          onTryAnother={handleTryAnother}
           onNewRequest={handleNewRequest}
         />
       )}

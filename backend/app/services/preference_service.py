@@ -57,10 +57,10 @@ class PreferenceService:
         preferences = await self.get_or_create_preferences(user_id)
 
         update_data = data.model_dump(exclude_unset=True)
+        update_data = self._strip_color_overlaps(update_data, preferences)
+
         for field, value in update_data.items():
             if field == "style_profile" and value is not None:
-                # Merge style profile updates with existing
-                # Create a NEW dict to ensure SQLAlchemy detects the change
                 current_profile = dict(preferences.style_profile or {})
                 update_value = value.model_dump() if hasattr(value, "model_dump") else value
                 current_profile.update(update_value)
@@ -72,7 +72,6 @@ class PreferenceService:
                 "excluded_item_ids",
                 "excluded_combinations",
             ):
-                # JSONB array fields also need flag_modified
                 setattr(preferences, field, value)
                 flag_modified(preferences, field)
             else:
@@ -81,6 +80,32 @@ class PreferenceService:
         await self.db.commit()
         await self.db.refresh(preferences)
         return preferences
+
+    @staticmethod
+    def _strip_color_overlaps(update_data: dict, preferences: UserPreference) -> dict:
+        has_favorites = "color_favorites" in update_data
+        has_avoid = "color_avoid" in update_data
+
+        if has_favorites and has_avoid:
+            overlap = set(update_data["color_favorites"]) & set(update_data["color_avoid"])
+            if overlap:
+                update_data["color_avoid"] = [
+                    c for c in update_data["color_avoid"] if c not in overlap
+                ]
+        elif has_favorites:
+            new_favorites = set(update_data["color_favorites"])
+            saved_avoid = list(preferences.color_avoid or [])
+            stripped = [c for c in saved_avoid if c not in new_favorites]
+            if stripped != saved_avoid:
+                update_data["color_avoid"] = stripped
+        elif has_avoid:
+            new_avoid = set(update_data["color_avoid"])
+            saved_favorites = list(preferences.color_favorites or [])
+            stripped = [c for c in saved_favorites if c not in new_avoid]
+            if stripped != saved_favorites:
+                update_data["color_favorites"] = stripped
+
+        return update_data
 
     async def reset_preferences(self, user_id: uuid.UUID) -> UserPreference:
         preferences = await self.get_preferences(user_id)

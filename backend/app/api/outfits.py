@@ -1,10 +1,10 @@
 import logging
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -19,8 +19,10 @@ from app.services.recommendation_service import (
     InsufficientWardrobeError,
     RecommendationService,
 )
+from app.services.suggestion_cache import clear_suggestions
 from app.services.weather_service import WeatherData
 from app.utils.auth import get_current_user
+from app.utils.rate_limit import rate_limit_by_user
 from app.utils.signed_urls import sign_image_url
 from app.utils.timezone import get_user_today
 
@@ -28,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/outfits", tags=["Outfits"])
+
+VALID_OCCASIONS = {"casual", "office", "formal", "date", "sporty", "outdoor", "work", "party"}
 
 
 # Request/Response schemas
@@ -40,7 +44,25 @@ class WeatherOverrideRequest(BaseModel):
 
 
 class SuggestRequest(BaseModel):
-    occasion: str = Field(default="casual", description="Occasion type")
+    occasion: str | None = None
+
+    @field_validator("occasion")
+    @classmethod
+    def validate_occasion(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip().lower()
+        if len(v) > 50:
+            raise ValueError("Occasion must be 50 characters or less")
+        if v not in VALID_OCCASIONS:
+            raise ValueError(
+                f"Invalid occasion. Must be one of: {', '.join(sorted(VALID_OCCASIONS))}"
+            )
+        return v
+
+    time_of_day: Literal["morning", "afternoon", "evening", "night", "full day"] | None = Field(
+        None, description="Time of day for styling context"
+    )
     weather_override: WeatherOverrideRequest | None = Field(
         None, description="Manual weather override"
     )
@@ -317,6 +339,8 @@ async def suggest_outfit(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OutfitResponse:
+    await rate_limit_by_user(current_user.id, "suggest", 10, 60)
+
     # Convert weather override to WeatherData if provided
     weather_override = None
     if request.weather_override:
@@ -337,13 +361,21 @@ async def suggest_outfit(
 
     service = RecommendationService(db)
 
+    occasion = request.occasion
+    if occasion is None:
+        if current_user.preferences and current_user.preferences.default_occasion:
+            occasion = current_user.preferences.default_occasion
+        else:
+            occasion = "casual"
+
     try:
         outfit = await service.generate_recommendation(
             user=current_user,
-            occasion=request.occasion,
+            occasion=occasion,
             weather_override=weather_override,
             exclude_items=request.exclude_items,
             include_items=request.include_items,
+            time_of_day=request.time_of_day,
         )
     except InsufficientWardrobeError as e:
         raise HTTPException(
@@ -560,6 +592,8 @@ async def reject_outfit(
     outfit.responded_at = datetime.utcnow()
     await db.commit()
     await db.refresh(outfit)
+
+    await clear_suggestions(current_user.id, outfit.occasion)
 
     return outfit_to_response(
         outfit, await fetch_wore_instead_items_map(db, [outfit], user_id=current_user.id)

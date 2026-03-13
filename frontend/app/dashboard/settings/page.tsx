@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Loader2, Save, RotateCcw, Check, Plus, Trash2, ChevronUp, ChevronDown, Server, MapPin, Navigation } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Check, Plus, Trash2, ChevronUp, ChevronDown, Server, MapPin, Navigation, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,41 @@ import { usePreferences, useUpdatePreferences, useResetPreferences, useTestAIEnd
 import { useUserProfile, useUpdateUserProfile } from '@/lib/hooks/use-user';
 import { CLOTHING_COLORS, OCCASIONS, Preferences, StyleProfile, AIEndpoint } from '@/lib/types';
 import { toast } from 'sonner';
+
+const CM_TO_IN = 0.393701;
+const IN_TO_CM = 2.54;
+const KG_TO_LBS = 2.20462;
+const LBS_TO_KG = 0.453592;
+
+function convertMeasurement(value: number, key: string, from: string, to: string): number {
+  if (from === to) return value;
+  const isWeight = key === 'weight';
+  if (from === 'metric' && to === 'imperial') {
+    return Math.round((isWeight ? value * KG_TO_LBS : value * CM_TO_IN) * 10) / 10;
+  }
+  return Math.round((isWeight ? value * LBS_TO_KG : value * IN_TO_CM) * 10) / 10;
+}
+
+const BODY_MEASUREMENT_FIELDS = [
+  { key: 'height', unitMetric: 'cm', unitImperial: 'in', placeholderMetric: 'e.g. 178', placeholderImperial: 'e.g. 70' },
+  { key: 'weight', unitMetric: 'kg', unitImperial: 'lbs', placeholderMetric: 'e.g. 75', placeholderImperial: 'e.g. 165' },
+  { key: 'chest', unitMetric: 'cm', unitImperial: 'in', placeholderMetric: 'e.g. 96', placeholderImperial: 'e.g. 38' },
+  { key: 'waist', unitMetric: 'cm', unitImperial: 'in', placeholderMetric: 'e.g. 82', placeholderImperial: 'e.g. 32' },
+  { key: 'hips', unitMetric: 'cm', unitImperial: 'in', placeholderMetric: 'e.g. 98', placeholderImperial: 'e.g. 39' },
+  { key: 'inseam', unitMetric: 'cm', unitImperial: 'in', placeholderMetric: 'e.g. 81', placeholderImperial: 'e.g. 32' },
+] as const;
+
+const SIZE_FIELDS = [
+  { key: 'shirt_size', label: 'Shirt Size', placeholder: 'e.g. M, L, XL' },
+  { key: 'pants_size', label: 'Pants Size', placeholder: 'e.g. 32, 34' },
+  { key: 'dress_size', label: 'Dress Size', placeholder: 'e.g. 8, 10' },
+  { key: 'shoe_size', label: 'Shoe Size', placeholder: 'e.g. 10, 42' },
+] as const;
+
+function getErrorMessage(e: unknown, fallback: string): string {
+  if (e instanceof Error) return e.message;
+  return fallback;
+}
 
 interface EndpointTestResult {
   status: 'connected' | 'error' | 'testing' | null;
@@ -145,13 +180,37 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState('UTC');
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // Initialize location and timezone from profile
+  // Body measurements state
+  type UnitSystem = 'metric' | 'imperial';
+  const [measurements, setMeasurements] = useState<Record<string, string>>({});
+  const [measurementsDirty, setMeasurementsDirty] = useState(false);
+  const [unitSystem, setUnitSystem] = useState<UnitSystem>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('wardrowbe_unit_system') as UnitSystem) || 'metric';
+    }
+    return 'metric';
+  });
+
   useEffect(() => {
     if (userProfile) {
       setLocationName(userProfile.location_name || '');
       setLocationLat(userProfile.location_lat?.toString() || '');
       setLocationLon(userProfile.location_lon?.toString() || '');
       setTimezone(userProfile.timezone || 'UTC');
+
+      if (userProfile.body_measurements) {
+        const initial: Record<string, string> = {};
+        const numericKeys = ['chest', 'waist', 'hips', 'inseam', 'height', 'weight'];
+        for (const [key, value] of Object.entries(userProfile.body_measurements)) {
+          if (numericKeys.includes(key) && typeof value === 'number') {
+            const converted = convertMeasurement(value, key, 'metric', unitSystem);
+            initial[key] = String(converted);
+          } else {
+            initial[key] = String(value);
+          }
+        }
+        setMeasurements(initial);
+      }
     }
   }, [userProfile]);
 
@@ -242,6 +301,60 @@ export default function SettingsPage() {
     timezone !== (userProfile.timezone || 'UTC')
   );
 
+  const handleToggleUnits = () => {
+    const newSystem: UnitSystem = unitSystem === 'metric' ? 'imperial' : 'metric';
+    const converted: Record<string, string> = {};
+    const numericKeys = ['chest', 'waist', 'hips', 'inseam', 'height', 'weight'];
+    for (const [key, value] of Object.entries(measurements)) {
+      const trimmed = value.trim();
+      if (!trimmed) { converted[key] = value; continue; }
+      if (numericKeys.includes(key)) {
+        const num = parseFloat(trimmed);
+        if (!isNaN(num)) {
+          converted[key] = String(convertMeasurement(num, key, unitSystem, newSystem));
+          continue;
+        }
+      }
+      converted[key] = value;
+    }
+    setMeasurements(converted);
+    setUnitSystem(newSystem);
+    localStorage.setItem('wardrowbe_unit_system', newSystem);
+  };
+
+  const handleMeasurementChange = (key: string, value: string) => {
+    setMeasurements((prev) => ({ ...prev, [key]: value }));
+    setMeasurementsDirty(true);
+  };
+
+  const handleSaveMeasurements = async () => {
+    const parsed: Record<string, number | string> = {};
+    const numericKeys = ['chest', 'waist', 'hips', 'inseam', 'height', 'weight'];
+    for (const [key, value] of Object.entries(measurements)) {
+      const trimmed = value.trim();
+      if (!trimmed) continue;
+      if (numericKeys.includes(key)) {
+        const num = parseFloat(trimmed);
+        if (isNaN(num) || num <= 0) {
+          toast.error(`${key.charAt(0).toUpperCase() + key.slice(1)} must be a positive number`);
+          return;
+        }
+        parsed[key] = convertMeasurement(num, key, unitSystem, 'metric');
+      } else {
+        parsed[key] = trimmed;
+      }
+    }
+    try {
+      await updateUserProfile.mutateAsync({
+        body_measurements: Object.keys(parsed).length > 0 ? parsed : null,
+      });
+      setMeasurementsDirty(false);
+      toast.success('Measurements saved');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Failed to save measurements'));
+    }
+  };
+
   const handleTestEndpoint = async (index: number, url: string) => {
     setEndpointTests((prev) => ({ ...prev, [index]: { status: 'testing' } }));
     try {
@@ -272,7 +385,19 @@ export default function SettingsPage() {
   }, [preferences]);
 
   const updateField = <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === 'color_favorites' && Array.isArray(value)) {
+        next.color_avoid = (prev.color_avoid || []).filter(
+          (c) => !(value as string[]).includes(c)
+        );
+      } else if (key === 'color_avoid' && Array.isArray(value)) {
+        next.color_favorites = (prev.color_favorites || []).filter(
+          (c) => !(value as string[]).includes(c)
+        );
+      }
+      return next;
+    });
     setHasChanges(true);
   };
 
@@ -462,6 +587,82 @@ export default function SettingsPage() {
               <p className="text-sm text-amber-600 dark:text-amber-400">
                 Location is required for weather-based outfit recommendations.
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Body Measurements */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Ruler className="h-5 w-5" />
+              Body Measurements
+            </CardTitle>
+            <CardDescription>Help AI recommend better-fitting outfits</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <Label>Unit System</Label>
+              <Button variant="outline" size="sm" onClick={handleToggleUnits}>
+                {unitSystem === 'metric' ? 'Metric (cm/kg)' : 'Imperial (in/lbs)'}
+              </Button>
+            </div>
+
+            <div>
+              <Label className="text-muted-foreground mb-3 block">Body</Label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {BODY_MEASUREMENT_FIELDS.map((field) => {
+                  const unit = unitSystem === 'metric' ? field.unitMetric : field.unitImperial;
+                  const placeholder = unitSystem === 'metric' ? field.placeholderMetric : field.placeholderImperial;
+                  return (
+                    <div key={field.key} className="space-y-1">
+                      <Label className="text-sm capitalize">{field.key}</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={measurements[field.key] ?? ''}
+                          onChange={(e) => handleMeasurementChange(field.key, e.target.value)}
+                          placeholder={placeholder}
+                          className="flex-1"
+                        />
+                        <span className="text-sm text-muted-foreground min-w-[2rem] text-center">{unit}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-muted-foreground mb-3 block">Sizes</Label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {SIZE_FIELDS.map((field) => (
+                  <div key={field.key} className="space-y-1">
+                    <Label className="text-sm">{field.label}</Label>
+                    <Input
+                      value={measurements[field.key] ?? ''}
+                      onChange={(e) => handleMeasurementChange(field.key, e.target.value)}
+                      placeholder={field.placeholder}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {measurementsDirty && (
+              <Button
+                onClick={handleSaveMeasurements}
+                disabled={updateUserProfile.isPending}
+                size="sm"
+              >
+                {updateUserProfile.isPending ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
+                ) : (
+                  <><Save className="mr-2 h-4 w-4" />Save Measurements</>
+                )}
+              </Button>
             )}
           </CardContent>
         </Card>

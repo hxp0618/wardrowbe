@@ -1,7 +1,6 @@
 import { NextAuthOptions } from 'next-auth';
 import type { OAuthConfig } from 'next-auth/providers/oauth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { headers } from 'next/headers';
 
 interface OIDCProfile {
   sub: string;
@@ -10,8 +9,6 @@ interface OIDCProfile {
   email?: string;
   picture?: string;
 }
-
-const isForwardAuth = process.env.AUTH_TRUST_PROXY === 'true';
 
 const OIDCProvider: OAuthConfig<OIDCProfile> = {
   id: 'oidc',
@@ -36,33 +33,6 @@ const OIDCProvider: OAuthConfig<OIDCProfile> = {
     };
   },
 };
-
-// Forward auth provider - uses Remote-User header from nginx/TinyAuth
-const ForwardAuthProvider = CredentialsProvider({
-  id: 'forward-auth',
-  name: 'Login',
-  credentials: {},
-  async authorize(credentials, req) {
-    // Get Remote-User header set by nginx/TinyAuth
-    const headersList = headers();
-    const remoteUser = headersList.get('remote-user') || headersList.get('x-remote-user');
-    const remoteEmail = headersList.get('remote-email') || headersList.get('x-remote-email');
-    const remoteName = headersList.get('remote-name') || headersList.get('x-remote-name');
-    const remotePhoto = headersList.get('remote-photo') || headersList.get('x-remote-photo');
-
-    if (!remoteUser) {
-      // No forward auth header - reject
-      return null;
-    }
-
-    return {
-      id: remoteUser,
-      email: remoteEmail || `${remoteUser}@forward-auth.local`,
-      name: remoteName || remoteUser,
-      image: remotePhoto || null,
-    };
-  },
-});
 
 // Dev credentials provider - for local development only
 const DevCredentialsProvider = CredentialsProvider({
@@ -96,9 +66,9 @@ function getProviders() {
 
   if (process.env.OIDC_ISSUER_URL) {
     providers.push(OIDCProvider);
-  } else if (isForwardAuth) {
-    providers.push(ForwardAuthProvider);
-  } else {
+  }
+
+  if (process.env.NODE_ENV === 'development') {
     providers.push(DevCredentialsProvider);
   }
   return providers;
@@ -204,5 +174,3 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
-
-export { isForwardAuth };

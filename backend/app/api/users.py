@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +29,7 @@ class UserProfileResponse(BaseModel):
     family_id: str | None = None
     role: str
     onboarding_completed: bool
+    body_measurements: dict | None = None
 
 
 class UserProfileUpdate(BaseModel):
@@ -37,25 +38,14 @@ class UserProfileUpdate(BaseModel):
     location_lat: Decimal | None = None
     location_lon: Decimal | None = None
     location_name: str | None = None
+    body_measurements: dict | None = None
 
 
 @router.get("", response_model=UserProfileResponse)
 async def get_profile(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserProfileResponse:
-    return UserProfileResponse(
-        id=str(current_user.id),
-        email=current_user.email,
-        display_name=current_user.display_name,
-        avatar_url=current_user.avatar_url,
-        timezone=current_user.timezone,
-        location_lat=float(current_user.location_lat) if current_user.location_lat else None,
-        location_lon=float(current_user.location_lon) if current_user.location_lon else None,
-        location_name=current_user.location_name,
-        family_id=str(current_user.family_id) if current_user.family_id else None,
-        role=current_user.role,
-        onboarding_completed=current_user.onboarding_completed,
-    )
+    return _user_response(current_user)
 
 
 @router.patch("", response_model=UserProfileResponse)
@@ -64,8 +54,16 @@ async def update_profile(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserProfileResponse:
-    # Build update dict from non-None values
     update_data = data.model_dump(exclude_unset=True)
+
+    if "body_measurements" in update_data and update_data["body_measurements"] is not None:
+        numeric_keys = {"chest", "waist", "hips", "inseam", "height", "weight"}
+        for key, value in update_data["body_measurements"].items():
+            if key in numeric_keys and isinstance(value, (int, float)) and value <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"{key} must be a positive number",
+                )
 
     for field, value in update_data.items():
         setattr(current_user, field, value)
@@ -74,18 +72,23 @@ async def update_profile(
     await db.refresh(current_user)
     await db.commit()
 
+    return _user_response(current_user)
+
+
+def _user_response(user: User) -> UserProfileResponse:
     return UserProfileResponse(
-        id=str(current_user.id),
-        email=current_user.email,
-        display_name=current_user.display_name,
-        avatar_url=current_user.avatar_url,
-        timezone=current_user.timezone,
-        location_lat=float(current_user.location_lat) if current_user.location_lat else None,
-        location_lon=float(current_user.location_lon) if current_user.location_lon else None,
-        location_name=current_user.location_name,
-        family_id=str(current_user.family_id) if current_user.family_id else None,
-        role=current_user.role,
-        onboarding_completed=current_user.onboarding_completed,
+        id=str(user.id),
+        email=user.email,
+        display_name=user.display_name,
+        avatar_url=user.avatar_url,
+        timezone=user.timezone,
+        location_lat=float(user.location_lat) if user.location_lat else None,
+        location_lon=float(user.location_lon) if user.location_lon else None,
+        location_name=user.location_name,
+        family_id=str(user.family_id) if user.family_id else None,
+        role=user.role,
+        onboarding_completed=user.onboarding_completed,
+        body_measurements=user.body_measurements,
     )
 
 

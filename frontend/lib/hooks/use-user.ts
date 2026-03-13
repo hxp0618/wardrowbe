@@ -16,6 +16,7 @@ export interface UserProfile {
   family_id?: string;
   role: string;
   onboarding_completed: boolean;
+  body_measurements?: Record<string, number | string> | null;
 }
 
 export interface UserProfileUpdate {
@@ -24,6 +25,7 @@ export interface UserProfileUpdate {
   location_lat?: number;
   location_lon?: number;
   location_name?: string;
+  body_measurements?: Record<string, number | string> | null;
 }
 
 function useSetTokenIfAvailable() {
