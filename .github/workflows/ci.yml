@@ -84,7 +84,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+          TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/wardrobe_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key-for-ci
           STORAGE_PATH: /tmp/wardrobe
@@ -94,7 +94,7 @@ jobs:
 
       - name: Run tests with coverage
         env:
-          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+          TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/wardrobe_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key-for-ci
           STORAGE_PATH: /tmp/wardrobe

@@ -37,6 +37,7 @@ services:
     environment:
       DEBUG: "true"
       DATABASE_ECHO: "false"
+      TEST_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-wardrobe}:${POSTGRES_PASSWORD:-wardrobe}@postgres:5432/wardrobe_test
 
   frontend:
     build:

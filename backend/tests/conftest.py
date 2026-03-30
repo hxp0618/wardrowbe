@@ -1,4 +1,6 @@
+import asyncio
 import os
+import subprocess
 
 # Set test environment — clear OIDC vars so auth tests run with a known state
 os.environ["DEBUG"] = "true"
@@ -12,6 +14,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 from uuid import uuid4
 
+import asyncpg
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -24,33 +27,53 @@ from app.database import Base, get_db
 from app.main import app
 from app.models import User, UserPreference
 
-# Use PostgreSQL for tests (same as development, but with test prefix on tables)
-# The database URL is taken from the environment, defaulting to the development database
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    os.getenv("DATABASE_URL", "postgresql+asyncpg://wardrobe:wardrobe@localhost:5432/wardrobe"),
-)
+# Test database URL from environment — set in docker-compose.dev.yml, never falls back to DATABASE_URL.
+TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
+_ADMIN_DSN = TEST_DATABASE_URL.replace("+asyncpg", "").rsplit("/", 1)[0] + "/postgres"
+
+_test_db_ready = False
+
+
+async def _ensure_test_db():
+    global _test_db_ready
+    if _test_db_ready:
+        return
+
+    conn = await asyncpg.connect(_ADMIN_DSN)
+    try:
+        exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = 'wardrobe_test'")
+        if not exists:
+            await conn.execute("CREATE DATABASE wardrobe_test")
+    finally:
+        await conn.close()
+
+    env = {**os.environ, "DATABASE_URL": TEST_DATABASE_URL}
+    subprocess.run(
+        ["python", "-m", "alembic", "upgrade", "head"],
+        env=env,
+        check=True,
+        capture_output=True,
+    )
+    _test_db_ready = True
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest_asyncio.fixture(scope="function")
 async def async_engine():
-    """Create async engine for each test."""
-    engine = create_async_engine(
-        TEST_DATABASE_URL,
-        echo=False,
-    )
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
+    await _ensure_test_db()
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     yield engine
-
     await engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Create a database session for each test."""
     async_session_maker = async_sessionmaker(
         async_engine,
         class_=AsyncSession,
@@ -65,8 +88,6 @@ async def db_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create an async test client with database session override."""
-
     async def override_get_db():
         yield db_session
 
@@ -94,7 +115,6 @@ async def _clear_rate_limits():
 
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession) -> User:
-    """Create a test user with unique identifiers."""
     unique_id = uuid4()
     user = User(
         id=unique_id,
@@ -113,7 +133,6 @@ async def test_user(db_session: AsyncSession) -> User:
 
 @pytest_asyncio.fixture
 async def test_user_with_preferences(db_session: AsyncSession, test_user: User) -> User:
-    """Create a test user with preferences."""
     preferences = UserPreference(
         user_id=test_user.id,
         color_favorites=["black", "navy", "white"],
@@ -127,14 +146,12 @@ async def test_user_with_preferences(db_session: AsyncSession, test_user: User) 
 
 @pytest.fixture
 def auth_headers(test_user: User) -> dict[str, str]:
-    """Create authorization headers for authenticated requests."""
     token = create_access_token(test_user.external_id)
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
 def sample_item_data() -> dict[str, Any]:
-    """Sample data for creating a clothing item."""
     return {
         "type": "shirt",
         "subtype": "casual",
@@ -148,7 +165,6 @@ def sample_item_data() -> dict[str, Any]:
 
 @pytest.fixture
 def sample_tags() -> dict[str, Any]:
-    """Sample AI-generated tags."""
     return {
         "type": "shirt",
         "subtype": "oxford",
