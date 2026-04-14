@@ -11,12 +11,22 @@ const authState = vi.hoisted(() => ({
   session: null as null | { accessToken?: string },
 }))
 
-const routerState = vi.hoisted(() => ({
-  navigateImpl: ((_path: string) => {}) as (path: string) => void,
-  navigate: vi.fn((path: string) => routerState.navigateImpl(path)),
-}))
+type NavigateFn = (path: string) => void
 
-vi.mock('next/navigation', () => ({
+const routerState = vi.hoisted(() => {
+  let navigateImpl: NavigateFn = () => {}
+  return {
+    get navigateImpl() {
+      return navigateImpl
+    },
+    set navigateImpl(fn: NavigateFn) {
+      navigateImpl = fn
+    },
+    navigate: vi.fn((path: string) => navigateImpl(path)),
+  }
+})
+
+vi.mock('@/i18n/navigation', () => ({
   useRouter: () => ({
     push: routerState.navigate,
     replace: routerState.navigate,
@@ -59,7 +69,9 @@ vi.mock('sonner', () => ({
   },
 }))
 
-import OnboardingPage from '@/app/onboarding/page'
+import { NextIntlClientProvider } from 'next-intl'
+import enMessages from '../messages/en.json'
+import OnboardingPage from '@/app/[locale]/onboarding/page'
 
 function renderWithProviders(ui: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -69,9 +81,11 @@ function renderWithProviders(ui: React.ReactElement) {
   })
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>
+    </NextIntlClientProvider>
   )
 }
 
@@ -83,7 +97,7 @@ function RouterHarness({ children }: { children: React.ReactNode }) {
 
 function consoleMessages(spy: ReturnType<typeof vi.spyOn>) {
   return spy.mock.calls
-    .flatMap((call) => call.map((value) => String(value)))
+    .flatMap((call: unknown[]) => call.map((value: unknown) => String(value)))
     .join('\n')
 }
 
