@@ -32,7 +32,7 @@ import { useItems, useItem, useItemTypes, useReanalyzeItem, useBulkDeleteItems, 
 import { useUserProfile } from '@/lib/hooks/use-user';
 import { CLOTHING_TYPES, CLOTHING_COLORS, Item } from '@/lib/types';
 import { toast } from 'sonner';
-import { formatWornAgo, getWornAgoColorClass } from '@/lib/utils';
+import { getDaysSinceDateInTimezone, getWornAgoColorClass } from '@/lib/utils';
 
 const SORT_OPTIONS = [
   { labelKey: 'newestFirst', value: 'created_at', order: 'desc' as const },
@@ -62,6 +62,14 @@ function ItemCard({
 }) {
   const t = useTranslations('wardrobe');
   const tc = useTranslations('common');
+  const wornAgoLabel = item.last_worn_at
+    ? (() => {
+        const days = getDaysSinceDateInTimezone(item.last_worn_at, userTimezone);
+        if (days === 0) return t('wornToday');
+        if (days === 1) return t('wornYesterday');
+        return t('wornDaysAgo', { days });
+      })()
+    : '';
   const colorInfo = CLOTHING_COLORS.find((c) => c.value === item.primary_color);
   const isProcessing = item.status === 'processing';
   const isError = item.status === 'error';
@@ -152,7 +160,8 @@ function ItemCard({
             <p className="text-xs text-muted-foreground capitalize">
               {item.type}
               {item.subtype && ` • ${item.subtype}`}
-              {item.tags?.logprobs_confidence != null && ` · ${Math.round(item.tags.logprobs_confidence * 100)}% confident`}
+              {item.tags?.logprobs_confidence != null &&
+                ` · ${t('confident', { percent: Math.round(item.tags.logprobs_confidence * 100) })}`}
             </p>
           </div>
           {colorInfo && (
@@ -173,7 +182,7 @@ function ItemCard({
         </div>
         {item.last_worn_at ? (
           <p className={`text-xs mt-1 ${getWornAgoColorClass(item.last_worn_at, userTimezone)}`}>
-            {formatWornAgo(item.last_worn_at, userTimezone)}
+            {wornAgoLabel}
           </p>
         ) : item.wear_count > 0 ? (
           <p className="text-xs text-muted-foreground mt-1">

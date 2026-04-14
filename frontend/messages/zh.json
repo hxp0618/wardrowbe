@@ -153,6 +153,10 @@
     "analysisFailed": "分析失败",
     "loadFailed": "加载物品失败，请重试。",
     "worn": "穿过 {count} 次",
+    "wornToday": "今天穿过",
+    "wornYesterday": "昨天穿过",
+    "wornDaysAgo": "{days} 天前穿过",
+    "confident": "置信度 {percent}%",
     "aiCompleteness": "AI 完成度：{percent}%",
     "sort": {
       "newestFirst": "最新优先",

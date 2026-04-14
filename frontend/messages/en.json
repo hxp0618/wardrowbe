@@ -153,6 +153,10 @@
     "analysisFailed": "Analysis Failed",
     "loadFailed": "Failed to load items. Please try again.",
     "worn": "Worn {count} times",
+    "wornToday": "Worn today",
+    "wornYesterday": "Worn yesterday",
+    "wornDaysAgo": "Worn {days}d ago",
+    "confident": "{percent}% confident",
     "aiCompleteness": "AI completeness: {percent}%",
     "sort": {
       "newestFirst": "Newest first",
