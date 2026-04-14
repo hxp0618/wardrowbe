@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
-import { usePathname } from 'next/navigation';
+import { Link, usePathname } from '@/i18n/navigation';
 import { X, Home, Shirt, Sparkles, Layers, History, BarChart3, Brain, Settings, Users, Bell, HeartHandshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +30,7 @@ interface MobileSidebarProps {
 
 export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
   const t = useTranslations('nav');
+  const tc = useTranslations('common');
   const pathname = usePathname();
 
   useEffect(() => {
@@ -68,15 +68,15 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
           className="absolute right-4 top-4 p-2 text-muted-foreground hover:text-foreground"
           onClick={onClose}
         >
-          <span className="sr-only">Close sidebar</span>
+          <span className="sr-only">{tc('close')}</span>
           <X className="h-6 w-6" />
         </button>
 
         <div className="flex h-full flex-col gap-y-5 overflow-y-auto px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center">
             <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
-              <img src="/logo.svg" alt="Wardrowbe" className="h-8 w-8" />
-              <span className="text-xl font-bold">wardrowbe</span>
+              <img src="/logo.svg" alt={tc('appName')} className="h-8 w-8" />
+              <span className="text-xl font-bold">{tc('appName')}</span>
             </Link>
           </div>
           <nav className="flex flex-1 flex-col">

@@ -23,7 +23,8 @@
     "or": "或",
     "of": "的",
     "items": "{count} 件物品",
-    "viewAll": "查看全部"
+    "viewAll": "查看全部",
+    "offline": "您已离线"
   },
   "nav": {
     "dashboard": "首页",
@@ -63,6 +64,7 @@
     "namePlaceholder": "您的名字",
     "termsNotice": "登录即表示您同意我们的服务条款和隐私政策。",
     "backendError": "后端配置错误",
+    "backendConnectError": "无法连接到后端服务器。请检查后端是否正在运行。",
     "errors": {
       "oauthSignin": "启动身份验证时出错",
       "oauthCallback": "身份验证回调时出错",
@@ -940,5 +942,60 @@
     "keepEditing": "继续编辑",
     "discard": "丢弃",
     "previewAlt": "预览"
+  },
+  "outfitHistory": {
+    "source": {
+      "scheduled": "定时推荐",
+      "onDemand": "即时推荐",
+      "manual": "手动创建",
+      "pairing": "搭配方案"
+    },
+    "status": {
+      "accepted": "已接受",
+      "rejected": "已拒绝",
+      "viewed": "已查看",
+      "sent": "已发送",
+      "pending": "待处理",
+      "expired": "已过期"
+    },
+    "outfitAccepted": "穿搭已接受",
+    "outfitRejected": "穿搭已拒绝",
+    "acceptFailed": "接受穿搭失败",
+    "rejectFailed": "拒绝穿搭失败",
+    "didntWear": "没有穿这套",
+    "woreInstead": "实际穿的：",
+    "family": "家庭：",
+    "tip": "提示：",
+    "reject": "拒绝",
+    "accept": "接受",
+    "updateRating": "更新评分",
+    "rate": "评分",
+    "item": "物品",
+    "viewItemDetails": "查看物品详情"
+  },
+  "pairingCard": {
+    "pairing": "搭配",
+    "builtAround": "基于：",
+    "tip": "提示：",
+    "deleted": "搭配已删除",
+    "deleteFailed": "删除搭配失败",
+    "updateRating": "更新评分",
+    "ratePairing": "评价搭配"
+  },
+  "calendar": {
+    "scheduled": "定时推荐",
+    "onDemand": "即时推荐"
+  },
+  "colorEyedropper": {
+    "title": "从图片中取色",
+    "instruction": "点击图片上的任意位置来取色",
+    "pickColor": "从图片中取色",
+    "picked": "已取色",
+    "clear": "清除",
+    "useColor": "使用 {color}",
+    "noColorSelected": "尚未选择颜色",
+    "canvasNotAvailable": "画布不可用",
+    "canvasContextError": "无法获取画布上下文",
+    "imageLoadFailed": "加载图片失败"
   }
 }

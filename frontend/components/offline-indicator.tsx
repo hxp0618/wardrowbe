@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { WifiOff } from 'lucide-react';
 
 export function OfflineIndicator() {
+  const t = useTranslations('common');
   const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
-    // Check initial state
     setIsOffline(!navigator.onLine);
 
     const handleOnline = () => setIsOffline(false);
@@ -28,7 +29,7 @@ export function OfflineIndicator() {
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 lg:bottom-4 z-50">
       <div className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-2 rounded-full shadow-lg">
         <WifiOff className="w-4 h-4" />
-        <span className="text-sm font-medium">You&apos;re offline</span>
+        <span className="text-sm font-medium">{t('offline')}</span>
       </div>
     </div>
   );

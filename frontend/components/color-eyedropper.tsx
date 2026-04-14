@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Pipette, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -86,6 +87,7 @@ function findClosestColor(hex: string): ClothingColor {
 }
 
 export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedropperProps) {
+  const t = useTranslations('colorEyedropper');
   const [open, setOpen] = useState(false);
   const [pickedColor, setPickedColor] = useState<string | null>(null);
   const [matchedColor, setMatchedColor] = useState<ClothingColor | null>(null);
@@ -98,7 +100,6 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
   const imageRef = useRef<HTMLImageElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
-  // Cleanup blob URL on unmount
   useEffect(() => {
     return () => {
       if (blobUrlRef.current) {
@@ -107,7 +108,6 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
     };
   }, []);
 
-  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setIsLoading(true);
@@ -118,34 +118,30 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
     }
   }, [open]);
 
-  // Load image onto canvas when dialog opens and canvas is ready
   useEffect(() => {
     if (!open || imageLoaded) return;
 
-    // Small delay to ensure canvas is mounted
     const timer = setTimeout(() => {
       const canvas = canvasRef.current;
       if (!canvas) {
-        setError('Canvas not available');
+        setError(t('canvasNotAvailable'));
         setIsLoading(false);
         return;
       }
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        setError('Could not get canvas context');
+        setError(t('canvasContextError'));
         setIsLoading(false);
         return;
       }
 
-      // Fetch image as blob to avoid CORS issues with canvas
       fetch(imageUrl, { credentials: 'include' })
         .then(response => {
-          if (!response.ok) throw new Error(`Failed to load image: ${response.status}`);
+          if (!response.ok) throw new Error(`${t('imageLoadFailed')}: ${response.status}`);
           return response.blob();
         })
         .then(blob => {
-          // Cleanup previous blob URL
           if (blobUrlRef.current) {
             URL.revokeObjectURL(blobUrlRef.current);
           }
@@ -156,7 +152,6 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
           img.onload = () => {
             imageRef.current = img;
 
-            // Scale image to fit canvas while maintaining aspect ratio
             const maxWidth = 500;
             const maxHeight = 500;
             let width = img.width;
@@ -178,19 +173,19 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
             setImageLoaded(true);
           };
           img.onerror = () => {
-            setError('Failed to load image from blob');
+            setError(t('imageLoadFailed'));
             setIsLoading(false);
           };
           img.src = blobUrl;
         })
         .catch(err => {
-          setError(err.message || 'Failed to load image');
+          setError(err.message || t('imageLoadFailed'));
           setIsLoading(false);
         });
-    }, 100); // Small delay to ensure DOM is ready
+    }, 100);
 
     return () => clearTimeout(timer);
-  }, [open, imageUrl, imageLoaded]);
+  }, [open, imageUrl, imageLoaded, t]);
 
   const getColorAtPosition = useCallback((x: number, y: number): string | null => {
     const canvas = canvasRef.current;
@@ -259,7 +254,7 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
           variant="outline"
           size="icon"
           onClick={() => setOpen(true)}
-          title="Pick color from image"
+          title={t('pickColor')}
         >
           <Pipette className="h-4 w-4" />
         </Button>
@@ -270,13 +265,13 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pipette className="h-5 w-5" />
-              Pick Color from Image
+              {t('title')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Click anywhere on the image to sample a color
+              {t('instruction')}
             </p>
 
             <div className="relative flex justify-center bg-muted rounded-lg p-2 min-h-[200px]">
@@ -328,7 +323,7 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
                       className="w-10 h-10 rounded border shadow-inner"
                       style={{ backgroundColor: pickedColor }}
                     />
-                    <span className="text-xs text-muted-foreground">Picked</span>
+                    <span className="text-xs text-muted-foreground">{t('picked')}</span>
                   </div>
                   <div className="text-muted-foreground">&rarr;</div>
                   <div className="flex flex-col items-center gap-1">
@@ -349,11 +344,11 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
                     }}
                   >
                     <X className="h-4 w-4 mr-1" />
-                    Clear
+                    {t('clear')}
                   </Button>
                   <Button size="sm" onClick={handleConfirm}>
                     <Check className="h-4 w-4 mr-1" />
-                    Use {matchedColor.name}
+                    {t('useColor', { color: matchedColor.name })}
                   </Button>
                 </div>
               </div>
@@ -361,7 +356,7 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
 
             {!pickedColor && (
               <div className="text-center text-sm text-muted-foreground py-2">
-                No color selected yet
+                {t('noColorSelected')}
               </div>
             )}
           </div>
