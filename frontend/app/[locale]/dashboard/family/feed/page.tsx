@@ -37,35 +37,36 @@ function getInitials(name: string) {
 }
 
 function SourceBadge({ source }: { source: OutfitSource }) {
-  const config: Record<OutfitSource, { icon: typeof Calendar; label: string; className: string }> = {
+  const t = useTranslations('outfitHistory');
+  const config: Record<OutfitSource, { icon: typeof Calendar; labelKey: 'source.scheduled' | 'source.onDemand' | 'source.manual' | 'source.pairing'; className: string }> = {
     scheduled: {
       icon: Calendar,
-      label: 'Scheduled',
+      labelKey: 'source.scheduled',
       className: 'bg-primary/10 text-primary border-primary/20',
     },
     on_demand: {
       icon: Zap,
-      label: 'On Demand',
+      labelKey: 'source.onDemand',
       className: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
     },
     manual: {
       icon: Edit3,
-      label: 'Manual',
+      labelKey: 'source.manual',
       className: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
     },
     pairing: {
       icon: Zap,
-      label: 'Pairing',
+      labelKey: 'source.pairing',
       className: 'bg-violet-500/10 text-violet-600 border-violet-500/20',
     },
   };
 
-  const { icon: Icon, label, className } = config[source];
+  const { icon: Icon, labelKey, className } = config[source];
 
   return (
     <Badge variant="outline" className={className}>
       <Icon className="h-3 w-3 mr-1" />
-      {label}
+      {t(labelKey)}
     </Badge>
   );
 }

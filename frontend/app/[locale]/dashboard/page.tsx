@@ -37,10 +37,11 @@ import { usePendingOutfits, useAcceptOutfit, useRejectOutfit } from '@/lib/hooks
 import { useSchedules, useNotificationSettings } from '@/lib/hooks/use-notifications';
 import { useFamily } from '@/lib/hooks/use-family';
 import { toast } from 'sonner';
-import { getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
+import { getClothingTypeLabel, getOccasionLabel, getWeatherConditionLabel } from '@/lib/taxonomy-i18n';
 
 function WeatherCard() {
   const t = useTranslations('dashboard');
+  const ts = useTranslations('suggest');
   const { data: weather, isLoading, isError } = useWeather();
   const { data: prefs } = usePreferences();
   const unit: TempUnit = prefs?.temperature_unit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
@@ -99,7 +100,7 @@ function WeatherCard() {
           </span>
         </div>
         <p className="text-sm text-muted-foreground capitalize mb-1">
-          {weather.condition}
+          {getWeatherConditionLabel(weather.condition, (k) => ts(k as Parameters<typeof ts>[0]))}
         </p>
         {weather.precipitation_chance > 0 && (
           <p className="text-xs text-muted-foreground flex items-center gap-1">

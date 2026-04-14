@@ -209,6 +209,25 @@
       "windproof": "考虑防风衣物",
       "default": "好天气，怎么穿都合适"
     },
+    "feelsLike": "（体感 {temp}°）",
+    "chanceOfRain": "{chance}% 可能降雨",
+    "windSpeed": "{speed} 公里/小时",
+    "weatherConditions": {
+      "clear": "晴朗",
+      "sunny": "晴天",
+      "clouds": "多云",
+      "cloudy": "阴天",
+      "overcast": "阴",
+      "partly_cloudy": "局部多云",
+      "rain": "雨",
+      "drizzle": "小雨",
+      "thunderstorm": "雷暴",
+      "snow": "雪",
+      "fog": "雾",
+      "mist": "薄雾",
+      "haze": "霾",
+      "windy": "大风"
+    },
     "generateFailed": "生成穿搭推荐失败，请重试。"
   },
   "onboarding": {
@@ -653,6 +672,12 @@
     "weatherPreferences": "天气偏好",
     "weatherDescription": "您在不同天气下的穿搭方式",
     "layers": "约 {count} 层",
+    "weatherTypes": {
+      "cold": "寒冷",
+      "cool": "凉爽",
+      "mild": "温和",
+      "hot": "炎热"
+    },
     "suggestedUpdates": "偏好更新建议",
     "suggestedDescription": "根据您的反馈，我们建议更新您的偏好",
     "addToFavorites": "添加到喜爱颜色：",

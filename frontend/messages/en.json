@@ -209,6 +209,25 @@
       "windproof": "Consider something windproof",
       "default": "Great weather for any style"
     },
+    "feelsLike": "(feels {temp}°)",
+    "chanceOfRain": "{chance}% chance of rain",
+    "windSpeed": "{speed} km/h",
+    "weatherConditions": {
+      "clear": "Clear",
+      "sunny": "Sunny",
+      "clouds": "Cloudy",
+      "cloudy": "Cloudy",
+      "overcast": "Overcast",
+      "partly_cloudy": "Partly cloudy",
+      "rain": "Rain",
+      "drizzle": "Drizzle",
+      "thunderstorm": "Thunderstorm",
+      "snow": "Snow",
+      "fog": "Fog",
+      "mist": "Mist",
+      "haze": "Haze",
+      "windy": "Windy"
+    },
     "generateFailed": "Failed to generate outfit suggestion. Please try again."
   },
   "onboarding": {
@@ -653,6 +672,12 @@
     "weatherPreferences": "Weather Preferences",
     "weatherDescription": "How you dress for different conditions",
     "layers": "~{count} layers",
+    "weatherTypes": {
+      "cold": "Cold",
+      "cool": "Cool",
+      "mild": "Mild",
+      "hot": "Hot"
+    },
     "suggestedUpdates": "Suggested Preference Updates",
     "suggestedDescription": "Based on your feedback, we suggest updating your preferences",
     "addToFavorites": "Add to favorite colors:",
