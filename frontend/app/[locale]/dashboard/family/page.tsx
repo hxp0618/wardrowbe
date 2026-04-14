@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import {
@@ -195,6 +195,7 @@ function NoFamilyView() {
 function FamilyView() {
   const t = useTranslations('family');
   const tc = useTranslations('common');
+  const locale = useLocale();
   const { data: session } = useSession();
   const { data: family, isLoading } = useFamily();
   const [copied, setCopied] = useState(false);
@@ -395,7 +396,7 @@ function FamilyView() {
             <div className="flex gap-2">
               <Input
                 type="email"
-                placeholder="email@example.com"
+                placeholder={t('inviteEmailPlaceholder')}
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
@@ -529,7 +530,7 @@ function FamilyView() {
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {t('expires', {
-                          date: new Date(invite.expires_at).toLocaleDateString(),
+                          date: new Date(invite.expires_at).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US'),
                         })}
                       </div>
                     </div>

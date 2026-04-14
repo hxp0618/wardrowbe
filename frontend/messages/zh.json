@@ -163,7 +163,14 @@
       "leastWorn": "穿着最少",
       "nameAZ": "名称 A–Z",
       "nameZA": "名称 Z–A"
-    }
+    },
+    "bulkDeleteSuccess": "已删除 {count} 件物品",
+    "bulkDeleteFailed": "{count} 件物品删除失败",
+    "bulkDeleteError": "删除物品失败",
+    "bulkReanalyzeSuccess": "已排队 {count} 件物品进行重新分析",
+    "bulkReanalyzeSuccessLong": "已排队 {count} 件物品进行重新分析，可能需要一些时间。",
+    "bulkReanalyzeFailed": "{count} 件物品排队失败",
+    "bulkReanalyzeError": "排队重新分析失败"
   },
   "suggest": {
     "greeting": {
@@ -196,7 +203,8 @@
       "keepLight": "穿着轻便透气",
       "windproof": "考虑防风衣物",
       "default": "好天气，怎么穿都合适"
-    }
+    },
+    "generateFailed": "生成穿搭推荐失败，请重试。"
   },
   "onboarding": {
     "welcome": {
@@ -634,12 +642,33 @@
       "channelWarning": "这将移除该通知渠道。您可以稍后重新添加。",
       "scheduleWarning": "这将移除该推送计划。您可以稍后重新创建。",
       "deleting": "删除中..."
+    },
+    "channelLabels": {
+      "ntfy": "ntfy 推送",
+      "mattermost": "Mattermost",
+      "email": "邮箱"
+    },
+    "validation": {
+      "topicRequired": "ntfy 需要主题",
+      "webhookRequired": "Mattermost 需要 Webhook 地址",
+      "emailRequired": "需要邮箱地址"
+    },
+    "errors": {
+      "addChannelFailed": "添加渠道失败",
+      "addScheduleFailed": "添加计划失败",
+      "testSent": "测试通知已发送",
+      "testFailed": "测试失败",
+      "updateFailed": "更新失败",
+      "channelDeleted": "渠道已删除",
+      "scheduleDeleted": "计划已删除",
+      "deleteFailed": "删除失败"
     }
   },
   "invite": {
     "title": "家庭邀请",
     "subtitle": "您被邀请加入 Wardrowbe 上的一个家庭",
     "acceptInvitation": "接受邀请",
+    "joinedWithName": "已加入 {name}！",
     "errors": {
       "invalid": "此邀请链接无效或已过期。",
       "wrongEmail": "此邀请发送给了其他邮箱地址。",
@@ -713,6 +742,7 @@
     "codeGenerateFailed": "生成新邀请码失败，请重试。",
     "sendInvite": "发送邀请",
     "inviteByEmail": "通过邮箱邀请",
+    "inviteEmailPlaceholder": "email@example.com",
     "member": "成员",
     "admin": "管理员",
     "invite": "邀请",

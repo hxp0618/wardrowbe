@@ -163,7 +163,14 @@
       "leastWorn": "Least worn",
       "nameAZ": "Name A–Z",
       "nameZA": "Name Z–A"
-    }
+    },
+    "bulkDeleteSuccess": "Deleted {count} items",
+    "bulkDeleteFailed": "Failed to delete {count} items",
+    "bulkDeleteError": "Failed to delete items",
+    "bulkReanalyzeSuccess": "Queued {count} items for re-analysis",
+    "bulkReanalyzeSuccessLong": "Queued {count} items for re-analysis. This may take a while.",
+    "bulkReanalyzeFailed": "Failed to queue {count} items",
+    "bulkReanalyzeError": "Failed to queue items for re-analysis"
   },
   "suggest": {
     "greeting": {
@@ -196,7 +203,8 @@
       "keepLight": "Keep it light and breathable",
       "windproof": "Consider something windproof",
       "default": "Great weather for any style"
-    }
+    },
+    "generateFailed": "Failed to generate outfit suggestion. Please try again."
   },
   "onboarding": {
     "welcome": {
@@ -634,12 +642,33 @@
       "channelWarning": "This will remove the notification channel. You can add it back later.",
       "scheduleWarning": "This will remove the schedule. You can create a new one later.",
       "deleting": "Deleting..."
+    },
+    "channelLabels": {
+      "ntfy": "ntfy Push",
+      "mattermost": "Mattermost",
+      "email": "Email"
+    },
+    "validation": {
+      "topicRequired": "Topic is required for ntfy",
+      "webhookRequired": "Webhook URL is required for Mattermost",
+      "emailRequired": "Email address is required"
+    },
+    "errors": {
+      "addChannelFailed": "Failed to add channel",
+      "addScheduleFailed": "Failed to add schedule",
+      "testSent": "Test notification sent",
+      "testFailed": "Test failed",
+      "updateFailed": "Failed to update",
+      "channelDeleted": "Channel deleted",
+      "scheduleDeleted": "Schedule deleted",
+      "deleteFailed": "Failed to delete"
     }
   },
   "invite": {
     "title": "Family Invitation",
     "subtitle": "You've been invited to join a family on Wardrowbe",
     "acceptInvitation": "Accept Invitation",
+    "joinedWithName": "Joined {name}!",
     "errors": {
       "invalid": "This invite link is invalid or has expired.",
       "wrongEmail": "This invite was sent to a different email address.",
@@ -713,6 +742,7 @@
     "codeGenerateFailed": "Failed to generate new code. Please try again.",
     "sendInvite": "Send Invite",
     "inviteByEmail": "Invite someone by email",
+    "inviteEmailPlaceholder": "email@example.com",
     "member": "Member",
     "admin": "Admin",
     "invite": "Invite",

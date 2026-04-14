@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -120,6 +120,7 @@ function WeatherCard() {
 function PendingOutfitsCard() {
   const t = useTranslations('dashboard');
   const tc = useTranslations('common');
+  const locale = useLocale();
   const { data, isLoading } = usePendingOutfits(2);
   const acceptOutfit = useAcceptOutfit();
   const rejectOutfit = useRejectOutfit();
@@ -223,7 +224,7 @@ function PendingOutfitsCard() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium capitalize truncate">{outfit.occasion}</p>
               <p className="text-xs text-muted-foreground">
-                {new Date(outfit.scheduled_for).toLocaleDateString(undefined, {
+                {new Date(outfit.scheduled_for).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
                   weekday: 'short',
                   month: 'short',
                   day: 'numeric',

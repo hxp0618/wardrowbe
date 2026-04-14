@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import {
   Loader2,
@@ -82,6 +82,7 @@ function FeedOutfitCard({
 }) {
   const t = useTranslations('familyFeed');
   const tc = useTranslations('common');
+  const locale = useLocale();
   const [showRatingForm, setShowRatingForm] = useState(false);
   const myRating = outfit.family_ratings?.find((r) => r.user_id === currentMemberId);
 
@@ -97,7 +98,7 @@ function FeedOutfitCard({
             </Badge>
           </div>
           <span className="text-xs text-muted-foreground">
-            {new Date(outfit.scheduled_for).toLocaleDateString(undefined, {
+            {new Date(outfit.scheduled_for).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
