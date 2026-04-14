@@ -17,7 +17,8 @@ import { toast } from 'sonner';
 import { useGeneratePairings } from '@/lib/hooks/use-pairings';
 import { Item, Pairing } from '@/lib/types';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 
 interface GeneratePairingsDialogProps {
   item: Item | null;
@@ -32,6 +33,8 @@ export function GeneratePairingsDialog({
   open,
   onOpenChange,
 }: GeneratePairingsDialogProps) {
+  const t = useTranslations('generatePairings');
+  const tc = useTranslations('common');
   const [numPairings, setNumPairings] = useState(3);
   const [generatedPairings, setGeneratedPairings] = useState<Pairing[] | null>(null);
   const generatePairings = useGeneratePairings();
@@ -46,9 +49,9 @@ export function GeneratePairingsDialog({
         numPairings,
       });
       setGeneratedPairings(result.pairings);
-      toast.success(`Generated ${result.generated} outfit${result.generated !== 1 ? 's' : ''}!`);
+      toast.success(t('generated', { count: result.generated }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to generate pairings';
+      const message = error instanceof Error ? error.message : t('generateFailed');
       toast.error(message);
     }
   };
@@ -74,10 +77,10 @@ export function GeneratePairingsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Find Matching Outfits
+            {t('title')}
           </DialogTitle>
           <DialogDescription>
-            AI will create complete outfits featuring this item
+            {t('description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -108,7 +111,7 @@ export function GeneratePairingsDialog({
             {/* Number of pairings selector */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Number of outfits</Label>
+                <Label>{t('numberOfOutfits')}</Label>
                 <span className="text-sm font-medium text-primary">{numPairings}</span>
               </div>
               <Slider
@@ -120,7 +123,7 @@ export function GeneratePairingsDialog({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                More outfits = more variety, but takes longer to generate
+                {t('moreVariety')}
               </p>
             </div>
           </div>
@@ -132,10 +135,10 @@ export function GeneratePairingsDialog({
             </div>
             <div>
               <p className="font-medium text-lg">
-                {generatedPairings.length} outfit{generatedPairings.length !== 1 ? 's' : ''} created!
+                {t('outfitsCreated', { count: generatedPairings.length })}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                View them in the Pairings section
+                {t('viewInPairings')}
               </p>
             </div>
 
@@ -174,7 +177,7 @@ export function GeneratePairingsDialog({
           {!generatedPairings ? (
             <>
               <Button variant="outline" onClick={handleClose}>
-                Cancel
+                {tc('cancel')}
               </Button>
               <Button
                 onClick={handleGenerate}
@@ -183,12 +186,12 @@ export function GeneratePairingsDialog({
                 {generatePairings.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
+                    {t('generating')}
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
-                    Generate Outfits
+                    {t('generateOutfits')}
                   </>
                 )}
               </Button>
@@ -196,10 +199,10 @@ export function GeneratePairingsDialog({
           ) : (
             <>
               <Button variant="outline" onClick={handleClose}>
-                Close
+                {tc('close')}
               </Button>
               <Button onClick={handleViewPairings}>
-                View Pairings
+                {t('viewPairings')}
               </Button>
             </>
           )}

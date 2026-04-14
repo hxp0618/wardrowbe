@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { getLocale } from 'next-intl/server';
 import './globals.css';
-import { Providers } from './providers';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,16 +31,16 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <Providers>{children}</Providers>
-      </body>
+    <html lang={locale} suppressHydrationWarning>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }

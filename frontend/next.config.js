@@ -1,14 +1,16 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   experimental: {
-    // Disable automatic static optimization for pages using client-side context
     missingSuspenseWithCSRBailout: false,
   },
   images: {
     unoptimized: true,
   },
-  // Skip type checking and linting during build (already done in CI)
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -16,7 +18,6 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   async rewrites() {
-    // Use backend hostname for server-side requests (Docker network)
     const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:8000';
     return [
       {
@@ -27,4 +28,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

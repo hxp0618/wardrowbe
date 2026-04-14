@@ -1,6 +1,7 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { usePathname } from 'next/navigation';
 import {
   Home,
@@ -18,23 +19,24 @@ import {
 import { cn } from '@/lib/utils';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Wardrobe', href: '/dashboard/wardrobe', icon: Shirt },
-  { name: 'Suggest Outfit', href: '/dashboard/suggest', icon: Sparkles },
-  { name: 'Pairings', href: '/dashboard/pairings', icon: Layers },
-  { name: 'History', href: '/dashboard/history', icon: History },
-  { name: 'Family Feed', href: '/dashboard/family/feed', icon: HeartHandshake },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-  { name: 'AI Learning', href: '/dashboard/learning', icon: Brain },
+  { nameKey: 'dashboard' as const, href: '/dashboard', icon: Home },
+  { nameKey: 'wardrobe' as const, href: '/dashboard/wardrobe', icon: Shirt },
+  { nameKey: 'suggestOutfit' as const, href: '/dashboard/suggest', icon: Sparkles },
+  { nameKey: 'pairings' as const, href: '/dashboard/pairings', icon: Layers },
+  { nameKey: 'history' as const, href: '/dashboard/history', icon: History },
+  { nameKey: 'familyFeed' as const, href: '/dashboard/family/feed', icon: HeartHandshake },
+  { nameKey: 'analytics' as const, href: '/dashboard/analytics', icon: BarChart3 },
+  { nameKey: 'aiLearning' as const, href: '/dashboard/learning', icon: Brain },
 ];
 
 const secondaryNavigation = [
-  { name: 'Family', href: '/dashboard/family', icon: Users },
-  { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { nameKey: 'family' as const, href: '/dashboard/family', icon: Users },
+  { nameKey: 'notifications' as const, href: '/dashboard/notifications', icon: Bell },
+  { nameKey: 'settings' as const, href: '/dashboard/settings', icon: Settings },
 ];
 
 export function Sidebar() {
+  const t = useTranslations('nav');
   const pathname = usePathname();
 
   return (
@@ -51,12 +53,11 @@ export function Sidebar() {
             <li>
               <ul role="list" className="-mx-2 space-y-1">
                 {navigation.map((item) => {
-                  // Dashboard only active on exact match, others match with prefix
                   const isActive = item.href === '/dashboard'
                     ? pathname === '/dashboard'
                     : pathname === item.href || pathname.startsWith(item.href + '/');
                   return (
-                    <li key={item.name}>
+                    <li key={item.nameKey}>
                       <Link
                         href={item.href}
                         className={cn(
@@ -67,7 +68,7 @@ export function Sidebar() {
                         )}
                       >
                         <item.icon className="h-6 w-6 shrink-0" aria-hidden="true" />
-                        {item.name}
+                        {t(item.nameKey)}
                       </Link>
                     </li>
                   );
@@ -76,7 +77,7 @@ export function Sidebar() {
             </li>
             <li>
               <div className="text-xs font-semibold leading-6 text-muted-foreground">
-                Settings
+                {t('settingsSection')}
               </div>
               <ul role="list" className="-mx-2 mt-2 space-y-1">
                 {secondaryNavigation.map((item) => {
@@ -86,7 +87,7 @@ export function Sidebar() {
                   );
                   const isActive = matchesPath && !claimedByPrimary;
                   return (
-                    <li key={item.name}>
+                    <li key={item.nameKey}>
                       <Link
                         href={item.href}
                         className={cn(
@@ -97,7 +98,7 @@ export function Sidebar() {
                         )}
                       >
                         <item.icon className="h-6 w-6 shrink-0" aria-hidden="true" />
-                        {item.name}
+                        {t(item.nameKey)}
                       </Link>
                     </li>
                   );

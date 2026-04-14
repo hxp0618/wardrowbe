@@ -1,26 +1,27 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { usePathname } from 'next/navigation';
 import { X, Home, Shirt, Sparkles, Layers, History, BarChart3, Brain, Settings, Users, Bell, HeartHandshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Wardrobe', href: '/dashboard/wardrobe', icon: Shirt },
-  { name: 'Suggest Outfit', href: '/dashboard/suggest', icon: Sparkles },
-  { name: 'Pairings', href: '/dashboard/pairings', icon: Layers },
-  { name: 'History', href: '/dashboard/history', icon: History },
-  { name: 'Family Feed', href: '/dashboard/family/feed', icon: HeartHandshake },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-  { name: 'AI Learning', href: '/dashboard/learning', icon: Brain },
+  { nameKey: 'dashboard' as const, href: '/dashboard', icon: Home },
+  { nameKey: 'wardrobe' as const, href: '/dashboard/wardrobe', icon: Shirt },
+  { nameKey: 'suggestOutfit' as const, href: '/dashboard/suggest', icon: Sparkles },
+  { nameKey: 'pairings' as const, href: '/dashboard/pairings', icon: Layers },
+  { nameKey: 'history' as const, href: '/dashboard/history', icon: History },
+  { nameKey: 'familyFeed' as const, href: '/dashboard/family/feed', icon: HeartHandshake },
+  { nameKey: 'analytics' as const, href: '/dashboard/analytics', icon: BarChart3 },
+  { nameKey: 'aiLearning' as const, href: '/dashboard/learning', icon: Brain },
 ];
 
 const secondaryNavigation = [
-  { name: 'Family', href: '/dashboard/family', icon: Users },
-  { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { nameKey: 'family' as const, href: '/dashboard/family', icon: Users },
+  { nameKey: 'notifications' as const, href: '/dashboard/notifications', icon: Bell },
+  { nameKey: 'settings' as const, href: '/dashboard/settings', icon: Settings },
 ];
 
 interface MobileSidebarProps {
@@ -29,9 +30,9 @@ interface MobileSidebarProps {
 }
 
 export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
+  const t = useTranslations('nav');
   const pathname = usePathname();
 
-  // Close on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -48,7 +49,6 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
 
   return (
     <div className={cn('lg:hidden', !open && 'pointer-events-none')}>
-      {/* Backdrop */}
       <div
         className={cn(
           'fixed inset-0 z-50 bg-black/50 transition-opacity duration-300',
@@ -57,14 +57,12 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
         onClick={onClose}
       />
 
-      {/* Sidebar panel */}
       <div
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-72 bg-card transition-transform duration-300 ease-in-out',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Close button */}
         <button
           type="button"
           className="absolute right-4 top-4 p-2 text-muted-foreground hover:text-foreground"
@@ -90,7 +88,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                       ? pathname === '/dashboard'
                       : pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
-                      <li key={item.name}>
+                      <li key={item.nameKey}>
                         <Link
                           href={item.href}
                           onClick={onClose}
@@ -102,7 +100,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                           )}
                         >
                           <item.icon className="h-6 w-6 shrink-0" aria-hidden="true" />
-                          {item.name}
+                          {t(item.nameKey)}
                         </Link>
                       </li>
                     );
@@ -111,7 +109,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
               </li>
               <li>
                 <div className="text-xs font-semibold leading-6 text-muted-foreground">
-                  Settings
+                  {t('settingsSection')}
                 </div>
                 <ul role="list" className="-mx-2 mt-2 space-y-1">
                   {secondaryNavigation.map((item) => {
@@ -121,7 +119,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                     );
                     const isActive = matchesPath && !claimedByPrimary;
                     return (
-                      <li key={item.name}>
+                      <li key={item.nameKey}>
                         <Link
                           href={item.href}
                           onClick={onClose}
@@ -133,7 +131,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                           )}
                         >
                           <item.icon className="h-6 w-6 shrink-0" aria-hidden="true" />
-                          {item.name}
+                          {t(item.nameKey)}
                         </Link>
                       </li>
                     );

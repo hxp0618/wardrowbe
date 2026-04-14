@@ -1,19 +1,21 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { usePathname } from 'next/navigation';
 import { Home, Shirt, Sparkles, Layers, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
-  { name: 'Home', href: '/dashboard', icon: Home },
-  { name: 'Wardrobe', href: '/dashboard/wardrobe', icon: Shirt },
-  { name: 'Suggest', href: '/dashboard/suggest', icon: Sparkles },
-  { name: 'Pairings', href: '/dashboard/pairings', icon: Layers },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { nameKey: 'home' as const, href: '/dashboard', icon: Home },
+  { nameKey: 'wardrobe' as const, href: '/dashboard/wardrobe', icon: Shirt },
+  { nameKey: 'suggest' as const, href: '/dashboard/suggest', icon: Sparkles },
+  { nameKey: 'pairings' as const, href: '/dashboard/pairings', icon: Layers },
+  { nameKey: 'settings' as const, href: '/dashboard/settings', icon: Settings },
 ];
 
 export function MobileNav() {
+  const t = useTranslations('nav');
   const pathname = usePathname();
 
   return (
@@ -25,7 +27,7 @@ export function MobileNav() {
             : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
-              key={item.name}
+              key={item.nameKey}
               href={item.href}
               className={cn(
                 'flex flex-col items-center gap-1 px-3 py-2 text-xs',
@@ -35,7 +37,7 @@ export function MobileNav() {
               )}
             >
               <item.icon className="h-5 w-5" aria-hidden="true" />
-              <span>{item.name}</span>
+              <span>{t(item.nameKey)}</span>
             </Link>
           );
         })}

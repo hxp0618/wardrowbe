@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { api, setAccessToken } from '@/lib/api';
+import { useAuth } from '@/lib/hooks/use-auth';
 
 function useSetTokenIfAvailable() {
   const { data: session } = useSession();
@@ -27,12 +28,14 @@ export interface Weather {
 
 export function useWeather() {
   const { status } = useSession();
+  const { user, isAuthenticated, isLoading } = useAuth();
   useSetTokenIfAvailable();
+  const hasLocation = user?.location_lat != null && user?.location_lon != null;
 
   return useQuery({
-    queryKey: ['weather'],
+    queryKey: ['weather', user?.id ?? null, user?.location_lat ?? null, user?.location_lon ?? null],
     queryFn: () => api.get<Weather>('/weather/current'),
-    enabled: status !== 'loading',
+    enabled: status === 'authenticated' && isAuthenticated && !isLoading && hasLocation,
     staleTime: 1000 * 60 * 15, // 15 minutes - weather doesn't change that fast
     retry: false, // Don't retry if location not set
   });
