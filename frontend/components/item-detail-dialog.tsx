@@ -59,7 +59,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from 'sonner';
 import { useUpdateItem, useDeleteItem, useReanalyzeItem, useRotateImage, useRemoveBackground, useLogWash, useWashHistory, useItemWearStats, useItemWearHistory, useAddItemImage, useDeleteItemImage, useSetPrimaryImage } from '@/lib/hooks/use-items';
 import { Item, CLOTHING_TYPES, CLOTHING_COLORS } from '@/lib/types';
-import { taxonomyColorKey } from '@/lib/taxonomy-i18n';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import { ColorEyedropper } from '@/components/color-eyedropper';
 import { GeneratePairingsDialog } from '@/components/generate-pairings-dialog';
 import { useFeatures } from '@/lib/hooks/use-features';
@@ -223,12 +223,9 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
   // Use signed URL from backend for better quality in detail view
   const imageUrl = item.image_url || item.image_path;
   const colorInfo = CLOTHING_COLORS.find((c) => c.value === item.primary_color);
-  const typeInfo = CLOTHING_TYPES.find((x) => x.value === item.type);
-  const typeLabel = typeInfo ? tt(`types.${typeInfo.value}` as Parameters<typeof tt>[0]) : item.type;
-  const typeLabelFor = (type: string) => {
-    const opt = CLOTHING_TYPES.find((x) => x.value === type);
-    return opt ? tt(`types.${opt.value}` as Parameters<typeof tt>[0]) : type;
-  };
+  const typeLabel = getClothingTypeLabel(item.type, (k) => tt(k as Parameters<typeof tt>[0]));
+  const typeLabelFor = (type: string) =>
+    getClothingTypeLabel(type, (k) => tt(k as Parameters<typeof tt>[0]));
 
   // AI-generated tags
   const tags = item.tags || {};
@@ -522,7 +519,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                                   className="w-3 h-3 rounded-full border"
                                   style={{ backgroundColor: c.hex }}
                                 />
-                                {tt(`colors.${taxonomyColorKey(c.value)}` as Parameters<typeof tt>[0])}
+                                {getClothingColorLabel(c.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                               </div>
                             </SelectItem>
                           ))}
@@ -603,7 +600,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                           style={{ backgroundColor: colorInfo.hex }}
                         />
                         <span>
-                          {tt(`colors.${taxonomyColorKey(colorInfo.value)}` as Parameters<typeof tt>[0])}
+                          {getClothingColorLabel(colorInfo.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                         </span>
                       </div>
                     )}

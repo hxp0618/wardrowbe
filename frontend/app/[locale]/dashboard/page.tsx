@@ -37,6 +37,7 @@ import { usePendingOutfits, useAcceptOutfit, useRejectOutfit } from '@/lib/hooks
 import { useSchedules, useNotificationSettings } from '@/lib/hooks/use-notifications';
 import { useFamily } from '@/lib/hooks/use-family';
 import { toast } from 'sonner';
+import { getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
 
 function WeatherCard() {
   const t = useTranslations('dashboard');
@@ -120,6 +121,11 @@ function WeatherCard() {
 function PendingOutfitsCard() {
   const t = useTranslations('dashboard');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const occasionLabel = (o: string) =>
+    getOccasionLabel(o, (k) => tt(k as Parameters<typeof tt>[0]));
   const locale = useLocale();
   const { data, isLoading } = usePendingOutfits(2);
   const acceptOutfit = useAcceptOutfit();
@@ -208,7 +214,7 @@ function PendingOutfitsCard() {
                   {item.thumbnail_url ? (
                     <Image
                       src={item.thumbnail_url}
-                      alt={item.name || item.type}
+                      alt={item.name || typeLabel(item.type)}
                       fill
                       className="object-cover"
                       sizes="40px"
@@ -222,7 +228,7 @@ function PendingOutfitsCard() {
               ))}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium capitalize truncate">{outfit.occasion}</p>
+              <p className="text-sm font-medium capitalize truncate">{occasionLabel(outfit.occasion)}</p>
               <p className="text-xs text-muted-foreground">
                 {new Date(outfit.scheduled_for).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
                   weekday: 'short',

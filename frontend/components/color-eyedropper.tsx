@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { CLOTHING_COLORS } from '@/lib/types';
-import { taxonomyColorKey } from '@/lib/taxonomy-i18n';
+import { getClothingColorLabel } from '@/lib/taxonomy-i18n';
 
 interface ColorEyedropperProps {
   imageUrl: string;
@@ -334,7 +334,7 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
                       style={{ backgroundColor: matchedColor.hex }}
                     />
                     <span className="text-xs font-medium">
-                      {tt(`colors.${taxonomyColorKey(matchedColor.value)}` as Parameters<typeof tt>[0])}
+                      {getClothingColorLabel(matchedColor.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                     </span>
                   </div>
                 </div>
@@ -353,7 +353,7 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
                   <Button size="sm" onClick={handleConfirm}>
                     <Check className="h-4 w-4 mr-1" />
                     {t('useColor', {
-                      color: tt(`colors.${taxonomyColorKey(matchedColor.value)}` as Parameters<typeof tt>[0]),
+                      color: getClothingColorLabel(matchedColor.value, (k) => tt(k as Parameters<typeof tt>[0])),
                     })}
                   </Button>
                 </div>

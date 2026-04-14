@@ -47,6 +47,7 @@ import { OCCASIONS, Outfit, SuggestRequest } from '@/lib/types';
 import { useWeather, Weather } from '@/lib/hooks/use-weather';
 import { usePreferences } from '@/lib/hooks/use-preferences';
 import { cn } from '@/lib/utils';
+import { getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
 import { TempUnit, formatTemp, displayValue, toF, toCelsius } from '@/lib/temperature';
 
 // Map occasion values to icons and colors
@@ -312,13 +313,18 @@ function OutfitResult({
 }) {
   const t = useTranslations('suggest');
   const locale = useLocale();
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const occasionBadge = (o: string) =>
+    getOccasionLabel(o, (k) => tt(k as Parameters<typeof tt>[0]));
   return (
     <div className="space-y-6">
       {/* Header with occasion and new request */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="capitalize text-sm px-3 py-1">
-            {occasion}
+            {occasionBadge(occasion)}
           </Badge>
           {outfit.scheduled_for && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -383,7 +389,7 @@ function OutfitResult({
                   {item.thumbnail_url ? (
                     <Image
                       src={item.thumbnail_url}
-                      alt={item.name || item.type}
+                      alt={item.name || typeLabel(item.type)}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform"
                       sizes="(max-width: 640px) 50vw, 33vw"
@@ -396,7 +402,7 @@ function OutfitResult({
                 </div>
                 <div className="p-2.5">
                   <p className="text-sm font-medium truncate">
-                    {item.name || item.type}
+                    {item.name || typeLabel(item.type)}
                   </p>
                   {item.layer_type && (
                     <Badge variant="secondary" className="text-xs capitalize mt-1">

@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useAcceptOutfit, useRejectOutfit, type Outfit, type OutfitSource, type WoreInsteadItem } from '@/lib/hooks/use-outfits';
 import Image from 'next/image';
+import { getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
 
 function StatusIcon({ status }: { status: Outfit['status'] }) {
   switch (status) {
@@ -113,6 +114,11 @@ interface OutfitHistoryCardProps {
 
 export function OutfitHistoryCard({ outfit, onFeedback, onPreview }: OutfitHistoryCardProps) {
   const t = useTranslations('outfitHistory');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const occasionLabel = (o: string) =>
+    getOccasionLabel(o, (k) => tt(k as Parameters<typeof tt>[0]));
   const acceptOutfit = useAcceptOutfit();
   const rejectOutfit = useRejectOutfit();
   const [previewItem, setPreviewItem] = useState<WoreInsteadItem | null>(null);
@@ -145,7 +151,7 @@ export function OutfitHistoryCard({ outfit, onFeedback, onPreview }: OutfitHisto
           <SourceBadge source={outfit.source} />
           <div className="flex items-center gap-1.5">
             <Badge variant="secondary" className="capitalize text-xs">
-              {outfit.occasion}
+              {occasionLabel(outfit.occasion)}
             </Badge>
             <StatusIcon status={outfit.status} />
           </div>
@@ -165,14 +171,14 @@ export function OutfitHistoryCard({ outfit, onFeedback, onPreview }: OutfitHisto
               {item.thumbnail_url ? (
                 <Image
                   src={item.thumbnail_url}
-                  alt={item.name || item.type}
+                  alt={item.name || typeLabel(item.type)}
                   fill
                   className="object-cover"
                   sizes="64px"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                  {item.type}
+                  {typeLabel(item.type)}
                 </div>
               )}
             </div>
@@ -215,12 +221,12 @@ export function OutfitHistoryCard({ outfit, onFeedback, onPreview }: OutfitHisto
                     type="button"
                     onClick={() => setPreviewItem(item)}
                     className="w-14 h-14 rounded-lg bg-muted overflow-hidden relative border hover:ring-2 ring-primary transition-all"
-                    title={item.name || item.type}
+                    title={item.name || typeLabel(item.type)}
                   >
                     {item.thumbnail_url ? (
                       <Image
                         src={item.thumbnail_url}
-                        alt={item.name || item.type}
+                        alt={item.name || typeLabel(item.type)}
                         fill
                         className="object-cover"
                         sizes="56px"
@@ -321,7 +327,11 @@ export function OutfitHistoryCard({ outfit, onFeedback, onPreview }: OutfitHisto
       <Dialog open={!!previewItem} onOpenChange={(open) => !open && setPreviewItem(null)}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden [&>button]:hidden">
           <DialogHeader className="p-4 pb-2">
-            <DialogTitle>{previewItem?.name || previewItem?.type || t('item')}</DialogTitle>
+            <DialogTitle>
+              {previewItem?.name ||
+                (previewItem?.type ? typeLabel(previewItem.type) : null) ||
+                t('item')}
+            </DialogTitle>
           </DialogHeader>
           <div className="relative bg-muted">
             <Link href={`/dashboard/wardrobe?item=${previewItem?.id}`} className="block">
@@ -329,7 +339,7 @@ export function OutfitHistoryCard({ outfit, onFeedback, onPreview }: OutfitHisto
                 {previewItem?.thumbnail_url ? (
                   <Image
                     src={previewItem.thumbnail_url}
-                    alt={previewItem.name || previewItem.type}
+                    alt={previewItem.name || typeLabel(previewItem.type)}
                     fill
                     className="object-contain"
                     sizes="(max-width: 448px) 100vw, 448px"
@@ -344,7 +354,7 @@ export function OutfitHistoryCard({ outfit, onFeedback, onPreview }: OutfitHisto
           </div>
           <div className="p-4 pt-2 space-y-3">
             <Badge variant="secondary" className="capitalize">
-              {previewItem?.type}
+              {previewItem?.type ? typeLabel(previewItem.type) : ''}
             </Badge>
             <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5" asChild>
               <Link href={`/dashboard/wardrobe?item=${previewItem?.id}`}>

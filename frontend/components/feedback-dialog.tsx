@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { useSubmitFeedback, type Outfit } from '@/lib/hooks/use-outfits';
 import { useItems } from '@/lib/hooks/use-items';
 import { cn } from '@/lib/utils';
+import { getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 
@@ -73,6 +74,9 @@ interface AccumulatedItem {
 export function FeedbackDialog({ outfit, open, onClose }: FeedbackDialogProps) {
   const t = useTranslations('feedback');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
   const [step, setStep] = useState<FeedbackStep>('wear-question');
   const [actuallyWorn, setActuallyWorn] = useState<boolean | null>(null);
   const [rating, setRating] = useState(0);
@@ -348,7 +352,7 @@ export function FeedbackDialog({ outfit, open, onClose }: FeedbackDialogProps) {
                     >
                       <Image
                         src={item.thumbnail_url || item.image_url || item.image_path}
-                        alt={item.name || item.type}
+                        alt={item.name || typeLabel(item.type)}
                         fill
                         className="object-cover"
                         sizes="(max-width: 640px) 33vw, 25vw"
@@ -363,7 +367,7 @@ export function FeedbackDialog({ outfit, open, onClose }: FeedbackDialogProps) {
                       )}
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
                         <span className="text-[10px] sm:text-xs text-white font-medium truncate block">
-                          {item.name || item.type}
+                          {item.name || typeLabel(item.type)}
                         </span>
                       </div>
                     </button>

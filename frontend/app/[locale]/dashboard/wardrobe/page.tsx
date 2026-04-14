@@ -31,7 +31,7 @@ import { BulkActionToolbar, BulkSelection } from '@/components/bulk-action-toolb
 import { useItems, useItem, useItemTypes, useReanalyzeItem, useBulkDeleteItems, useBulkReanalyzeItems, BulkOperationParams } from '@/lib/hooks/use-items';
 import { useUserProfile } from '@/lib/hooks/use-user';
 import { CLOTHING_TYPES, CLOTHING_COLORS, Item } from '@/lib/types';
-import { taxonomyColorKey } from '@/lib/taxonomy-i18n';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import { toast } from 'sonner';
 import { getDaysSinceDateInTimezone, getWornAgoColorClass } from '@/lib/utils';
 
@@ -64,8 +64,7 @@ function ItemCard({
   const t = useTranslations('wardrobe');
   const tc = useTranslations('common');
   const tt = useTranslations('taxonomy');
-  const typeOpt = CLOTHING_TYPES.find((x) => x.value === item.type);
-  const typeLabel = typeOpt ? tt(`types.${typeOpt.value}` as Parameters<typeof tt>[0]) : item.type;
+  const typeLabel = getClothingTypeLabel(item.type, (k) => tt(k as Parameters<typeof tt>[0]));
   const wornAgoLabel = item.last_worn_at
     ? (() => {
         const days = getDaysSinceDateInTimezone(item.last_worn_at, userTimezone);
@@ -178,7 +177,7 @@ function ItemCard({
                   />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{tt(`colors.${taxonomyColorKey(colorInfo.value)}` as Parameters<typeof tt>[0])}</p>
+                  <p>{getClothingColorLabel(colorInfo.value, (k) => tt(k as Parameters<typeof tt>[0]))}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -512,7 +511,7 @@ export default function WardrobePage() {
                 <SelectItem value="all">{t('allTypes')}</SelectItem>
                 {CLOTHING_TYPES.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
-                    {tt(`types.${opt.value}` as Parameters<typeof tt>[0])}
+                    {getClothingTypeLabel(opt.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                   </SelectItem>
                 ))}
               </SelectContent>

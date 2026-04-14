@@ -25,6 +25,7 @@ import { FamilyRatingForm, FamilyRatingsDisplay } from '@/components/family-rati
 import { OutfitPreviewDialog } from '@/components/outfit-preview-dialog';
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
+import { getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
 
 function getInitials(name: string) {
   return name
@@ -82,6 +83,11 @@ function FeedOutfitCard({
 }) {
   const t = useTranslations('familyFeed');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const occasionLabel = (o: string) =>
+    getOccasionLabel(o, (k) => tt(k as Parameters<typeof tt>[0]));
   const locale = useLocale();
   const [showRatingForm, setShowRatingForm] = useState(false);
   const myRating = outfit.family_ratings?.find((r) => r.user_id === currentMemberId);
@@ -94,7 +100,7 @@ function FeedOutfitCard({
           <div className="flex items-center gap-2">
             <SourceBadge source={outfit.source} />
             <Badge variant="secondary" className="capitalize text-xs">
-              {outfit.occasion}
+              {occasionLabel(outfit.occasion)}
             </Badge>
           </div>
           <span className="text-xs text-muted-foreground">
@@ -120,14 +126,14 @@ function FeedOutfitCard({
               {item.thumbnail_url ? (
                 <Image
                   src={item.thumbnail_url}
-                  alt={item.name || item.type}
+                  alt={item.name || typeLabel(item.type)}
                   fill
                   className="object-cover"
                   sizes="80px"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                  {item.type}
+                  {typeLabel(item.type)}
                 </div>
               )}
             </div>

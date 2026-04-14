@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/select';
 import { useCreateItem, useBulkCreateItems, BulkUploadResponse } from '@/lib/hooks/use-items';
 import { CLOTHING_TYPES, CLOTHING_COLORS } from '@/lib/types';
-import { taxonomyColorKey } from '@/lib/taxonomy-i18n';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 
 interface AddItemDialogProps {
   open: boolean;
@@ -305,7 +305,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                     <SelectContent>
                       {CLOTHING_TYPES.map((itemType) => (
                         <SelectItem key={itemType.value} value={itemType.value}>
-                          {tt(`types.${itemType.value}` as Parameters<typeof tt>[0])}
+                          {getClothingTypeLabel(itemType.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -347,7 +347,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                                 className="w-3 h-3 rounded-full border"
                                 style={{ backgroundColor: c.hex }}
                               />
-                              {tt(`colors.${taxonomyColorKey(c.value)}` as Parameters<typeof tt>[0])}
+                              {getClothingColorLabel(c.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                             </div>
                           </SelectItem>
                         ))}
