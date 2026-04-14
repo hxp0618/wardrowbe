@@ -53,7 +53,7 @@ function InviteContent() {
   const handleAccept = async () => {
     try {
       const result = await joinByToken.mutateAsync(token);
-      toast.success(`Joined ${result.family_name}!`);
+      toast.success(t('joinedWithName', { name: result.family_name }));
       router.push('/dashboard/family');
     } catch {
       // error displayed via joinByToken.error below

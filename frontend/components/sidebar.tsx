@@ -1,8 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
-import { usePathname } from 'next/navigation';
+import { Link, usePathname } from '@/i18n/navigation';
 import {
   Home,
   Shirt,
@@ -37,6 +36,7 @@ const secondaryNavigation = [
 
 export function Sidebar() {
   const t = useTranslations('nav');
+  const tc = useTranslations('common');
   const pathname = usePathname();
 
   return (
@@ -44,8 +44,8 @@ export function Sidebar() {
       <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r bg-card px-6 pb-4">
         <div className="flex h-16 shrink-0 items-center">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <img src="/logo.svg" alt="Wardrowbe" className="h-8 w-8" />
-            <span className="text-xl font-bold">wardrowbe</span>
+            <img src="/logo.svg" alt={tc('appName')} className="h-8 w-8" />
+            <span className="text-xl font-bold">{tc('appName')}</span>
           </Link>
         </div>
         <nav className="flex flex-1 flex-col">

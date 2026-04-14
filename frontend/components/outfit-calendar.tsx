@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,13 @@ import {
   addMonths,
   subMonths,
 } from 'date-fns';
+import { zhCN, enUS } from 'date-fns/locale';
 import type { Outfit, OutfitSource } from '@/lib/hooks/use-outfits';
+
+const dateFnsLocales: Record<string, typeof zhCN> = {
+  zh: zhCN,
+  en: enUS,
+};
 
 interface OutfitCalendarProps {
   year: number;
@@ -36,9 +43,12 @@ export function OutfitCalendar({
   onSelectDate,
   onMonthChange,
 }: OutfitCalendarProps) {
+  const t = useTranslations('calendar');
+  const td = useTranslations('dayNames');
+  const locale = useLocale();
+  const dfLocale = dateFnsLocales[locale] || zhCN;
   const currentMonth = new Date(year, month - 1, 1);
 
-  // Build a map of date -> outfit sources for quick lookup
   const outfitsByDate = useMemo(() => {
     const map = new Map<string, Set<OutfitSource>>();
     outfits.forEach((outfit) => {
@@ -51,7 +61,6 @@ export function OutfitCalendar({
     return map;
   }, [outfits]);
 
-  // Generate calendar days
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -71,7 +80,7 @@ export function OutfitCalendar({
     onMonthChange(next.getFullYear(), next.getMonth() + 1);
   };
 
-  const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const weekDayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 
   return (
     <div className="w-full">
@@ -81,7 +90,7 @@ export function OutfitCalendar({
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <h3 className="font-semibold text-lg">
-          {format(currentMonth, 'MMMM yyyy')}
+          {format(currentMonth, 'MMMM yyyy', { locale: dfLocale })}
         </h3>
         <Button variant="ghost" size="icon" onClick={handleNextMonth}>
           <ChevronRight className="h-4 w-4" />
@@ -90,12 +99,12 @@ export function OutfitCalendar({
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 mb-2">
-        {weekDays.map((day) => (
+        {weekDayKeys.map((day) => (
           <div
             key={day}
             className="text-center text-xs text-muted-foreground font-medium py-1"
           >
-            {day}
+            {td(day).slice(0, locale === 'zh' ? 2 : 2)}
           </div>
         ))}
       </div>
@@ -156,11 +165,11 @@ export function OutfitCalendar({
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-primary" />
-          <span>Scheduled</span>
+          <span>{t('scheduled')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-orange-500" />
-          <span>On-demand</span>
+          <span>{t('onDemand')}</span>
         </div>
       </div>
     </div>

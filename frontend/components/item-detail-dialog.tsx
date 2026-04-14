@@ -62,7 +62,7 @@ import { Item, CLOTHING_TYPES, CLOTHING_COLORS } from '@/lib/types';
 import { ColorEyedropper } from '@/components/color-eyedropper';
 import { GeneratePairingsDialog } from '@/components/generate-pairings-dialog';
 import { useFeatures } from '@/lib/hooks/use-features';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface ItemDetailDialogProps {
   item: Item | null;
@@ -106,6 +106,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
   const setPrimary = useSetPrimaryImage();
   const t = useTranslations('itemDetail');
   const tc = useTranslations('common');
+  const locale = useLocale();
 
   useEffect(() => {
     if (item) {
@@ -604,7 +605,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                           {t('worn', { count: item.wear_count })}
                           {item.last_worn_at && (
                             <span className="text-muted-foreground">
-                              {' '}• {t('lastWorn', { date: new Date(item.last_worn_at).toLocaleDateString() })}
+                              {' '}• {t('lastWorn', { date: new Date(item.last_worn_at).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US') })}
                             </span>
                           )}
                         </span>
@@ -647,7 +648,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                       />
                       {item.last_washed_at && (
                         <p className="text-xs text-muted-foreground">
-                          {t('lastWashed', { date: new Date(item.last_washed_at).toLocaleDateString() })}
+                          {t('lastWashed', { date: new Date(item.last_washed_at).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US') })}
                         </p>
                       )}
                     </div>
@@ -662,7 +663,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                         <CollapsibleContent className="mt-1.5 space-y-1">
                           {washHistory.map((wash) => (
                             <div key={wash.id} className="text-xs text-muted-foreground flex items-center gap-2">
-                              <span>{new Date(wash.washed_at).toLocaleDateString()}</span>
+                              <span>{new Date(wash.washed_at).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US')}</span>
                               {wash.method && <Badge variant="outline" className="text-[10px] h-4">{wash.method}</Badge>}
                               {wash.notes && <span className="truncate">{wash.notes}</span>}
                             </div>
@@ -739,7 +740,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                             {wearHistory.map((entry) => (
                               <div key={entry.id} className="text-xs flex items-start gap-2">
                                 <span className="text-muted-foreground whitespace-nowrap">
-                                  {new Date(entry.worn_at).toLocaleDateString()}
+                                  {new Date(entry.worn_at).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US')}
                                 </span>
                                 {entry.occasion && (
                                   <Badge variant="outline" className="text-[10px] h-4">{entry.occasion}</Badge>
@@ -860,7 +861,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
 
                   {/* Metadata */}
                   <div className="text-xs text-muted-foreground pt-2 border-t">
-                    {t('addedDate', { date: new Date(item.created_at).toLocaleDateString() })}
+                    {t('addedDate', { date: new Date(item.created_at).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US') })}
                   </div>
                 </div>
               )}

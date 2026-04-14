@@ -362,13 +362,13 @@ export default function WardrobePage() {
     const params = getBulkParams();
     try {
       const result = await bulkDelete.mutateAsync(params);
-      toast.success(`Deleted ${result.deleted} items`);
+      toast.success(t('bulkDeleteSuccess', { count: result.deleted }));
       if (result.failed > 0) {
-        toast.error(`Failed to delete ${result.failed} items`);
+        toast.error(t('bulkDeleteFailed', { count: result.failed }));
       }
       handleClearSelection();
     } catch {
-      toast.error('Failed to delete items');
+      toast.error(t('bulkDeleteError'));
     }
   };
 
@@ -377,16 +377,16 @@ export default function WardrobePage() {
     try {
       const result = await bulkReanalyze.mutateAsync(params);
       if (result.queued > 20) {
-        toast.success(`Queued ${result.queued} items for re-analysis. This may take a while.`);
+        toast.success(t('bulkReanalyzeSuccessLong', { count: result.queued }));
       } else {
-        toast.success(`Queued ${result.queued} items for re-analysis`);
+        toast.success(t('bulkReanalyzeSuccess', { count: result.queued }));
       }
       if (result.failed > 0) {
-        toast.error(`Failed to queue ${result.failed} items`);
+        toast.error(t('bulkReanalyzeFailed', { count: result.failed }));
       }
       handleClearSelection();
     } catch {
-      toast.error('Failed to queue items for re-analysis');
+      toast.error(t('bulkReanalyzeError'));
     }
   };
 

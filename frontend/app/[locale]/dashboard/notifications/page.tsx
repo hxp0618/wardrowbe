@@ -74,10 +74,10 @@ const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   email: <Mail className="h-5 w-5" />,
 };
 
-const CHANNEL_LABELS: Record<string, string> = {
-  ntfy: 'ntfy Push',
-  mattermost: 'Mattermost',
-  email: 'Email',
+const CHANNEL_LABEL_KEYS: Record<string, string> = {
+  ntfy: 'channelLabels.ntfy',
+  mattermost: 'channelLabels.mattermost',
+  email: 'channelLabels.email',
 };
 
 function ChannelCard({
@@ -103,7 +103,7 @@ function ChannelCard({
               {CHANNEL_ICONS[setting.channel]}
             </div>
             <div>
-              <p className="font-medium">{CHANNEL_LABELS[setting.channel]}</p>
+              <p className="font-medium">{t(`channelLabels.${setting.channel}` as Parameters<typeof t>[0])}</p>
               <p className="text-sm text-muted-foreground">
                 {setting.channel === 'ntfy' && setting.config.topic}
                 {setting.channel === 'mattermost' && t('channels.webhookConfigured')}
@@ -197,15 +197,15 @@ function AddChannelDialog({
     e.preventDefault();
 
     if (channel === 'ntfy' && !config.topic?.trim()) {
-      toast.error('Topic is required for ntfy');
+      toast.error(t('validation.topicRequired'));
       return;
     }
     if (channel === 'mattermost' && !config.webhook_url?.trim()) {
-      toast.error('Webhook URL is required for Mattermost');
+      toast.error(t('validation.webhookRequired'));
       return;
     }
     if (channel === 'email' && !config.address?.trim()) {
-      toast.error('Email address is required');
+      toast.error(t('validation.emailRequired'));
       return;
     }
 
@@ -372,6 +372,7 @@ function ScheduleCard({
 }) {
   const t = useTranslations('notifications');
   const td = useTranslations('dayNames');
+  const to = useTranslations('settings.recommendations.occasions');
   const day = DAYS.find((d) => d.value === schedule.day_of_week);
   const occasion = OCCASIONS.find((o) => o.value === schedule.occasion);
 
@@ -389,7 +390,7 @@ function ScheduleCard({
           <div>
             <p className="font-medium">{day ? td(day.key) : ''}</p>
             <p className="text-sm text-muted-foreground">
-              {schedule.notification_time} - {occasion?.label || schedule.occasion}
+              {schedule.notification_time} - {occasion ? to(occasion.value as Parameters<typeof to>[0]) : schedule.occasion}
             </p>
           </div>
         </div>
@@ -439,6 +440,7 @@ function AddScheduleDialog({
   const t = useTranslations('notifications');
   const tc = useTranslations('common');
   const td = useTranslations('dayNames');
+  const to = useTranslations('settings.recommendations.occasions');
   const [open, setOpen] = useState(false);
   const [time, setTime] = useState('07:00');
   const [occasion, setOccasion] = useState('casual');
@@ -528,7 +530,7 @@ function AddScheduleDialog({
                 <SelectContent>
                   {OCCASIONS.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
-                      {o.label}
+                      {to(o.value as Parameters<typeof to>[0])}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -602,7 +604,7 @@ export default function NotificationsPage() {
       await createSetting.mutateAsync(data);
       toast.success(t('channels.channelAdded'));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to add channel';
+      const message = error instanceof Error ? error.message : t('errors.addChannelFailed');
       toast.error(message);
       throw error;
     }
@@ -613,7 +615,7 @@ export default function NotificationsPage() {
       await createSchedule.mutateAsync(data);
       toast.success(t('schedules.scheduleAdded'));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to add schedule';
+      const message = error instanceof Error ? error.message : t('errors.addScheduleFailed');
       toast.error(message);
       throw error;
     }
@@ -623,9 +625,9 @@ export default function NotificationsPage() {
     setTestingId(id);
     try {
       const result = await testSetting.mutateAsync(id);
-      toast.success(result.message || 'Test notification sent');
+      toast.success(result.message || t('errors.testSent'));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Test failed';
+      const message = error instanceof Error ? error.message : t('errors.testFailed');
       toast.error(message);
     } finally {
       setTestingId(null);
@@ -637,7 +639,7 @@ export default function NotificationsPage() {
       await updateSetting.mutateAsync({ id, data: { enabled } });
       toast.success(enabled ? t('channels.channelEnabled') : t('channels.channelDisabled'));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to update';
+      const message = error instanceof Error ? error.message : t('errors.updateFailed');
       toast.error(message);
     }
   };
@@ -647,7 +649,7 @@ export default function NotificationsPage() {
       await updateSchedule.mutateAsync({ id, data: { enabled } });
       toast.success(enabled ? t('schedules.scheduleEnabled') : t('schedules.scheduleDisabled'));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to update';
+      const message = error instanceof Error ? error.message : t('errors.updateFailed');
       toast.error(message);
     }
   };
@@ -657,7 +659,7 @@ export default function NotificationsPage() {
       await updateSchedule.mutateAsync({ id, data: { notify_day_before } });
       toast.success(notify_day_before ? t('schedules.willNotifyDayBefore') : t('schedules.willNotifySameDay'));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to update';
+      const message = error instanceof Error ? error.message : t('errors.updateFailed');
       toast.error(message);
     }
   };
@@ -668,13 +670,13 @@ export default function NotificationsPage() {
     try {
       if (deleteConfirm.type === 'channel') {
         await deleteSetting.mutateAsync(deleteConfirm.id);
-        toast.success('Channel deleted');
+        toast.success(t('errors.channelDeleted'));
       } else {
         await deleteSchedule.mutateAsync(deleteConfirm.id);
-        toast.success('Schedule deleted');
+        toast.success(t('errors.scheduleDeleted'));
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to delete';
+      const message = error instanceof Error ? error.message : t('errors.deleteFailed');
       toast.error(message);
     } finally {
       setDeleteConfirm(null);

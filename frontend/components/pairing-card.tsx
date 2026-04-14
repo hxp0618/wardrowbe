@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Trash2, Star, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,18 +32,18 @@ interface PairingCardProps {
 }
 
 export function PairingCard({ pairing, onFeedback, onPreview }: PairingCardProps) {
+  const t = useTranslations('pairingCard');
   const deletePairing = useDeletePairing();
 
   const handleDelete = async () => {
     try {
       await deletePairing.mutateAsync(pairing.id);
-      toast.success('Pairing deleted');
+      toast.success(t('deleted'));
     } catch {
-      toast.error('Failed to delete pairing');
+      toast.error(t('deleteFailed'));
     }
   };
 
-  // Find the source item in the items list
   const sourceItemId = pairing.source_item?.id;
   const sourceItemInList = pairing.items.find((item) => item.id === sourceItemId);
   const otherItems = pairing.items.filter((item) => item.id !== sourceItemId);
@@ -54,7 +55,7 @@ export function PairingCard({ pairing, onFeedback, onPreview }: PairingCardProps
         <div className="flex items-center justify-between mb-2">
           <Badge variant="outline">
             <Sparkles className="h-3 w-3 mr-1" />
-            Pairing
+            {t('pairing')}
           </Badge>
           <Button
             variant="ghost"
@@ -70,7 +71,7 @@ export function PairingCard({ pairing, onFeedback, onPreview }: PairingCardProps
         {/* Source item highlighted */}
         {pairing.source_item && (
           <div className="mb-2">
-            <p className="text-xs text-muted-foreground mb-1">Built around:</p>
+            <p className="text-xs text-muted-foreground mb-1">{t('builtAround')}</p>
             <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
               <div className="w-12 h-12 rounded-md bg-muted overflow-hidden relative border-2 border-primary/30">
                 {pairing.source_item.thumbnail_url ? (
@@ -168,7 +169,7 @@ export function PairingCard({ pairing, onFeedback, onPreview }: PairingCardProps
         {pairing.style_notes && (
           <div className="mt-2 p-2 bg-muted rounded border text-xs">
             <p className="text-muted-foreground break-words">
-              <span className="font-medium text-foreground">Tip:</span> {pairing.style_notes}
+              <span className="font-medium text-foreground">{t('tip')}</span> {pairing.style_notes}
             </p>
           </div>
         )}
@@ -183,7 +184,7 @@ export function PairingCard({ pairing, onFeedback, onPreview }: PairingCardProps
               onClick={onFeedback}
             >
               <Star className="h-3 w-3 mr-1" />
-              {pairing.feedback?.rating ? 'Update Rating' : 'Rate This Pairing'}
+              {pairing.feedback?.rating ? t('updateRating') : t('ratePairing')}
             </Button>
           </div>
         )}

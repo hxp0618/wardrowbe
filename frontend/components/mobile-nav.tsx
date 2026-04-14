@@ -1,8 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
-import { usePathname } from 'next/navigation';
+import { Link, usePathname } from '@/i18n/navigation';
 import { Home, Shirt, Sparkles, Layers, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

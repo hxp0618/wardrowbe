@@ -18,8 +18,14 @@ import { OutfitHistoryCard } from '@/components/outfit-history-card';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { OutfitPreviewDialog } from '@/components/outfit-preview-dialog';
 import { format, isSameDay, parseISO } from 'date-fns';
-import { useTranslations } from 'next-intl';
+import { zhCN, enUS } from 'date-fns/locale';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+
+const dateFnsLocales: Record<string, typeof zhCN> = {
+  zh: zhCN,
+  en: enUS,
+};
 
 function EmptyHistory() {
   const t = useTranslations('history');
@@ -41,11 +47,13 @@ function EmptyHistory() {
 
 function EmptyDate({ date }: { date: Date }) {
   const t = useTranslations('history');
+  const locale = useLocale();
+  const dfLocale = dateFnsLocales[locale] || zhCN;
   return (
     <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
       <Calendar className="h-8 w-8 text-muted-foreground mb-2" />
       <p className="text-sm text-muted-foreground">
-        {t('noOutfitsForDate', { date: format(date, 'MMMM d, yyyy') })}
+        {t('noOutfitsForDate', { date: format(date, 'PPP', { locale: dfLocale }) })}
       </p>
     </div>
   );
@@ -95,6 +103,10 @@ function CalendarSkeleton() {
 
 export default function HistoryPage() {
   const t = useTranslations('history');
+  const to = useTranslations('settings.recommendations.occasions');
+  const ts = useTranslations('outfitHistory.status');
+  const locale = useLocale();
+  const dfLocale = dateFnsLocales[locale] || zhCN;
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -160,11 +172,11 @@ export default function HistoryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('allOccasions')}</SelectItem>
-            <SelectItem value="casual">Casual</SelectItem>
-            <SelectItem value="office">Office</SelectItem>
-            <SelectItem value="formal">Formal</SelectItem>
-            <SelectItem value="date">Date</SelectItem>
-            <SelectItem value="workout">Workout</SelectItem>
+            <SelectItem value="casual">{to('casual')}</SelectItem>
+            <SelectItem value="office">{to('office')}</SelectItem>
+            <SelectItem value="formal">{to('formal')}</SelectItem>
+            <SelectItem value="date">{to('date')}</SelectItem>
+            <SelectItem value="sporty">{to('sporty')}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>
@@ -173,10 +185,10 @@ export default function HistoryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('allStatus')}</SelectItem>
-            <SelectItem value="accepted">Accepted</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="viewed">Viewed</SelectItem>
+            <SelectItem value="accepted">{ts('accepted')}</SelectItem>
+            <SelectItem value="rejected">{ts('rejected')}</SelectItem>
+            <SelectItem value="pending">{ts('pending')}</SelectItem>
+            <SelectItem value="viewed">{ts('viewed')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -207,7 +219,7 @@ export default function HistoryPage() {
           {selectedDate && (
             <div className="border-b pb-3">
               <h2 className="text-lg font-semibold">
-                {format(selectedDate, 'EEEE, MMMM d')}
+                {format(selectedDate, 'EEEE, MMMM d', { locale: dfLocale })}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {t('outfitCount', { count: selectedDateOutfits.length })}

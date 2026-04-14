@@ -122,7 +122,7 @@ function LoginContent() {
         }
       })
       .catch(() => {
-        setBackendError('Unable to connect to backend server. Please check that the backend is running.');
+        setBackendError(t('backendConnectError'));
       });
   }, []);
 
@@ -188,7 +188,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <img src="/logo.svg" alt="Wardrowbe" className="h-16 w-16" />
+            <img src="/logo.svg" alt={t('signInTitle')} className="h-16 w-16" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">{t('signInTitle')}</h1>
           <p className="mt-2 text-muted-foreground">

@@ -23,7 +23,8 @@
     "or": "or",
     "of": "of",
     "items": "{count} items",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "offline": "You're offline"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -63,6 +64,7 @@
     "namePlaceholder": "Your Name",
     "termsNotice": "By signing in, you agree to our terms of service and privacy policy.",
     "backendError": "Backend Configuration Error",
+    "backendConnectError": "Unable to connect to backend server. Please check that the backend is running.",
     "errors": {
       "oauthSignin": "Error starting authentication",
       "oauthCallback": "Error during authentication callback",
@@ -161,7 +163,14 @@
       "leastWorn": "Least worn",
       "nameAZ": "Name A–Z",
       "nameZA": "Name Z–A"
-    }
+    },
+    "bulkDeleteSuccess": "Deleted {count} items",
+    "bulkDeleteFailed": "Failed to delete {count} items",
+    "bulkDeleteError": "Failed to delete items",
+    "bulkReanalyzeSuccess": "Queued {count} items for re-analysis",
+    "bulkReanalyzeSuccessLong": "Queued {count} items for re-analysis. This may take a while.",
+    "bulkReanalyzeFailed": "Failed to queue {count} items",
+    "bulkReanalyzeError": "Failed to queue items for re-analysis"
   },
   "suggest": {
     "greeting": {
@@ -194,7 +203,8 @@
       "keepLight": "Keep it light and breathable",
       "windproof": "Consider something windproof",
       "default": "Great weather for any style"
-    }
+    },
+    "generateFailed": "Failed to generate outfit suggestion. Please try again."
   },
   "onboarding": {
     "welcome": {
@@ -632,12 +642,33 @@
       "channelWarning": "This will remove the notification channel. You can add it back later.",
       "scheduleWarning": "This will remove the schedule. You can create a new one later.",
       "deleting": "Deleting..."
+    },
+    "channelLabels": {
+      "ntfy": "ntfy Push",
+      "mattermost": "Mattermost",
+      "email": "Email"
+    },
+    "validation": {
+      "topicRequired": "Topic is required for ntfy",
+      "webhookRequired": "Webhook URL is required for Mattermost",
+      "emailRequired": "Email address is required"
+    },
+    "errors": {
+      "addChannelFailed": "Failed to add channel",
+      "addScheduleFailed": "Failed to add schedule",
+      "testSent": "Test notification sent",
+      "testFailed": "Test failed",
+      "updateFailed": "Failed to update",
+      "channelDeleted": "Channel deleted",
+      "scheduleDeleted": "Schedule deleted",
+      "deleteFailed": "Failed to delete"
     }
   },
   "invite": {
     "title": "Family Invitation",
     "subtitle": "You've been invited to join a family on Wardrowbe",
     "acceptInvitation": "Accept Invitation",
+    "joinedWithName": "Joined {name}!",
     "errors": {
       "invalid": "This invite link is invalid or has expired.",
       "wrongEmail": "This invite was sent to a different email address.",
@@ -711,6 +742,7 @@
     "codeGenerateFailed": "Failed to generate new code. Please try again.",
     "sendInvite": "Send Invite",
     "inviteByEmail": "Invite someone by email",
+    "inviteEmailPlaceholder": "email@example.com",
     "member": "Member",
     "admin": "Admin",
     "invite": "Invite",
@@ -940,5 +972,60 @@
     "noSearchResults": "No items match your search",
     "noItems": "No items in wardrobe",
     "showingAll": "Showing all {count} items"
+  },
+  "outfitHistory": {
+    "source": {
+      "scheduled": "Scheduled",
+      "onDemand": "On Demand",
+      "manual": "Manual",
+      "pairing": "Pairing"
+    },
+    "status": {
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "viewed": "Viewed",
+      "sent": "Sent",
+      "pending": "Pending",
+      "expired": "Expired"
+    },
+    "outfitAccepted": "Outfit accepted",
+    "outfitRejected": "Outfit rejected",
+    "acceptFailed": "Failed to accept outfit",
+    "rejectFailed": "Failed to reject outfit",
+    "didntWear": "Didn't wear this",
+    "woreInstead": "Wore instead:",
+    "family": "Family:",
+    "tip": "Tip:",
+    "reject": "Reject",
+    "accept": "Accept",
+    "updateRating": "Update",
+    "rate": "Rate",
+    "item": "Item",
+    "viewItemDetails": "View item details"
+  },
+  "pairingCard": {
+    "pairing": "Pairing",
+    "builtAround": "Built around:",
+    "tip": "Tip:",
+    "deleted": "Pairing deleted",
+    "deleteFailed": "Failed to delete pairing",
+    "updateRating": "Update Rating",
+    "ratePairing": "Rate This Pairing"
+  },
+  "calendar": {
+    "scheduled": "Scheduled",
+    "onDemand": "On-demand"
+  },
+  "colorEyedropper": {
+    "title": "Pick Color from Image",
+    "instruction": "Click anywhere on the image to sample a color",
+    "pickColor": "Pick color from image",
+    "picked": "Picked",
+    "clear": "Clear",
+    "useColor": "Use {color}",
+    "noColorSelected": "No color selected yet",
+    "canvasNotAvailable": "Canvas not available",
+    "canvasContextError": "Could not get canvas context",
+    "imageLoadFailed": "Failed to load image"
   }
 }

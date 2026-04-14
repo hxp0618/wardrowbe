@@ -15,6 +15,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const t = useTranslations('header');
+  const tc = useTranslations('common');
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
@@ -72,7 +73,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <AvatarFallback>{getInitials(user?.display_name)}</AvatarFallback>
             </Avatar>
             <span className="hidden text-sm font-semibold lg:block">
-              {user?.display_name || 'User'}
+              {user?.display_name || tc('user')}
             </span>
             <Button
               variant="ghost"

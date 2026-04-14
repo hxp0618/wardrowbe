@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useSession } from 'next-auth/react';
 import {
@@ -308,6 +308,7 @@ function OutfitResult({
   onNewRequest: () => void;
 }) {
   const t = useTranslations('suggest');
+  const locale = useLocale();
   return (
     <div className="space-y-6">
       {/* Header with occasion and new request */}
@@ -319,7 +320,7 @@ function OutfitResult({
           {outfit.scheduled_for && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <CalendarDays className="h-3 w-3" />
-              {new Date(outfit.scheduled_for + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+              {new Date(outfit.scheduled_for + 'T00:00:00').toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
             </span>
           )}
         </div>
@@ -483,7 +484,7 @@ export default function SuggestPage() {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Failed to generate outfit suggestion. Please try again.');
+        setError(t('generateFailed'));
       }
       console.error('Suggestion error:', err);
     } finally {
