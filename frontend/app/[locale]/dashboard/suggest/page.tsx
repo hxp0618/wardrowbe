@@ -179,6 +179,7 @@ function OccasionChips({
   selected: string | null;
   onSelect: (occasion: string) => void;
 }) {
+  const tt = useTranslations('taxonomy');
   return (
     <div className="flex flex-wrap gap-2">
       {OCCASIONS.map((occasion) => {
@@ -196,7 +197,9 @@ function OccasionChips({
             )}
           >
             {config?.icon}
-            <span className="text-sm font-medium">{occasion.label}</span>
+            <span className="text-sm font-medium">
+              {tt(`occasions.${occasion.value}` as Parameters<typeof tt>[0])}
+            </span>
           </button>
         );
       })}
