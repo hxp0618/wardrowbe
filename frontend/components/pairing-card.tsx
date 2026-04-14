@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useDeletePairing } from '@/lib/hooks/use-pairings';
 import { Pairing } from '@/lib/types';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import Image from 'next/image';
 
 function StarRating({ rating }: { rating: number }) {
@@ -33,6 +34,11 @@ interface PairingCardProps {
 
 export function PairingCard({ pairing, onFeedback, onPreview }: PairingCardProps) {
   const t = useTranslations('pairingCard');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (type: string) =>
+    getClothingTypeLabel(type, (k) => tt(k as Parameters<typeof tt>[0]));
+  const colorLabel = (color: string) =>
+    getClothingColorLabel(color, (k) => tt(k as Parameters<typeof tt>[0]));
   const deletePairing = useDeletePairing();
 
   const handleDelete = async () => {
@@ -77,24 +83,24 @@ export function PairingCard({ pairing, onFeedback, onPreview }: PairingCardProps
                 {pairing.source_item.thumbnail_url ? (
                   <Image
                     src={pairing.source_item.thumbnail_url}
-                    alt={pairing.source_item.name || pairing.source_item.type}
+                    alt={pairing.source_item.name || typeLabel(pairing.source_item.type)}
                     fill
                     className="object-cover"
                     sizes="48px"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                    {pairing.source_item.type}
+                    {typeLabel(pairing.source_item.type)}
                   </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {pairing.source_item.name || pairing.source_item.type}
+                  {pairing.source_item.name || typeLabel(pairing.source_item.type)}
                 </p>
                 {pairing.source_item.primary_color && (
                   <p className="text-xs text-muted-foreground capitalize">
-                    {pairing.source_item.primary_color}
+                    {colorLabel(pairing.source_item.primary_color)}
                   </p>
                 )}
               </div>
@@ -116,14 +122,14 @@ export function PairingCard({ pairing, onFeedback, onPreview }: PairingCardProps
               {item.thumbnail_url ? (
                 <Image
                   src={item.thumbnail_url}
-                  alt={item.name || item.type}
+                  alt={item.name || typeLabel(item.type)}
                   fill
                   className="object-cover"
                   sizes="56px"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                  {item.type}
+                  {typeLabel(item.type)}
                 </div>
               )}
             </div>

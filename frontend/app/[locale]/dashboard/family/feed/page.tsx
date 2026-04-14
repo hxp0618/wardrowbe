@@ -25,6 +25,7 @@ import { FamilyRatingForm, FamilyRatingsDisplay } from '@/components/family-rati
 import { OutfitPreviewDialog } from '@/components/outfit-preview-dialog';
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
+import { getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
 
 function getInitials(name: string) {
   return name
@@ -36,35 +37,36 @@ function getInitials(name: string) {
 }
 
 function SourceBadge({ source }: { source: OutfitSource }) {
-  const config: Record<OutfitSource, { icon: typeof Calendar; label: string; className: string }> = {
+  const t = useTranslations('outfitHistory');
+  const config: Record<OutfitSource, { icon: typeof Calendar; labelKey: 'source.scheduled' | 'source.onDemand' | 'source.manual' | 'source.pairing'; className: string }> = {
     scheduled: {
       icon: Calendar,
-      label: 'Scheduled',
+      labelKey: 'source.scheduled',
       className: 'bg-primary/10 text-primary border-primary/20',
     },
     on_demand: {
       icon: Zap,
-      label: 'On Demand',
+      labelKey: 'source.onDemand',
       className: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
     },
     manual: {
       icon: Edit3,
-      label: 'Manual',
+      labelKey: 'source.manual',
       className: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
     },
     pairing: {
       icon: Zap,
-      label: 'Pairing',
+      labelKey: 'source.pairing',
       className: 'bg-violet-500/10 text-violet-600 border-violet-500/20',
     },
   };
 
-  const { icon: Icon, label, className } = config[source];
+  const { icon: Icon, labelKey, className } = config[source];
 
   return (
     <Badge variant="outline" className={className}>
       <Icon className="h-3 w-3 mr-1" />
-      {label}
+      {t(labelKey)}
     </Badge>
   );
 }
@@ -82,6 +84,11 @@ function FeedOutfitCard({
 }) {
   const t = useTranslations('familyFeed');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const occasionLabel = (o: string) =>
+    getOccasionLabel(o, (k) => tt(k as Parameters<typeof tt>[0]));
   const locale = useLocale();
   const [showRatingForm, setShowRatingForm] = useState(false);
   const myRating = outfit.family_ratings?.find((r) => r.user_id === currentMemberId);
@@ -94,7 +101,7 @@ function FeedOutfitCard({
           <div className="flex items-center gap-2">
             <SourceBadge source={outfit.source} />
             <Badge variant="secondary" className="capitalize text-xs">
-              {outfit.occasion}
+              {occasionLabel(outfit.occasion)}
             </Badge>
           </div>
           <span className="text-xs text-muted-foreground">
@@ -120,14 +127,14 @@ function FeedOutfitCard({
               {item.thumbnail_url ? (
                 <Image
                   src={item.thumbnail_url}
-                  alt={item.name || item.type}
+                  alt={item.name || typeLabel(item.type)}
                   fill
                   className="object-cover"
                   sizes="80px"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                  {item.type}
+                  {typeLabel(item.type)}
                 </div>
               )}
             </div>

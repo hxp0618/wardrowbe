@@ -33,6 +33,7 @@ import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { getClothingColorLabel, getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
 
 function StatCard({
   title,
@@ -168,6 +169,9 @@ function ColorPreferenceBar({ colorScore }: { colorScore: LearnedColorScore }) {
 
 function ItemPairCard({ pair }: { pair: ItemPair }) {
   const t = useTranslations('learning');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
   const successRate = pair.times_paired > 0
     ? Math.round((pair.times_accepted / pair.times_paired) * 100)
     : 0;
@@ -182,7 +186,7 @@ function ItemPairCard({ pair }: { pair: ItemPair }) {
           {pair.item1.thumbnail_url ? (
             <Image
               src={pair.item1.thumbnail_url}
-              alt={pair.item1.name || pair.item1.type}
+              alt={pair.item1.name || typeLabel(pair.item1.type)}
               fill
               className="object-cover"
               sizes="48px"
@@ -203,7 +207,7 @@ function ItemPairCard({ pair }: { pair: ItemPair }) {
           {pair.item2.thumbnail_url ? (
             <Image
               src={pair.item2.thumbnail_url}
-              alt={pair.item2.name || pair.item2.type}
+              alt={pair.item2.name || typeLabel(pair.item2.type)}
               fill
               className="object-cover"
               sizes="48px"
@@ -320,6 +324,11 @@ function NoLearningData({ onRecompute, isRefreshing }: { onRecompute: () => void
 
 export default function LearningPage() {
   const t = useTranslations('learning');
+  const tt = useTranslations('taxonomy');
+  const occasionLabel = (o: string) =>
+    getOccasionLabel(o, (k) => tt(k as Parameters<typeof tt>[0]));
+  const paletteColorTitle = (c: string) =>
+    getClothingColorLabel(c, (k) => tt(k as Parameters<typeof tt>[0]));
   const { data, isLoading, isError } = useLearning();
   const recompute = useRecomputeLearning();
   const generateInsights = useGenerateInsights();
@@ -557,7 +566,7 @@ export default function LearningPage() {
                   {profile.occasion_patterns.map((pattern) => (
                     <div key={pattern.occasion} className="p-4 rounded-lg bg-muted/50">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium capitalize">{pattern.occasion}</h4>
+                        <h4 className="font-medium capitalize">{occasionLabel(pattern.occasion)}</h4>
                         <Badge variant="outline">
                           {t('success', { rate: Math.round(pattern.success_rate * 100) })}
                         </Badge>
@@ -570,7 +579,7 @@ export default function LearningPage() {
                               <div
                                 key={color}
                                 className={`w-4 h-4 rounded ${colorMap[color.toLowerCase()] || 'bg-muted'}`}
-                                title={color}
+                                title={paletteColorTitle(color)}
                               />
                             ))}
                           </div>
@@ -603,7 +612,9 @@ export default function LearningPage() {
                         {pref.weather_type === 'mild' && '🌤️'}
                         {pref.weather_type === 'hot' && '☀️'}
                       </div>
-                      <h4 className="font-medium capitalize">{pref.weather_type}</h4>
+                      <h4 className="font-medium capitalize">
+                        {t(`weatherTypes.${pref.weather_type}` as Parameters<typeof t>[0])}
+                      </h4>
                       <p className="text-sm text-muted-foreground mt-1">
                         {t('layers', { count: pref.preferred_layers.toFixed(1) })}
                       </p>

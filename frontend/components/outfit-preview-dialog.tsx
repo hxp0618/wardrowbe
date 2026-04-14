@@ -17,6 +17,7 @@ import { FamilyRatingForm, FamilyRatingsDisplay } from '@/components/family-rati
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
+import { getClothingColorLabel, getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
 
 interface OutfitPreviewDialogProps {
   outfit: Outfit;
@@ -29,6 +30,13 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
   const t = useTranslations('outfitPreview');
   const locale = useLocale();
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const colorLabel = (c: string) =>
+    getClothingColorLabel(c, (k) => tt(k as Parameters<typeof tt>[0]));
+  const occasionLabel = (o: string) =>
+    getOccasionLabel(o, (k) => tt(k as Parameters<typeof tt>[0]));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageKey, setImageKey] = useState(0);
   const [showRatingForm, setShowRatingForm] = useState(false);
@@ -71,7 +79,9 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
         {/* Header - sticky */}
         <div className="flex items-center justify-between p-4 pb-2 border-b flex-shrink-0">
           <div>
-            <h2 className="text-lg font-semibold capitalize">{outfit.occasion} {t('outfit')}</h2>
+            <h2 className="text-lg font-semibold capitalize">
+              {occasionLabel(outfit.occasion)} {t('outfit')}
+            </h2>
             <div className="flex items-center gap-2 mt-0.5">
               {outfit.scheduled_for && (
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -100,7 +110,7 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
                   <Image
                     key={`${currentItem.id}-${imageKey}`}
                     src={currentItem.image_url}
-                    alt={currentItem.name || currentItem.type}
+                    alt={currentItem.name || typeLabel(currentItem.type)}
                     fill
                     className="object-contain"
                     sizes="(max-width: 512px) 100vw, 512px"
@@ -142,7 +152,7 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="secondary" className="capitalize">
-                  {currentItem.type}
+                  {typeLabel(currentItem.type)}
                 </Badge>
                 {currentItem.subtype && (
                   <Badge variant="outline" className="capitalize">
@@ -158,7 +168,7 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
                       backgroundColor: `${currentItem.primary_color}20`,
                     }}
                   >
-                    {currentItem.primary_color}
+                    {colorLabel(currentItem.primary_color)}
                   </Badge>
                 )}
               </div>
@@ -223,14 +233,14 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
                     {item.thumbnail_url ? (
                       <Image
                         src={item.thumbnail_url}
-                        alt={item.name || item.type}
+                        alt={item.name || typeLabel(item.type)}
                         fill
                         className="object-cover"
                         sizes="56px"
                       />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                        {item.type.charAt(0).toUpperCase()}
+                        {typeLabel(item.type).charAt(0).toUpperCase()}
                       </div>
                     )}
                   </button>

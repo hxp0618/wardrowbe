@@ -31,8 +31,9 @@ import { BulkActionToolbar, BulkSelection } from '@/components/bulk-action-toolb
 import { useItems, useItem, useItemTypes, useReanalyzeItem, useBulkDeleteItems, useBulkReanalyzeItems, BulkOperationParams } from '@/lib/hooks/use-items';
 import { useUserProfile } from '@/lib/hooks/use-user';
 import { CLOTHING_TYPES, CLOTHING_COLORS, Item } from '@/lib/types';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import { toast } from 'sonner';
-import { formatWornAgo, getWornAgoColorClass } from '@/lib/utils';
+import { getDaysSinceDateInTimezone, getWornAgoColorClass } from '@/lib/utils';
 
 const SORT_OPTIONS = [
   { labelKey: 'newestFirst', value: 'created_at', order: 'desc' as const },
@@ -62,6 +63,16 @@ function ItemCard({
 }) {
   const t = useTranslations('wardrobe');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = getClothingTypeLabel(item.type, (k) => tt(k as Parameters<typeof tt>[0]));
+  const wornAgoLabel = item.last_worn_at
+    ? (() => {
+        const days = getDaysSinceDateInTimezone(item.last_worn_at, userTimezone);
+        if (days === 0) return t('wornToday');
+        if (days === 1) return t('wornYesterday');
+        return t('wornDaysAgo', { days });
+      })()
+    : '';
   const colorInfo = CLOTHING_COLORS.find((c) => c.value === item.primary_color);
   const isProcessing = item.status === 'processing';
   const isError = item.status === 'error';
@@ -81,14 +92,14 @@ function ItemCard({
         {item.thumbnail_url ? (
           <Image
             src={item.thumbnail_url}
-            alt={item.name || item.type}
+            alt={item.name || typeLabel}
             fill
             className="object-cover"
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-            {item.type}
+            {typeLabel}
           </div>
         )}
         {/* Checkbox in top-left */}
@@ -147,12 +158,13 @@ function ItemCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm truncate">
-              {item.name || item.type}
+              {item.name || typeLabel}
             </p>
             <p className="text-xs text-muted-foreground capitalize">
-              {item.type}
+              {typeLabel}
               {item.subtype && ` • ${item.subtype}`}
-              {item.tags?.logprobs_confidence != null && ` · ${Math.round(item.tags.logprobs_confidence * 100)}% confident`}
+              {item.tags?.logprobs_confidence != null &&
+                ` · ${t('confident', { percent: Math.round(item.tags.logprobs_confidence * 100) })}`}
             </p>
           </div>
           {colorInfo && (
@@ -165,7 +177,7 @@ function ItemCard({
                   />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{colorInfo.name}</p>
+                  <p>{getClothingColorLabel(colorInfo.value, (k) => tt(k as Parameters<typeof tt>[0]))}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -173,7 +185,7 @@ function ItemCard({
         </div>
         {item.last_worn_at ? (
           <p className={`text-xs mt-1 ${getWornAgoColorClass(item.last_worn_at, userTimezone)}`}>
-            {formatWornAgo(item.last_worn_at, userTimezone)}
+            {wornAgoLabel}
           </p>
         ) : item.wear_count > 0 ? (
           <p className="text-xs text-muted-foreground mt-1">
@@ -224,6 +236,7 @@ function EmptyWardrobe({ onAddClick }: { onAddClick: () => void }) {
 export default function WardrobePage() {
   const t = useTranslations('wardrobe');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: userProfile } = useUserProfile();
@@ -496,9 +509,9 @@ export default function WardrobePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allTypes')}</SelectItem>
-                {CLOTHING_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
+                {CLOTHING_TYPES.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {getClothingTypeLabel(opt.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                   </SelectItem>
                 ))}
               </SelectContent>

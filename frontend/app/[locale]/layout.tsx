@@ -1,6 +1,15 @@
+import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { getMessages, getTranslations } from 'next-intl/server';
 import { Providers } from './providers';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('common');
+  return {
+    title: t('metadataTitle'),
+    description: t('appDescription'),
+  };
+}
 
 export default async function LocaleLayout({
   children,

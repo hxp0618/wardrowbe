@@ -2,11 +2,13 @@
 
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useMessages } from 'next-intl';
 import { toast, Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import { ApiError, NetworkError } from '@/lib/api';
+import { pickApiMessages, setApiClientMessages } from '@/lib/api-messages';
 
 function handleError(error: unknown) {
   if (error instanceof NetworkError) {
@@ -25,6 +27,14 @@ function handleError(error: unknown) {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const messages = useMessages();
+
+  useEffect(() => {
+    const apiMsgs = pickApiMessages(messages as Record<string, unknown>);
+    setApiClientMessages(apiMsgs);
+    return () => setApiClientMessages(null);
+  }, [messages]);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({

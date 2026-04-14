@@ -17,6 +17,7 @@ import { useAnalytics } from '@/lib/hooks/use-analytics';
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 
 function StatCard({
   title,
@@ -95,7 +96,15 @@ function LoadingSkeleton() {
   );
 }
 
-function ColorBar({ color, percentage }: { color: string; percentage: number }) {
+function ColorBar({
+  color,
+  percentage,
+  label,
+}: {
+  color: string;
+  percentage: number;
+  label: string;
+}) {
   const colorMap: Record<string, string> = {
     black: 'bg-gray-900',
     white: 'bg-gray-100 border',
@@ -128,7 +137,7 @@ function ColorBar({ color, percentage }: { color: string; percentage: number }) 
       <div className={`w-4 h-4 rounded ${bgColor}`} />
       <div className="flex-1">
         <div className="flex justify-between text-sm mb-1">
-          <span className="capitalize">{color}</span>
+          <span className="capitalize">{label}</span>
           <span className="text-muted-foreground">{percentage.toFixed(1)}%</span>
         </div>
         <Progress value={percentage} className="h-2" />
@@ -137,7 +146,13 @@ function ColorBar({ color, percentage }: { color: string; percentage: number }) 
   );
 }
 
-function ItemCard({ item }: { item: { id: string; name: string | null; type: string; thumbnail_url: string | null; wear_count: number } }) {
+function ItemCard({
+  item,
+  typeLabel,
+}: {
+  item: { id: string; name: string | null; type: string; thumbnail_url: string | null; wear_count: number };
+  typeLabel: string;
+}) {
   return (
     <Link
       href={`/dashboard/wardrobe?item=${item.id}`}
@@ -147,7 +162,7 @@ function ItemCard({ item }: { item: { id: string; name: string | null; type: str
         {item.thumbnail_url ? (
           <Image
             src={item.thumbnail_url}
-            alt={item.name || item.type}
+            alt={item.name || typeLabel}
             fill
             className="object-cover"
             sizes="48px"
@@ -159,8 +174,8 @@ function ItemCard({ item }: { item: { id: string; name: string | null; type: str
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium truncate">{item.name || item.type}</p>
-        <p className="text-sm text-muted-foreground capitalize">{item.type}</p>
+        <p className="font-medium truncate">{item.name || typeLabel}</p>
+        <p className="text-sm text-muted-foreground capitalize">{typeLabel}</p>
       </div>
       <Badge variant="secondary">{item.wear_count}x</Badge>
     </Link>
@@ -197,6 +212,11 @@ function AcceptanceTrendChart({ data }: { data: { period: string; rate: number; 
 
 export default function AnalyticsPage() {
   const t = useTranslations('analytics');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const colorLabel = (c: string) =>
+    getClothingColorLabel(c, (k) => tt(k as Parameters<typeof tt>[0]));
   const { data, isLoading, isError } = useAnalytics(60);
 
   if (isLoading) {
@@ -299,7 +319,12 @@ export default function AnalyticsPage() {
             ) : (
               <div className="space-y-3">
                 {color_distribution.slice(0, 8).map((color) => (
-                  <ColorBar key={color.color} color={color.color} percentage={color.percentage} />
+                  <ColorBar
+                    key={color.color}
+                    color={color.color}
+                    percentage={color.percentage}
+                    label={colorLabel(color.color)}
+                  />
                 ))}
               </div>
             )}
@@ -322,7 +347,7 @@ export default function AnalyticsPage() {
               <div className="space-y-3">
                 {type_distribution.map((type) => (
                   <div key={type.type} className="flex items-center justify-between">
-                    <span className="capitalize">{type.type}</span>
+                    <span className="capitalize">{typeLabel(type.type)}</span>
                     <div className="flex items-center gap-2">
                       <Progress value={type.percentage} className="w-24 h-2" />
                       <span className="text-sm text-muted-foreground w-12 text-right">
@@ -350,7 +375,7 @@ export default function AnalyticsPage() {
             ) : (
               <div className="space-y-1">
                 {most_worn.map((item) => (
-                  <ItemCard key={item.id} item={item} />
+                  <ItemCard key={item.id} item={item} typeLabel={typeLabel(item.type)} />
                 ))}
               </div>
             )}
@@ -369,7 +394,7 @@ export default function AnalyticsPage() {
             ) : (
               <div className="space-y-1">
                 {least_worn.map((item) => (
-                  <ItemCard key={item.id} item={item} />
+                  <ItemCard key={item.id} item={item} typeLabel={typeLabel(item.type)} />
                 ))}
               </div>
             )}
@@ -388,7 +413,7 @@ export default function AnalyticsPage() {
             ) : (
               <div className="space-y-1">
                 {never_worn.map((item) => (
-                  <ItemCard key={item.id} item={item} />
+                  <ItemCard key={item.id} item={item} typeLabel={typeLabel(item.type)} />
                 ))}
               </div>
             )}

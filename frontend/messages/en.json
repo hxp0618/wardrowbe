@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "wardrowbe",
+    "metadataTitle": "wardrowbe",
     "appDescription": "AI-powered wardrobe management and outfit recommendations",
     "loading": "Loading...",
     "save": "Save",
@@ -153,6 +154,10 @@
     "analysisFailed": "Analysis Failed",
     "loadFailed": "Failed to load items. Please try again.",
     "worn": "Worn {count} times",
+    "wornToday": "Worn today",
+    "wornYesterday": "Worn yesterday",
+    "wornDaysAgo": "Worn {days}d ago",
+    "confident": "{percent}% confident",
     "aiCompleteness": "AI completeness: {percent}%",
     "sort": {
       "newestFirst": "Newest first",
@@ -203,6 +208,25 @@
       "keepLight": "Keep it light and breathable",
       "windproof": "Consider something windproof",
       "default": "Great weather for any style"
+    },
+    "feelsLike": "(feels {temp}°)",
+    "chanceOfRain": "{chance}% chance of rain",
+    "windSpeed": "{speed} km/h",
+    "weatherConditions": {
+      "clear": "Clear",
+      "sunny": "Sunny",
+      "clouds": "Cloudy",
+      "cloudy": "Cloudy",
+      "overcast": "Overcast",
+      "partly_cloudy": "Partly cloudy",
+      "rain": "Rain",
+      "drizzle": "Drizzle",
+      "thunderstorm": "Thunderstorm",
+      "snow": "Snow",
+      "fog": "Fog",
+      "mist": "Mist",
+      "haze": "Haze",
+      "windy": "Windy"
     },
     "generateFailed": "Failed to generate outfit suggestion. Please try again."
   },
@@ -488,6 +512,16 @@
       "description": "An unexpected error occurred. Please try again or contact support if the problem persists.",
       "goHome": "Go Home",
       "tryAgain": "Try Again"
+    },
+    "api": {
+      "offline": "You appear to be offline. Please check your connection.",
+      "unableToConnect": "Unable to connect to server. Please try again.",
+      "generic": "An error occurred",
+      "createItemFailed": "Failed to create item",
+      "uploadImageFailed": "Failed to upload image",
+      "invalidServerResponse": "Invalid response from server",
+      "bulkUploadFailed": "Failed to upload items",
+      "uploadCancelled": "Upload was cancelled."
     }
   },
   "dayNames": {
@@ -503,6 +537,73 @@
     "label": "Language",
     "zh": "中文",
     "en": "English"
+  },
+  "taxonomy": {
+    "colors": {
+      "black": "Black",
+      "charcoal": "Charcoal",
+      "gray": "Gray",
+      "white": "White",
+      "cream": "Cream",
+      "beige": "Beige",
+      "tan": "Tan",
+      "khaki": "Khaki",
+      "olive": "Olive",
+      "army_green": "Army Green",
+      "green": "Green",
+      "teal": "Teal",
+      "navy": "Navy",
+      "blue": "Blue",
+      "brown": "Brown",
+      "dark_brown": "Dark Brown",
+      "burgundy": "Burgundy",
+      "red": "Red",
+      "pink": "Pink",
+      "purple": "Purple",
+      "yellow": "Yellow",
+      "orange": "Orange"
+    },
+    "occasions": {
+      "casual": "Casual",
+      "office": "Office",
+      "formal": "Formal",
+      "date": "Date",
+      "sporty": "Sporty",
+      "outdoor": "Outdoor"
+    },
+    "types": {
+      "shirt": "Shirt",
+      "t-shirt": "T-Shirt",
+      "top": "Top",
+      "polo": "Polo",
+      "blouse": "Blouse",
+      "tank-top": "Tank Top",
+      "sweater": "Sweater",
+      "hoodie": "Hoodie",
+      "cardigan": "Cardigan",
+      "vest": "Vest",
+      "pants": "Pants",
+      "jeans": "Jeans",
+      "shorts": "Shorts",
+      "skirt": "Skirt",
+      "dress": "Dress",
+      "jumpsuit": "Jumpsuit",
+      "jacket": "Jacket",
+      "blazer": "Blazer",
+      "coat": "Coat",
+      "suit": "Suit",
+      "shoes": "Shoes",
+      "sneakers": "Sneakers",
+      "boots": "Boots",
+      "sandals": "Sandals",
+      "socks": "Socks",
+      "tie": "Tie",
+      "hat": "Hat",
+      "scarf": "Scarf",
+      "belt": "Belt",
+      "bag": "Bag",
+      "accessories": "Accessories"
+    }
   },
   "history": {
     "title": "History",
@@ -571,6 +672,12 @@
     "weatherPreferences": "Weather Preferences",
     "weatherDescription": "How you dress for different conditions",
     "layers": "~{count} layers",
+    "weatherTypes": {
+      "cold": "Cold",
+      "cool": "Cool",
+      "mild": "Mild",
+      "hot": "Hot"
+    },
     "suggestedUpdates": "Suggested Preference Updates",
     "suggestedDescription": "Based on your feedback, we suggest updating your preferences",
     "addToFavorites": "Add to favorite colors:",

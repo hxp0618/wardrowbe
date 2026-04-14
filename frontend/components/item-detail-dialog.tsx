@@ -59,6 +59,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from 'sonner';
 import { useUpdateItem, useDeleteItem, useReanalyzeItem, useRotateImage, useRemoveBackground, useLogWash, useWashHistory, useItemWearStats, useItemWearHistory, useAddItemImage, useDeleteItemImage, useSetPrimaryImage } from '@/lib/hooks/use-items';
 import { Item, CLOTHING_TYPES, CLOTHING_COLORS } from '@/lib/types';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import { ColorEyedropper } from '@/components/color-eyedropper';
 import { GeneratePairingsDialog } from '@/components/generate-pairings-dialog';
 import { useFeatures } from '@/lib/hooks/use-features';
@@ -106,6 +107,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
   const setPrimary = useSetPrimaryImage();
   const t = useTranslations('itemDetail');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
   const locale = useLocale();
 
   useEffect(() => {
@@ -221,7 +223,9 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
   // Use signed URL from backend for better quality in detail view
   const imageUrl = item.image_url || item.image_path;
   const colorInfo = CLOTHING_COLORS.find((c) => c.value === item.primary_color);
-  const typeInfo = CLOTHING_TYPES.find((t) => t.value === item.type);
+  const typeLabel = getClothingTypeLabel(item.type, (k) => tt(k as Parameters<typeof tt>[0]));
+  const typeLabelFor = (type: string) =>
+    getClothingTypeLabel(type, (k) => tt(k as Parameters<typeof tt>[0]));
 
   // AI-generated tags
   const tags = item.tags || {};
@@ -236,7 +240,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
           {/* Header - sticky */}
           <DialogHeader className="flex flex-row items-center justify-between space-y-0 p-4 border-b flex-shrink-0">
             <DialogTitle className="text-xl min-w-0 truncate">
-              {item.name || typeInfo?.label || item.type}
+              {item.name || typeLabel}
             </DialogTitle>
             <div className="flex items-center gap-1">
               <Button
@@ -348,7 +352,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                       <Image
                         key={`${currentImage.id}-${imageKey}`}
                         src={currentImage.url}
-                        alt={item.name || item.type}
+                        alt={item.name || typeLabel}
                         fill
                         className="object-cover"
                         sizes="(max-width: 640px) 100vw, 50vw"
@@ -483,7 +487,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                       <SelectContent>
                         {CLOTHING_TYPES.map((typeOpt) => (
                           <SelectItem key={typeOpt.value} value={typeOpt.value}>
-                            {typeOpt.label}
+                            {tt(`types.${typeOpt.value}` as Parameters<typeof tt>[0])}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -515,7 +519,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                                   className="w-3 h-3 rounded-full border"
                                   style={{ backgroundColor: c.hex }}
                                 />
-                                {c.name}
+                                {getClothingColorLabel(c.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                               </div>
                             </SelectItem>
                           ))}
@@ -577,7 +581,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <Shirt className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{typeInfo?.label || item.type}</span>
+                      <span className="font-medium">{typeLabel}</span>
                       {item.subtype && (
                         <span className="text-muted-foreground">• {item.subtype}</span>
                       )}
@@ -595,7 +599,9 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                           className="w-4 h-4 rounded-full border"
                           style={{ backgroundColor: colorInfo.hex }}
                         />
-                        <span>{colorInfo.name}</span>
+                        <span>
+                          {getClothingColorLabel(colorInfo.value, (k) => tt(k as Parameters<typeof tt>[0]))}
+                        </span>
                       </div>
                     )}
                     {item.wear_count > 0 && (
@@ -751,12 +757,12 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                                       <div
                                         key={oi.id}
                                         className="w-5 h-5 rounded-full bg-muted border-2 border-background overflow-hidden"
-                                        title={oi.name || oi.type}
+                                        title={oi.name || typeLabelFor(oi.type)}
                                       >
                                         {oi.thumbnail_url && (
                                           <Image
                                             src={oi.thumbnail_url}
-                                            alt={oi.name || oi.type}
+                                            alt={oi.name || typeLabelFor(oi.type)}
                                             width={20}
                                             height={20}
                                             className="object-cover w-full h-full"
@@ -892,7 +898,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteDescription', { name: item.name || item.type })}
+              {t('deleteDescription', { name: item.name || typeLabel })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

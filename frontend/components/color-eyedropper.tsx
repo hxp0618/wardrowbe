@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { CLOTHING_COLORS } from '@/lib/types';
+import { getClothingColorLabel } from '@/lib/taxonomy-i18n';
 
 interface ColorEyedropperProps {
   imageUrl: string;
@@ -88,6 +89,7 @@ function findClosestColor(hex: string): ClothingColor {
 
 export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedropperProps) {
   const t = useTranslations('colorEyedropper');
+  const tt = useTranslations('taxonomy');
   const [open, setOpen] = useState(false);
   const [pickedColor, setPickedColor] = useState<string | null>(null);
   const [matchedColor, setMatchedColor] = useState<ClothingColor | null>(null);
@@ -331,7 +333,9 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
                       className="w-10 h-10 rounded border shadow-inner"
                       style={{ backgroundColor: matchedColor.hex }}
                     />
-                    <span className="text-xs font-medium">{matchedColor.name}</span>
+                    <span className="text-xs font-medium">
+                      {getClothingColorLabel(matchedColor.value, (k) => tt(k as Parameters<typeof tt>[0]))}
+                    </span>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -348,7 +352,9 @@ export function ColorEyedropper({ imageUrl, onColorSelect, trigger }: ColorEyedr
                   </Button>
                   <Button size="sm" onClick={handleConfirm}>
                     <Check className="h-4 w-4 mr-1" />
-                    {t('useColor', { color: matchedColor.name })}
+                    {t('useColor', {
+                      color: getClothingColorLabel(matchedColor.value, (k) => tt(k as Parameters<typeof tt>[0])),
+                    })}
                   </Button>
                 </div>
               </div>

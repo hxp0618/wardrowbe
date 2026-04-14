@@ -16,6 +16,7 @@ import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { useGeneratePairings } from '@/lib/hooks/use-pairings';
 import { Item, Pairing } from '@/lib/types';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import Image from 'next/image';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
@@ -35,6 +36,11 @@ export function GeneratePairingsDialog({
 }: GeneratePairingsDialogProps) {
   const t = useTranslations('generatePairings');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const colorLabel = (c: string) =>
+    getClothingColorLabel(c, (k) => tt(k as Parameters<typeof tt>[0]));
   const [numPairings, setNumPairings] = useState(3);
   const [generatedPairings, setGeneratedPairings] = useState<Pairing[] | null>(null);
   const generatePairings = useGeneratePairings();
@@ -92,17 +98,17 @@ export function GeneratePairingsDialog({
               <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden relative border-2 border-primary/30">
                 <Image
                   src={imageUrl}
-                  alt={item.name || item.type}
+                  alt={item.name || typeLabel(item.type)}
                   fill
                   className="object-cover"
                   sizes="64px"
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{item.name || item.type}</p>
+                <p className="font-medium truncate">{item.name || typeLabel(item.type)}</p>
                 {item.primary_color && (
                   <p className="text-sm text-muted-foreground capitalize">
-                    {item.primary_color} {item.type}
+                    {colorLabel(item.primary_color)} {typeLabel(item.type)}
                   </p>
                 )}
               </div>

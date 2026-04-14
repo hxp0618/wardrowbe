@@ -47,6 +47,11 @@ import { OCCASIONS, Outfit, SuggestRequest } from '@/lib/types';
 import { useWeather, Weather } from '@/lib/hooks/use-weather';
 import { usePreferences } from '@/lib/hooks/use-preferences';
 import { cn } from '@/lib/utils';
+import {
+  getClothingTypeLabel,
+  getOccasionLabel,
+  getWeatherConditionLabel,
+} from '@/lib/taxonomy-i18n';
 import { TempUnit, formatTemp, displayValue, toF, toCelsius } from '@/lib/temperature';
 
 // Map occasion values to icons and colors
@@ -94,6 +99,8 @@ interface WeatherOverride {
 
 function WeatherCard({ weather, isLoading, temperatureUnit }: { weather?: Weather; isLoading: boolean; temperatureUnit: TempUnit }) {
   const t = useTranslations('suggest');
+  const conditionLabel = (c: string) =>
+    getWeatherConditionLabel(c, (k) => t(k as Parameters<typeof t>[0]));
 
   if (isLoading) {
     return (
@@ -144,21 +151,23 @@ function WeatherCard({ weather, isLoading, temperatureUnit }: { weather?: Weathe
                 <span className="text-4xl font-semibold tracking-tight">{displayValue(weather.temperature, temperatureUnit)}</span>
                 <span className="text-lg text-muted-foreground">{temperatureUnit === 'fahrenheit' ? '°F' : '°C'}</span>
               </div>
-              <p className="text-sm text-muted-foreground capitalize">{weather.condition}</p>
+              <p className="text-sm text-muted-foreground capitalize">{conditionLabel(weather.condition)}</p>
             </div>
           </div>
           <div className="text-right text-sm text-muted-foreground space-y-1">
             <div className="flex items-center gap-1.5 justify-end">
               <Thermometer className="h-3.5 w-3.5" />
-              <span>Feels {displayValue(weather.feels_like, temperatureUnit)}°</span>
+              <span>
+                {t('feelsLike', { temp: displayValue(weather.feels_like, temperatureUnit) })}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 justify-end">
               <Droplets className="h-3.5 w-3.5" />
-              <span>{weather.precipitation_chance}% rain</span>
+              <span>{t('chanceOfRain', { chance: weather.precipitation_chance })}</span>
             </div>
             <div className="flex items-center gap-1.5 justify-end">
               <Wind className="h-3.5 w-3.5" />
-              <span>{Math.round(weather.wind_speed)} km/h</span>
+              <span>{t('windSpeed', { speed: Math.round(weather.wind_speed) })}</span>
             </div>
           </div>
         </div>
@@ -179,6 +188,7 @@ function OccasionChips({
   selected: string | null;
   onSelect: (occasion: string) => void;
 }) {
+  const tt = useTranslations('taxonomy');
   return (
     <div className="flex flex-wrap gap-2">
       {OCCASIONS.map((occasion) => {
@@ -196,7 +206,9 @@ function OccasionChips({
             )}
           >
             {config?.icon}
-            <span className="text-sm font-medium">{occasion.label}</span>
+            <span className="text-sm font-medium">
+              {tt(`occasions.${occasion.value}` as Parameters<typeof tt>[0])}
+            </span>
           </button>
         );
       })}
@@ -309,13 +321,20 @@ function OutfitResult({
 }) {
   const t = useTranslations('suggest');
   const locale = useLocale();
+  const tt = useTranslations('taxonomy');
+  const typeLabel = (ty: string) =>
+    getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const occasionBadge = (o: string) =>
+    getOccasionLabel(o, (k) => tt(k as Parameters<typeof tt>[0]));
+  const conditionLabel = (c: string) =>
+    getWeatherConditionLabel(c, (k) => t(k as Parameters<typeof t>[0]));
   return (
     <div className="space-y-6">
       {/* Header with occasion and new request */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="capitalize text-sm px-3 py-1">
-            {occasion}
+            {occasionBadge(occasion)}
           </Badge>
           {outfit.scheduled_for && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -335,14 +354,16 @@ function OutfitResult({
           <div className="flex items-center gap-1.5">
             <Thermometer className="h-4 w-4" />
             <span>{formatTemp(outfit.weather.temperature, temperatureUnit)}</span>
-            <span className="text-xs opacity-70">(feels {displayValue(outfit.weather.feels_like, temperatureUnit)}°)</span>
+            <span className="text-xs opacity-70">
+              {t('feelsLike', { temp: displayValue(outfit.weather.feels_like, temperatureUnit) })}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <Droplets className="h-4 w-4" />
-            <span>{outfit.weather.precipitation_chance}% rain</span>
+            <span>{t('chanceOfRain', { chance: outfit.weather.precipitation_chance })}</span>
           </div>
           <Badge variant="outline" className="capitalize">
-            {outfit.weather.condition}
+            {conditionLabel(outfit.weather.condition)}
           </Badge>
         </div>
       )}
@@ -380,7 +401,7 @@ function OutfitResult({
                   {item.thumbnail_url ? (
                     <Image
                       src={item.thumbnail_url}
-                      alt={item.name || item.type}
+                      alt={item.name || typeLabel(item.type)}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform"
                       sizes="(max-width: 640px) 50vw, 33vw"
@@ -393,7 +414,7 @@ function OutfitResult({
                 </div>
                 <div className="p-2.5">
                   <p className="text-sm font-medium truncate">
-                    {item.name || item.type}
+                    {item.name || typeLabel(item.type)}
                   </p>
                   {item.layer_type && (
                     <Badge variant="secondary" className="text-xs capitalize mt-1">

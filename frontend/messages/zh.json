@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "wardrowbe",
+    "metadataTitle": "智能衣橱",
     "appDescription": "AI 智能衣橱管理与穿搭推荐",
     "loading": "加载中...",
     "save": "保存",
@@ -153,6 +154,10 @@
     "analysisFailed": "分析失败",
     "loadFailed": "加载物品失败，请重试。",
     "worn": "穿过 {count} 次",
+    "wornToday": "今天穿过",
+    "wornYesterday": "昨天穿过",
+    "wornDaysAgo": "{days} 天前穿过",
+    "confident": "置信度 {percent}%",
     "aiCompleteness": "AI 完成度：{percent}%",
     "sort": {
       "newestFirst": "最新优先",
@@ -203,6 +208,25 @@
       "keepLight": "穿着轻便透气",
       "windproof": "考虑防风衣物",
       "default": "好天气，怎么穿都合适"
+    },
+    "feelsLike": "（体感 {temp}°）",
+    "chanceOfRain": "{chance}% 可能降雨",
+    "windSpeed": "{speed} 公里/小时",
+    "weatherConditions": {
+      "clear": "晴朗",
+      "sunny": "晴天",
+      "clouds": "多云",
+      "cloudy": "阴天",
+      "overcast": "阴",
+      "partly_cloudy": "局部多云",
+      "rain": "雨",
+      "drizzle": "小雨",
+      "thunderstorm": "雷暴",
+      "snow": "雪",
+      "fog": "雾",
+      "mist": "薄雾",
+      "haze": "霾",
+      "windy": "大风"
     },
     "generateFailed": "生成穿搭推荐失败，请重试。"
   },
@@ -488,6 +512,16 @@
       "description": "发生了意外错误。请重试，如果问题持续存在，请联系支持。",
       "goHome": "返回首页",
       "tryAgain": "重试"
+    },
+    "api": {
+      "offline": "您似乎处于离线状态，请检查网络连接。",
+      "unableToConnect": "无法连接到服务器，请稍后重试。",
+      "generic": "发生错误",
+      "createItemFailed": "创建物品失败",
+      "uploadImageFailed": "上传图片失败",
+      "invalidServerResponse": "服务器响应无效",
+      "bulkUploadFailed": "批量上传失败",
+      "uploadCancelled": "上传已取消。"
     }
   },
   "dayNames": {
@@ -503,6 +537,73 @@
     "label": "语言",
     "zh": "中文",
     "en": "English"
+  },
+  "taxonomy": {
+    "colors": {
+      "black": "黑色",
+      "charcoal": "炭灰",
+      "gray": "灰色",
+      "white": "白色",
+      "cream": "奶油色",
+      "beige": "米色",
+      "tan": "棕褐",
+      "khaki": "卡其",
+      "olive": "橄榄绿",
+      "army_green": "军绿",
+      "green": "绿色",
+      "teal": "青绿",
+      "navy": "藏青",
+      "blue": "蓝色",
+      "brown": "棕色",
+      "dark_brown": "深棕",
+      "burgundy": "酒红",
+      "red": "红色",
+      "pink": "粉色",
+      "purple": "紫色",
+      "yellow": "黄色",
+      "orange": "橙色"
+    },
+    "occasions": {
+      "casual": "休闲",
+      "office": "办公",
+      "formal": "正式",
+      "date": "约会",
+      "sporty": "运动",
+      "outdoor": "户外"
+    },
+    "types": {
+      "shirt": "衬衫",
+      "t-shirt": "T 恤",
+      "top": "上衣",
+      "polo": "Polo 衫",
+      "blouse": "女式衬衫",
+      "tank-top": "背心",
+      "sweater": "毛衣",
+      "hoodie": "连帽衫",
+      "cardigan": "开衫",
+      "vest": "马甲",
+      "pants": "长裤",
+      "jeans": "牛仔裤",
+      "shorts": "短裤",
+      "skirt": "半身裙",
+      "dress": "连衣裙",
+      "jumpsuit": "连体裤",
+      "jacket": "夹克",
+      "blazer": "西装外套",
+      "coat": "大衣",
+      "suit": "套装",
+      "shoes": "鞋",
+      "sneakers": "运动鞋",
+      "boots": "靴子",
+      "sandals": "凉鞋",
+      "socks": "袜子",
+      "tie": "领带",
+      "hat": "帽子",
+      "scarf": "围巾",
+      "belt": "腰带",
+      "bag": "包",
+      "accessories": "配饰"
+    }
   },
   "history": {
     "title": "历史记录",
@@ -571,6 +672,12 @@
     "weatherPreferences": "天气偏好",
     "weatherDescription": "您在不同天气下的穿搭方式",
     "layers": "约 {count} 层",
+    "weatherTypes": {
+      "cold": "寒冷",
+      "cool": "凉爽",
+      "mild": "温和",
+      "hot": "炎热"
+    },
     "suggestedUpdates": "偏好更新建议",
     "suggestedDescription": "根据您的反馈，我们建议更新您的偏好",
     "addToFavorites": "添加到喜爱颜色：",

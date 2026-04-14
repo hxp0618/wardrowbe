@@ -8,8 +8,6 @@ export const dynamic = 'force-dynamic';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Wardrowbe',
-  description: 'AI-powered wardrobe management and outfit recommendations',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

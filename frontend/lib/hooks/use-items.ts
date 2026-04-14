@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { api, getAccessToken, setAccessToken, ApiError, NetworkError } from '@/lib/api';
+import { getApiMessage } from '@/lib/api-messages';
 import { Item, ItemListResponse, ItemFilter, WashHistoryEntry, ItemImage } from '@/lib/types';
 
 // Helper to set token if available (for NextAuth mode)
@@ -80,15 +81,15 @@ export function useCreateItem() {
         });
       } catch {
         if (!navigator.onLine) {
-          throw new NetworkError('You appear to be offline. Please check your connection.');
+          throw new NetworkError(getApiMessage('offline'));
         }
-        throw new NetworkError('Unable to connect to server. Please try again.');
+        throw new NetworkError(getApiMessage('unableToConnect'));
       }
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new ApiError(
-          data.detail || 'Failed to create item',
+          data.detail || getApiMessage('createItemFailed'),
           response.status,
           data
         );
@@ -341,7 +342,7 @@ export function useAddItemImage() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new ApiError(data.detail || 'Failed to upload image', response.status, data);
+        throw new ApiError(data.detail || getApiMessage('uploadImageFailed'), response.status, data);
       }
 
       return response.json() as Promise<ItemImage>;
@@ -647,10 +648,10 @@ export function useBulkCreateItems() {
               const response = JSON.parse(xhr.responseText) as BulkUploadResponse;
               resolve(response);
             } catch {
-              reject(new ApiError('Invalid response from server', xhr.status, {}));
+              reject(new ApiError(getApiMessage('invalidServerResponse'), xhr.status, {}));
             }
           } else {
-            let errorMessage = 'Failed to upload items';
+            let errorMessage = getApiMessage('bulkUploadFailed');
             try {
               const errorData = JSON.parse(xhr.responseText);
               errorMessage = errorData.detail || errorMessage;
@@ -663,14 +664,14 @@ export function useBulkCreateItems() {
 
         xhr.addEventListener('error', () => {
           if (!navigator.onLine) {
-            reject(new NetworkError('You appear to be offline. Please check your connection.'));
+            reject(new NetworkError(getApiMessage('offline')));
           } else {
-            reject(new NetworkError('Unable to connect to server. Please try again.'));
+            reject(new NetworkError(getApiMessage('unableToConnect')));
           }
         });
 
         xhr.addEventListener('abort', () => {
-          reject(new NetworkError('Upload was cancelled.'));
+          reject(new NetworkError(getApiMessage('uploadCancelled')));
         });
 
         xhr.open('POST', '/api/v1/items/bulk');

@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { useCreateItem, useBulkCreateItems, BulkUploadResponse } from '@/lib/hooks/use-items';
 import { CLOTHING_TYPES, CLOTHING_COLORS } from '@/lib/types';
+import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 
 interface AddItemDialogProps {
   open: boolean;
@@ -52,6 +53,7 @@ interface FileWithPreview {
 export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
   const t = useTranslations('addItem');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
 
   // Single upload state
   const [file, setFile] = useState<File | null>(null);
@@ -303,7 +305,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                     <SelectContent>
                       {CLOTHING_TYPES.map((itemType) => (
                         <SelectItem key={itemType.value} value={itemType.value}>
-                          {itemType.label}
+                          {getClothingTypeLabel(itemType.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -345,7 +347,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                                 className="w-3 h-3 rounded-full border"
                                 style={{ backgroundColor: c.hex }}
                               />
-                              {c.name}
+                              {getClothingColorLabel(c.value, (k) => tt(k as Parameters<typeof tt>[0]))}
                             </div>
                           </SelectItem>
                         ))}

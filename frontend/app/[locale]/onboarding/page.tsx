@@ -34,6 +34,7 @@ import { useCreateItem } from '@/lib/hooks/use-items';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { api, setAccessToken } from '@/lib/api';
 import { CLOTHING_COLORS, CLOTHING_TYPES, StyleProfile } from '@/lib/types';
+import { taxonomyColorKey } from '@/lib/taxonomy-i18n';
 
 const STEPS = [
   { id: 'welcome', titleKey: 'welcome' as const, icon: Shirt },
@@ -426,6 +427,7 @@ function PreferencesStep({ onNext, onSkip }: { onNext: () => void; onSkip: () =>
   const updatePreferences = useUpdatePreferences();
   const t = useTranslations('onboarding');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
 
   const toggleColor = (color: string, list: 'favorite' | 'avoid') => {
     if (list === 'favorite') {
@@ -491,7 +493,7 @@ function PreferencesStep({ onNext, onSkip }: { onNext: () => void; onSkip: () =>
                       : 'border-muted-foreground/20 hover:border-muted-foreground/40'
                   }`}
                   style={{ backgroundColor: color.hex }}
-                  title={color.name}
+                  title={tt(`colors.${taxonomyColorKey(color.value)}` as Parameters<typeof tt>[0])}
                 >
                   {isSelected && (
                     <Check
@@ -529,7 +531,7 @@ function PreferencesStep({ onNext, onSkip }: { onNext: () => void; onSkip: () =>
                       : 'border-muted-foreground/20 hover:border-muted-foreground/40'
                   }`}
                   style={{ backgroundColor: color.hex }}
-                  title={color.name}
+                  title={tt(`colors.${taxonomyColorKey(color.value)}` as Parameters<typeof tt>[0])}
                 >
                   {isSelected && (
                     <span
@@ -595,6 +597,7 @@ function UploadStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
   const createItem = useCreateItem();
   const t = useTranslations('onboarding');
   const tc = useTranslations('common');
+  const tt = useTranslations('taxonomy');
 
   // Clean up blob URL on unmount or when preview changes
   useEffect(() => {
@@ -695,7 +698,7 @@ function UploadStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
                 <SelectContent>
                   {CLOTHING_TYPES.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
-                      {type.label}
+                      {tt(`types.${type.value}` as Parameters<typeof tt>[0])}
                     </SelectItem>
                   ))}
                 </SelectContent>
