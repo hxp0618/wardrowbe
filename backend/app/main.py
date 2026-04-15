@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from app.api.router import api_router
 from app.config import get_settings
 from app.database import engine
-from app.utils.i18n import translate_request
+from app.utils.i18n import translate_request, translate_validation_message
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -61,7 +61,12 @@ async def validation_exception_handler(
     errors = []
     for error in exc.errors():
         field = " -> ".join(str(loc) for loc in error["loc"])
-        errors.append({"field": field, "message": error["msg"]})
+        errors.append(
+            {
+                "field": field,
+                "message": translate_validation_message(error["msg"], request),
+            }
+        )
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -77,7 +82,12 @@ async def pydantic_validation_handler(request: Request, exc: ValidationError) ->
     errors = []
     for error in exc.errors():
         field = " -> ".join(str(loc) for loc in error["loc"])
-        errors.append({"field": field, "message": error["msg"]})
+        errors.append(
+            {
+                "field": field,
+                "message": translate_validation_message(error["msg"], request),
+            }
+        )
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

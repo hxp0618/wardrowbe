@@ -24,6 +24,7 @@ from app.services.notification_providers import (
     NtfyNotification,
     NtfyProvider,
 )
+from app.utils.api_errors import ApiUserError
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ class NotificationService:
             )
         )
         if existing.scalar_one_or_none():
-            raise ValueError(f"Channel {channel} already configured")
+            raise ApiUserError("error.notification_channel_exists", channel=channel)
 
         setting = NotificationSettings(
             user_id=user_id,

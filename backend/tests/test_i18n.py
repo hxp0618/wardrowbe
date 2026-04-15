@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock
 
-from app.utils.i18n import DEFAULT_LOCALE, resolve_locale, translate
+from app.utils.i18n import DEFAULT_LOCALE, resolve_locale, translate, translate_validation_message
 
 
 def test_default_locale_is_chinese():
@@ -35,3 +35,12 @@ def test_learning_interpretation_and_insight_keys():
     assert "喜欢" in translate("zh", "learning.interpretation.liked")
     assert translate("en", "learning.interpretation.liked") == "liked"
     assert "{color}" not in translate("zh", "learning.insight.love_color_title", color="蓝")
+
+
+def test_translate_validation_message_known_strings():
+    req = Mock()
+    req.headers = {}
+    assert "服务器" in translate_validation_message(
+        "Server URL must start with http:// or https://", req
+    )
+    assert "不支持" in translate_validation_message("Unsupported file type: png", req)

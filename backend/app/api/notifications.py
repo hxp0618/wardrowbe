@@ -28,8 +28,9 @@ from app.schemas.notification import (
     TestNotificationResponse,
 )
 from app.services.notification_service import NotificationService
+from app.utils.api_errors import ApiUserError
 from app.utils.auth import get_current_user
-from app.utils.i18n import translate_request
+from app.utils.i18n import translate_request, translate_validation_message
 
 router = APIRouter()
 
@@ -120,6 +121,7 @@ async def list_notification_settings(
 @router.post("/settings", response_model=NotificationSettingsResponse, status_code=201)
 async def create_notification_setting(
     data: NotificationSettingsCreate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -136,7 +138,10 @@ async def create_notification_setting(
 
             ExpoPushConfig(**data.config)
     except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e.errors()[0]["msg"])) from None
+        raise HTTPException(
+            status_code=400,
+            detail=translate_validation_message(str(e.errors()[0]["msg"]), request),
+        ) from None
 
     service = NotificationService(db)
     try:
@@ -149,8 +154,11 @@ async def create_notification_setting(
         )
         await db.commit()
         return setting
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from None
+    except ApiUserError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=translate_request(request, e.message_key, **e.params),
+        ) from None
 
 
 @router.get("/settings/{setting_id}", response_model=NotificationSettingsResponse)
@@ -200,7 +208,10 @@ async def update_notification_setting(
             elif existing.channel == "expo_push":
                 ExpoPushConfig(**data.config)
         except ValidationError as e:
-            raise HTTPException(status_code=400, detail=str(e.errors()[0]["msg"])) from None
+            raise HTTPException(
+                status_code=400,
+                detail=translate_validation_message(str(e.errors()[0]["msg"]), request),
+            ) from None
 
     setting = await service.update_setting(
         setting_id=setting_id,

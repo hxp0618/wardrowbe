@@ -18,7 +18,7 @@ from app.schemas.user import (
 )
 from app.services.user_service import UserEmailConflictError, UserService
 from app.utils.auth import get_current_user
-from app.utils.i18n import translate_request
+from app.utils.i18n import translate_request, translate_validation_message
 from app.utils.oidc import validate_oidc_id_token
 from app.utils.rate_limit import rate_limit_by_ip
 
@@ -151,7 +151,7 @@ async def sync_user(
     except UserEmailConflictError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=str(e),
+            detail=translate_validation_message(str(e), request),
         ) from None
 
     access_token = create_access_token(user.external_id)

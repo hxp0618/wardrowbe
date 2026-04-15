@@ -45,7 +45,7 @@ from app.schemas.item import (
 from app.services.image_service import ImageService
 from app.services.item_service import ItemService
 from app.utils.auth import get_current_user
-from app.utils.i18n import translate_request
+from app.utils.i18n import translate_request, translate_validation_message
 from app.workers.settings import get_redis_settings
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ async def create_item(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
 
     # Parse colors from comma-separated string
@@ -249,7 +249,7 @@ async def bulk_create_items(
                         BulkUploadResult(
                             filename=filename,
                             success=False,
-                            error="Invalid image format. Supported: JPEG, PNG, WebP, HEIC",
+                            error=translate_request(http_request, "error.bulk_invalid_format"),
                         )
                     )
                     failed += 1
@@ -266,7 +266,7 @@ async def bulk_create_items(
                             BulkUploadResult(
                                 filename=filename,
                                 success=False,
-                                error="Duplicate image - already exists in wardrobe",
+                                error=translate_request(http_request, "error.bulk_duplicate_short"),
                             )
                         )
                         failed += 1
@@ -318,7 +318,7 @@ async def bulk_create_items(
                     BulkUploadResult(
                         filename=filename,
                         success=False,
-                        error=str(e),
+                        error=translate_validation_message(str(e), http_request),
                     )
                 )
                 failed += 1
@@ -328,7 +328,7 @@ async def bulk_create_items(
                     BulkUploadResult(
                         filename=filename,
                         success=False,
-                        error="Failed to process image",
+                        error=translate_request(http_request, "error.bulk_process_failed"),
                     )
                 )
                 failed += 1
@@ -883,7 +883,7 @@ async def rotate_item_image(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
     except Exception as e:
         logger.error(f"Failed to rotate image: {e}")
@@ -933,7 +933,7 @@ async def remove_item_background(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
     except Exception as e:
         logger.error(f"Failed to remove background: {e}")
@@ -995,7 +995,7 @@ async def add_item_image(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
 
     item_image = ItemImage(

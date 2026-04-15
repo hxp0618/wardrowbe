@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi import Request
 
 # Keys used with translate(); keep in sync across locales.
@@ -102,6 +104,27 @@ MESSAGES_ZH: dict[str, str] = {
     "learning.insight.help_learn_desc": "你拒绝了不少推荐，可以更新偏好设置以帮助我们改进。",
     "learning.insight.style_pattern_title": "你的风格：{style}",
     "learning.insight.style_pattern_desc": "根据你的反馈，你更偏向 {styles} 等风格。",
+    "validation.ntfy_server_scheme": "服务器地址必须以 http:// 或 https:// 开头。",
+    "validation.ntfy_server_max_len": "服务器地址不能超过 500 个字符。",
+    "validation.ntfy_topic_min_len": "主题至少需要 3 个字符。",
+    "validation.ntfy_topic_chars": "主题只能包含字母、数字、连字符和下划线。",
+    "validation.mattermost_https": "Webhook 地址必须使用 HTTPS。",
+    "validation.mattermost_webhook_format": "Mattermost Webhook 地址格式无效。",
+    "validation.email_invalid": "邮箱地址格式无效。",
+    "validation.expo_token_invalid": "Expo 推送令牌格式无效。",
+    "validation.day_of_week_range": "星期几必须是 0–6（周一至周日）。",
+    "validation.notification_time_format": "提醒时间必须为 HH:MM 格式。",
+    "validation.bulk_select_required": "必须提供 item_ids，或设置 select_all=true。",
+    "validation.bulk_select_exclusive": "不能同时使用 item_ids 与 select_all。",
+    "error.unsupported_file_type": "不支持的文件类型：{ext}",
+    "error.image_file_missing": "找不到图片文件。",
+    "error.email_update_conflict": "无法将邮箱更新为 {email}：该邮箱已被其他账号使用。",
+    "error.notification_channel_exists": "已配置 {channel} 通道，请勿重复添加。",
+    "error.bulk_invalid_format": "图片格式无效。支持：JPEG、PNG、WebP、HEIC。",
+    "error.bulk_duplicate_short": "重复图片，衣橱中已存在。",
+    "error.bulk_process_failed": "处理图片失败。",
+    "error.ai_parse_json_failed": "无法解析 AI 返回的 JSON。",
+    "error.ai_response_not_dict": "AI 返回格式应为对象，但实际不是。",
 }
 
 MESSAGES_EN: dict[str, str] = {
@@ -204,6 +227,27 @@ MESSAGES_EN: dict[str, str] = {
     "learning.insight.help_learn_desc": "You've rejected many suggestions. Consider updating your preferences to help us improve.",
     "learning.insight.style_pattern_title": "Your style: {style}",
     "learning.insight.style_pattern_desc": "Based on your feedback, you gravitate towards {styles} styles.",
+    "validation.ntfy_server_scheme": "Server URL must start with http:// or https://",
+    "validation.ntfy_server_max_len": "Server URL must be 500 characters or fewer",
+    "validation.ntfy_topic_min_len": "Topic must be at least 3 characters",
+    "validation.ntfy_topic_chars": "Topic can only contain letters, numbers, - and _",
+    "validation.mattermost_https": "Webhook URL must use HTTPS",
+    "validation.mattermost_webhook_format": "Invalid Mattermost webhook URL format",
+    "validation.email_invalid": "Invalid email address",
+    "validation.expo_token_invalid": "Invalid Expo push token format",
+    "validation.day_of_week_range": "day_of_week must be 0-6 (Monday-Sunday)",
+    "validation.notification_time_format": "notification_time must be in HH:MM format",
+    "validation.bulk_select_required": "Either item_ids or select_all=True must be provided",
+    "validation.bulk_select_exclusive": "Cannot use both item_ids and select_all",
+    "error.unsupported_file_type": "Unsupported file type: {ext}",
+    "error.image_file_missing": "Image file not found.",
+    "error.email_update_conflict": "Cannot update email to {email}: already in use by another account.",
+    "error.notification_channel_exists": "Channel {channel} is already configured",
+    "error.bulk_invalid_format": "Invalid image format. Supported: JPEG, PNG, WebP, HEIC",
+    "error.bulk_duplicate_short": "Duplicate image — already exists in wardrobe",
+    "error.bulk_process_failed": "Failed to process image",
+    "error.ai_parse_json_failed": "Could not parse AI response as JSON.",
+    "error.ai_response_not_dict": "Expected dict from AI response.",
 }
 
 LOCALES: dict[str, dict[str, str]] = {
@@ -244,3 +288,51 @@ def translate(locale: str, key: str, **kwargs: object) -> str:
 
 def translate_request(request: Request | None, key: str, **kwargs: object) -> str:
     return translate(resolve_locale(request), key, **kwargs)
+
+
+# Map exact English strings from Pydantic validators to i18n keys
+_VALIDATION_MSG_TO_KEY: dict[str, str] = {
+    "Server URL must start with http:// or https://": "validation.ntfy_server_scheme",
+    "Server URL must be 500 characters or fewer": "validation.ntfy_server_max_len",
+    "Topic must be at least 3 characters": "validation.ntfy_topic_min_len",
+    "Topic can only contain letters, numbers, - and _": "validation.ntfy_topic_chars",
+    "Webhook URL must use HTTPS": "validation.mattermost_https",
+    "Invalid Mattermost webhook URL format": "validation.mattermost_webhook_format",
+    "Invalid email address": "validation.email_invalid",
+    "Invalid Expo push token format": "validation.expo_token_invalid",
+    "day_of_week must be 0-6 (Monday-Sunday)": "validation.day_of_week_range",
+    "notification_time must be in HH:MM format": "validation.notification_time_format",
+    "Either item_ids or select_all=True must be provided": "validation.bulk_select_required",
+    "Cannot use both item_ids and select_all": "validation.bulk_select_exclusive",
+}
+
+_INVALID_OCCASION_RE = re.compile(r"^Invalid occasion\. Must be one of: (.+)$", re.DOTALL)
+_CHANNEL_CONFIGURED_RE = re.compile(r"^Channel (\w+) already configured$")
+
+
+def translate_validation_message(msg: str, request: Request | None) -> str:
+    """Translate known English validation / ValueError messages; pass through unknown."""
+    locale = resolve_locale(request)
+    s = msg.strip()
+    if s in _VALIDATION_MSG_TO_KEY:
+        return translate(locale, _VALIDATION_MSG_TO_KEY[s])
+    m = _INVALID_OCCASION_RE.match(s)
+    if m:
+        return translate(locale, "error.invalid_occasion", occasions=m.group(1).strip())
+    if s.startswith("Unsupported file type: "):
+        ext = s.split(": ", 1)[-1]
+        return translate(locale, "error.unsupported_file_type", ext=ext)
+    if s.startswith("Image not found: "):
+        return translate(locale, "error.image_file_missing")
+    m_ch = _CHANNEL_CONFIGURED_RE.match(s)
+    if m_ch:
+        return translate(locale, "error.notification_channel_exists", channel=m_ch.group(1))
+    if s.startswith("Cannot update email to ") and "already in use" in s:
+        rest = s.removeprefix("Cannot update email to ")
+        email_part = rest.split(":", 1)[0].strip()
+        return translate(locale, "error.email_update_conflict", email=email_part)
+    if s.startswith("Could not parse AI response as JSON"):
+        return translate(locale, "error.ai_parse_json_failed")
+    if s.startswith("Expected dict, got"):
+        return translate(locale, "error.ai_response_not_dict")
+    return msg
