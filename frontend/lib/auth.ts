@@ -2,6 +2,8 @@ import { NextAuthOptions } from 'next-auth';
 import type { OAuthConfig } from 'next-auth/providers/oauth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
+import { buildOidcWellKnownUrl } from '@/lib/oidc';
+
 interface OIDCProfile {
   sub: string;
   name?: string;
@@ -14,7 +16,7 @@ const OIDCProvider: OAuthConfig<OIDCProfile> = {
   id: 'oidc',
   name: 'SSO',
   type: 'oauth',
-  wellKnown: `${process.env.OIDC_ISSUER_URL}/.well-known/openid-configuration`,
+  wellKnown: buildOidcWellKnownUrl(process.env.OIDC_ISSUER_URL || ''),
   clientId: process.env.OIDC_CLIENT_ID!,
   clientSecret: process.env.OIDC_CLIENT_SECRET!,
   authorization: {

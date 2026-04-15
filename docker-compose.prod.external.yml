@@ -39,6 +39,8 @@ services:
       OIDC_SKIP_SSL_VERIFY: ${OIDC_SKIP_SSL_VERIFY:-false}
     volumes:
       - uploads_data:/data/uploads
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     dns:
       - ${LOCAL_DNS:-8.8.8.8}
       - 8.8.8.8
@@ -113,6 +115,8 @@ services:
       OIDC_END_SESSION_URL: ${OIDC_END_SESSION_URL:-}
       # Trust self-signed certs for internal OIDC provider
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3100}:3000"
     depends_on:
       - backend
     healthcheck:
