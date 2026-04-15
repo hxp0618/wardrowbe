@@ -14,7 +14,7 @@ from app.models.user import User
 from app.services.pairing_service import PairingService
 from app.utils.api_errors import ApiUserError
 from app.utils.auth import get_current_user
-from app.utils.i18n import translate_request
+from app.utils.i18n import translate_request, translate_validation_message
 from app.utils.signed_urls import sign_image_url
 
 logger = logging.getLogger(__name__)
@@ -236,7 +236,7 @@ async def generate_pairings(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
 
     return GeneratePairingsResponse(

@@ -2,7 +2,7 @@ import re
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.models import User
 from app.services.family_service import FamilyService
 from app.services.image_service import ImageService
 from app.utils.auth import get_current_user_optional
+from app.utils.i18n import translate_request
 from app.utils.signed_urls import verify_signature
 
 router = APIRouter(prefix="/images", tags=["Images"])
@@ -20,6 +21,7 @@ FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$")
 
 @router.get("/{user_id}/{filename}")
 async def get_image(
+    request: Request,
     user_id: str,
     filename: str,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -32,13 +34,13 @@ async def get_image(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid user ID format",
+            detail=translate_request(request, "error.invalid_user_id_format"),
         ) from e
 
     if not FILENAME_PATTERN.match(filename):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filename format",
+            detail=translate_request(request, "error.invalid_filename_format"),
         )
 
     path = f"{user_id}/{filename}"
@@ -61,7 +63,7 @@ async def get_image(
     if not can_access:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access denied",
+            detail=translate_request(request, "error.access_denied"),
         )
 
     image_service = ImageService()
@@ -70,13 +72,13 @@ async def get_image(
     if not image_path.resolve().is_relative_to(image_service.storage_path.resolve()):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid path",
+            detail=translate_request(request, "error.invalid_image_path"),
         )
 
     if not image_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image not found",
+            detail=translate_request(request, "error.image_not_found"),
         )
 
     ext = filename.rsplit(".", 1)[-1].lower()

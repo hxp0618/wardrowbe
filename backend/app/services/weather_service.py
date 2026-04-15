@@ -7,6 +7,7 @@ import httpx
 import redis.asyncio as aioredis
 
 from app.config import get_settings
+from app.utils.api_errors import ApiUserError
 from app.utils.redis_lock import get_redis
 
 logger = logging.getLogger(__name__)
@@ -130,9 +131,9 @@ class WeatherService:
     def _validate_coordinates(self, latitude: float, longitude: float) -> None:
         """Validate latitude and longitude bounds."""
         if not -90 <= latitude <= 90:
-            raise ValueError(f"Invalid latitude {latitude}: must be between -90 and 90")
+            raise ApiUserError("error.weather_latitude_range", value=str(latitude))
         if not -180 <= longitude <= 180:
-            raise ValueError(f"Invalid longitude {longitude}: must be between -180 and 180")
+            raise ApiUserError("error.weather_longitude_range", value=str(longitude))
 
     def _interpret_weather_code(self, code: int) -> str:
         """Convert WMO weather code to human-readable condition."""

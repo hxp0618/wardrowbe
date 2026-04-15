@@ -640,6 +640,8 @@ class RecommendationService:
                 weather = await self.weather_service.get_current_weather(
                     float(user.location_lat), float(user.location_lon)
                 )
+            except ApiUserError:
+                raise
             except WeatherServiceError as e:
                 logger.error(f"Weather service failed: {e}")
                 raise ApiUserError("error.weather_fetch_failed") from e

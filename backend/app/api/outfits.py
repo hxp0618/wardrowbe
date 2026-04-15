@@ -19,7 +19,7 @@ from app.services.suggestion_cache import clear_suggestions
 from app.services.weather_service import WeatherData
 from app.utils.api_errors import ApiUserError
 from app.utils.auth import get_current_user
-from app.utils.i18n import translate_request
+from app.utils.i18n import translate_request, translate_validation_message
 from app.utils.rate_limit import rate_limit_by_user
 from app.utils.signed_urls import sign_image_url
 from app.utils.timezone import get_user_today
@@ -324,7 +324,25 @@ async def suggest_outfit(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OutfitResponse:
-    await rate_limit_by_user(current_user.id, "suggest", 10, 60)
+    await rate_limit_by_user(current_user.id, http_request, "suggest", 10, 60)
+
+    occasion = request.occasion
+    if occasion is not None:
+        occasion = occasion.strip().lower()
+        if len(occasion) > 50:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=translate_request(http_request, "error.occasion_too_long"),
+            )
+        if occasion not in VALID_OCCASIONS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=translate_request(
+                    http_request,
+                    "error.invalid_occasion",
+                    occasions=", ".join(sorted(VALID_OCCASIONS)),
+                ),
+            )
 
     occasion = request.occasion
     if occasion is not None:
@@ -389,7 +407,7 @@ async def suggest_outfit(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
 
     # Fetch wore_instead items for this single outfit

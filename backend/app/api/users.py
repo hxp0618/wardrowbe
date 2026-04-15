@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.user import User
 from app.services.user_service import UserService
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 
 router = APIRouter(prefix="/users/me", tags=["Users"])
 
@@ -51,6 +52,7 @@ async def get_profile(
 @router.patch("", response_model=UserProfileResponse)
 async def update_profile(
     data: UserProfileUpdate,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserProfileResponse:
@@ -62,7 +64,9 @@ async def update_profile(
             if key in numeric_keys and isinstance(value, (int, float)) and value <= 0:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=f"{key} must be a positive number",
+                    detail=translate_request(
+                        http_request, "error.body_measurement_positive", field=key
+                    ),
                 )
 
     for field, value in update_data.items():

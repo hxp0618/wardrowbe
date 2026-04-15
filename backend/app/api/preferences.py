@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -11,6 +11,7 @@ from app.models.user import User
 from app.schemas.preference import PreferenceResponse, PreferenceUpdate
 from app.services.preference_service import PreferenceService
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 
 router = APIRouter(prefix="/users/me/preferences", tags=["Preferences"])
 
@@ -114,20 +115,21 @@ async def remove_excluded_item(
 @router.post("/test-ai-endpoint", response_model=dict)
 async def test_ai_endpoint(
     data: dict,
+    http_request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
     url = data.get("url", "").rstrip("/")
     if not url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="URL is required",
+            detail=translate_request(http_request, "error.url_required"),
         )
 
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only HTTP and HTTPS URLs are allowed",
+            detail=translate_request(http_request, "error.url_http_https_only"),
         )
 
     try:

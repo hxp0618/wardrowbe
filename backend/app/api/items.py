@@ -6,7 +6,17 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from arq import create_pool
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -35,6 +45,7 @@ from app.schemas.item import (
 from app.services.image_service import ImageService
 from app.services.item_service import ItemService
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request, translate_validation_message
 from app.workers.settings import get_redis_settings
 
 logger = logging.getLogger(__name__)
@@ -94,6 +105,7 @@ async def list_items(
 
 @router.post("", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
 async def create_item(
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     image: UploadFile = File(...),
@@ -116,7 +128,7 @@ async def create_item(
     if not image_service.validate_image(content, content_type):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image file. Supported formats: JPEG, PNG, WebP, HEIC",
+            detail=translate_request(http_request, "error.invalid_image_format"),
         )
 
     # Compute hash and check for duplicates BEFORE storing
@@ -126,7 +138,9 @@ async def create_item(
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Duplicate image detected. This item already exists in your wardrobe (ID: {existing.id})",
+                detail=translate_request(
+                    http_request, "error.duplicate_image_item", item_id=str(existing.id)
+                ),
             )
     except HTTPException:
         raise
@@ -144,7 +158,7 @@ async def create_item(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
 
     # Parse colors from comma-separated string
@@ -191,6 +205,7 @@ async def create_item(
 
 @router.post("/bulk", response_model=BulkUploadResponse, status_code=status.HTTP_201_CREATED)
 async def bulk_create_items(
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     images: list[UploadFile] = File(..., description="Multiple image files to upload"),
@@ -198,13 +213,13 @@ async def bulk_create_items(
     if len(images) > 20:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Maximum 20 images per bulk upload",
+            detail=translate_request(http_request, "error.bulk_max_20_images"),
         )
 
     if len(images) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one image is required",
+            detail=translate_request(http_request, "error.bulk_at_least_one_image"),
         )
 
     image_service = ImageService()
@@ -234,7 +249,7 @@ async def bulk_create_items(
                         BulkUploadResult(
                             filename=filename,
                             success=False,
-                            error="Invalid image format. Supported: JPEG, PNG, WebP, HEIC",
+                            error=translate_request(http_request, "error.bulk_invalid_format"),
                         )
                     )
                     failed += 1
@@ -251,7 +266,7 @@ async def bulk_create_items(
                             BulkUploadResult(
                                 filename=filename,
                                 success=False,
-                                error="Duplicate image - already exists in wardrobe",
+                                error=translate_request(http_request, "error.bulk_duplicate_short"),
                             )
                         )
                         failed += 1
@@ -303,7 +318,7 @@ async def bulk_create_items(
                     BulkUploadResult(
                         filename=filename,
                         success=False,
-                        error=str(e),
+                        error=translate_validation_message(str(e), http_request),
                     )
                 )
                 failed += 1
@@ -313,7 +328,7 @@ async def bulk_create_items(
                     BulkUploadResult(
                         filename=filename,
                         success=False,
-                        error="Failed to process image",
+                        error=translate_request(http_request, "error.bulk_process_failed"),
                     )
                 )
                 failed += 1
@@ -386,7 +401,8 @@ async def bulk_delete_items(
 
 @router.post("/bulk/analyze", response_model=BulkAnalyzeResponse)
 async def bulk_analyze_items(
-    request: BulkAnalyzeRequest,
+    body: BulkAnalyzeRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> BulkAnalyzeResponse:
@@ -398,19 +414,19 @@ async def bulk_analyze_items(
     errors: list[str] = []
 
     # Get item IDs to analyze
-    if request.select_all:
+    if body.select_all:
         item_ids = await item_service.get_ids_by_filter(
             user_id=current_user.id,
-            type_filter=request.filters.type if request.filters else None,
-            search=request.filters.search if request.filters else None,
-            is_archived=request.filters.is_archived
-            if request.filters and request.filters.is_archived is not None
+            type_filter=body.filters.type if body.filters else None,
+            search=body.filters.search if body.filters else None,
+            is_archived=body.filters.is_archived
+            if body.filters and body.filters.is_archived is not None
             else False,
-            excluded_ids=list(request.excluded_ids) if request.excluded_ids else None,
+            excluded_ids=list(body.excluded_ids) if body.excluded_ids else None,
         )
         logger.info(f"Bulk analyze select_all: {len(item_ids)} items to analyze")
     else:
-        item_ids = request.item_ids or []
+        item_ids = body.item_ids or []
 
     # Collect valid items first
     items_to_process = []
@@ -439,7 +455,7 @@ async def bulk_analyze_items(
         await db.commit()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to connect to job queue",
+            detail=translate_request(http_request, "error.job_queue_connect_failed"),
         ) from None
 
     try:
@@ -489,6 +505,7 @@ async def get_color_distribution(
 @router.get("/{item_id}", response_model=ItemResponse)
 async def get_item(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ItemResponse:
@@ -498,7 +515,7 @@ async def get_item(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     return ItemResponse.model_validate(item)
@@ -508,6 +525,7 @@ async def get_item(
 async def update_item(
     item_id: UUID,
     item_data: ItemUpdate,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ItemResponse:
@@ -517,7 +535,7 @@ async def update_item(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     item = await item_service.update(item, item_data)
@@ -527,6 +545,7 @@ async def update_item(
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_item(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
@@ -536,7 +555,7 @@ async def delete_item(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     # Delete images
@@ -556,6 +575,7 @@ async def delete_item(
 async def archive_item(
     item_id: UUID,
     request: ArchiveRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ItemResponse:
@@ -565,7 +585,7 @@ async def archive_item(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     item = await item_service.archive(item, request.reason)
@@ -575,6 +595,7 @@ async def archive_item(
 @router.post("/{item_id}/restore", response_model=ItemResponse)
 async def restore_item(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ItemResponse:
@@ -584,7 +605,7 @@ async def restore_item(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     item = await item_service.restore(item)
@@ -595,6 +616,7 @@ async def restore_item(
 async def log_item_wear(
     item_id: UUID,
     request: LogWearRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ItemResponse:
@@ -604,7 +626,7 @@ async def log_item_wear(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     # Use user's timezone to determine today if worn_at not provided
@@ -632,6 +654,7 @@ async def log_item_wear(
 @router.get("/{item_id}/history")
 async def get_item_history(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     limit: int = Query(10, ge=1, le=100),
@@ -648,7 +671,7 @@ async def get_item_history(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     # Eagerly load outfit and its items for context
@@ -699,6 +722,7 @@ async def get_item_history(
 @router.get("/{item_id}/wear-stats")
 async def get_item_wear_stats(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
@@ -708,7 +732,7 @@ async def get_item_wear_stats(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     return await item_service.get_wear_stats(item, current_user.timezone or "UTC")
@@ -717,7 +741,8 @@ async def get_item_wear_stats(
 @router.post("/{item_id}/wash", response_model=ItemResponse)
 async def log_item_wash(
     item_id: UUID,
-    request: LogWashRequest,
+    wash_body: LogWashRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ItemResponse:
@@ -727,30 +752,30 @@ async def log_item_wash(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     if item.wears_since_wash == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Item is already clean (0 wears since last wash)",
+            detail=translate_request(http_request, "error.item_already_clean"),
         )
 
     # Use user's timezone to determine today if washed_at not provided
-    if request.washed_at is None:
+    if wash_body.washed_at is None:
         try:
             user_tz = ZoneInfo(current_user.timezone or "UTC")
         except Exception:
             user_tz = ZoneInfo("UTC")
         washed_at = datetime.now(UTC).astimezone(user_tz).date()
     else:
-        washed_at = request.washed_at
+        washed_at = wash_body.washed_at
 
     await item_service.log_wash(
         item=item,
         washed_at=washed_at,
-        method=request.method,
-        notes=request.notes,
+        method=wash_body.method,
+        notes=wash_body.notes,
     )
 
     await db.refresh(item)
@@ -760,6 +785,7 @@ async def log_item_wash(
 @router.get("/{item_id}/wash-history", response_model=list[WashHistoryResponse])
 async def get_item_wash_history(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     limit: int = Query(10, ge=1, le=100),
@@ -770,7 +796,7 @@ async def get_item_wash_history(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     history = await item_service.get_wash_history(item_id, limit)
@@ -780,6 +806,7 @@ async def get_item_wash_history(
 @router.post("/{item_id}/analyze", response_model=dict)
 async def trigger_ai_analysis(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
@@ -789,7 +816,7 @@ async def trigger_ai_analysis(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     try:
@@ -816,13 +843,14 @@ async def trigger_ai_analysis(
         logger.error(f"Failed to queue AI analysis job: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to queue AI analysis",
+            detail=translate_request(http_request, "error.queue_ai_analysis_failed"),
         ) from None
 
 
 @router.post("/{item_id}/rotate", response_model=ItemResponse)
 async def rotate_item_image(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     direction: str = Query(
@@ -837,13 +865,13 @@ async def rotate_item_image(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     if not item.image_path:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Item has no image",
+            detail=translate_request(http_request, "error.item_no_image"),
         )
 
     try:
@@ -855,20 +883,21 @@ async def rotate_item_image(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
     except Exception as e:
         logger.error(f"Failed to rotate image: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to rotate image",
+            detail=translate_request(http_request, "error.rotate_image_failed"),
         ) from None
 
 
 @router.post("/{item_id}/remove-background", response_model=ItemResponse)
 async def remove_item_background(
     item_id: UUID,
-    request: RemoveBackgroundRequest,
+    bg_request: RemoveBackgroundRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ItemResponse:
@@ -878,16 +907,16 @@ async def remove_item_background(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     if not item.image_path:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Item has no image",
+            detail=translate_request(http_request, "error.item_no_image"),
         )
 
-    hex_color = request.bg_color.lstrip("#")
+    hex_color = bg_request.bg_color.lstrip("#")
     bg_color = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
     try:
@@ -899,20 +928,18 @@ async def remove_item_background(
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Background removal provider not available. "
-            "For rembg: pip install rembg[cpu]. "
-            "For HTTP provider: set BG_REMOVAL_PROVIDER=http and BG_REMOVAL_URL.",
+            detail=translate_request(http_request, "error.bg_removal_not_available"),
         ) from None
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
     except Exception as e:
         logger.error(f"Failed to remove background: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to remove background",
+            detail=translate_request(http_request, "error.remove_background_failed"),
         ) from None
 
 
@@ -921,6 +948,7 @@ async def remove_item_background(
 )
 async def add_item_image(
     item_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     image: UploadFile = File(...),
@@ -933,7 +961,7 @@ async def add_item_image(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     # Check max images limit
@@ -944,7 +972,7 @@ async def add_item_image(
     if current_count >= 4:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Maximum of 4 additional images per item",
+            detail=translate_request(http_request, "error.max_additional_images"),
         )
 
     # Process image
@@ -955,7 +983,7 @@ async def add_item_image(
     if not image_service_inst.validate_image(content, content_type):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image file. Supported formats: JPEG, PNG, WebP, HEIC",
+            detail=translate_request(http_request, "error.invalid_image_format"),
         )
 
     try:
@@ -967,7 +995,7 @@ async def add_item_image(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=translate_validation_message(str(e), http_request),
         ) from None
 
     item_image = ItemImage(
@@ -988,6 +1016,7 @@ async def add_item_image(
 async def delete_item_image(
     item_id: UUID,
     image_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
@@ -1001,7 +1030,7 @@ async def delete_item_image(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     result = await db.execute(
@@ -1012,7 +1041,7 @@ async def delete_item_image(
     if not item_image:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image not found",
+            detail=translate_request(http_request, "error.image_not_found"),
         )
 
     # Delete image files
@@ -1032,7 +1061,8 @@ async def delete_item_image(
 @router.patch("/{item_id}/images/reorder", response_model=list[ItemImageResponse])
 async def reorder_item_images(
     item_id: UUID,
-    request: ReorderImagesRequest,
+    body: ReorderImagesRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> list[ItemImageResponse]:
@@ -1046,13 +1076,13 @@ async def reorder_item_images(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     result = await db.execute(select(ItemImage).where(ItemImage.item_id == item_id))
     images = {img.id: img for img in result.scalars().all()}
 
-    for position, img_id in enumerate(request.image_ids):
+    for position, img_id in enumerate(body.image_ids):
         if img_id in images:
             images[img_id].position = position
 
@@ -1067,6 +1097,7 @@ async def reorder_item_images(
 async def set_primary_image(
     item_id: UUID,
     image_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ItemResponse:
@@ -1080,7 +1111,7 @@ async def set_primary_image(
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found",
+            detail=translate_request(http_request, "error.item_not_found"),
         )
 
     result = await db.execute(
@@ -1091,7 +1122,7 @@ async def set_primary_image(
     if not item_image:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image not found",
+            detail=translate_request(http_request, "error.image_not_found"),
         )
 
     # Swap paths: current primary -> additional, additional -> primary

@@ -144,11 +144,15 @@ class TestValidateCoordinates:
         weather_service._validate_coordinates(40.71, -74.01)
 
     def test_invalid_latitude(self, weather_service):
-        with pytest.raises(ValueError, match="Invalid latitude"):
+        from app.utils.api_errors import ApiUserError
+
+        with pytest.raises(ApiUserError):
             weather_service._validate_coordinates(91.0, 0.0)
 
     def test_invalid_longitude(self, weather_service):
-        with pytest.raises(ValueError, match="Invalid longitude"):
+        from app.utils.api_errors import ApiUserError
+
+        with pytest.raises(ApiUserError):
             weather_service._validate_coordinates(0.0, 181.0)
 
     def test_boundary_values(self, weather_service):
@@ -212,7 +216,9 @@ class TestGetCurrentWeather:
 
     @pytest.mark.asyncio
     async def test_raises_on_invalid_coordinates(self, weather_service):
-        with pytest.raises(ValueError):
+        from app.utils.api_errors import ApiUserError
+
+        with pytest.raises(ApiUserError):
             await weather_service.get_current_weather(100.0, 0.0)
 
     @pytest.mark.asyncio
