@@ -19,8 +19,8 @@ docker compose exec backend alembic upgrade head
 curl http://localhost:8000/api/v1/health
 ```
 
-- Frontend: http://localhost:3000
-- Backend API / Swagger: http://localhost:8000/docs
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- Backend API / Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
 - Dev login requires `SECRET_KEY=change-me-in-production` **and** `DEBUG=true` in `.env`. If you override `SECRET_KEY`, dev credential login will not activate — this is a known gotcha.
 
 ### Running lint
@@ -40,3 +40,4 @@ curl http://localhost:8000/api/v1/health
 - Docker daemon must be started with `sudo dockerd` in the cloud VM (it does not auto-start). After starting, `chmod 666 /var/run/docker.sock` allows non-root Docker access.
 - Node.js 20 is required for the frontend (use nvm: `nvm use 20`).
 - The `AI_BASE_URL` in `.env.example` points to Ollama on the host (`host.docker.internal:11434`). AI features won't work without a configured AI service, but the app runs fine without it.
+
