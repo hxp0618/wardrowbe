@@ -25,8 +25,16 @@ from app.services.notification_providers import (
     NtfyProvider,
 )
 from app.utils.api_errors import ApiUserError
+from app.utils.i18n import translate, translate_validation_message
 
 logger = logging.getLogger(__name__)
+
+# Worker/dispatcher messages default to Chinese (no HTTP Accept-Language).
+_DISPATCH_LOCALE = "zh"
+
+
+def _dispatch_msg(key: str, **kwargs: object) -> str:
+    return translate(_DISPATCH_LOCALE, key, **kwargs)
 
 
 class DeliveryStatus(StrEnum):
@@ -133,7 +141,7 @@ class NotificationService:
     async def test_setting(self, setting_id: UUID, user_id: UUID) -> tuple[bool, str]:
         setting = await self.get_setting_by_id(setting_id, user_id)
         if not setting:
-            return False, "Setting not found"
+            return False, translate(_DISPATCH_LOCALE, "error.notification_setting_not_found")
 
         try:
             if setting.channel == "ntfy":
@@ -153,11 +161,13 @@ class NotificationService:
                     ExpoPushConfig(**setting.config)
                 ).test_connection()
             else:
-                return False, f"Unknown channel: {setting.channel}"
+                return False, _dispatch_msg(
+                    "notification.dispatch.unknown_channel", channel=setting.channel
+                )
 
             return success, message
         except Exception as e:
-            return False, str(e)
+            return False, translate_validation_message(str(e), None)
 
 
 class NotificationDispatcher:
@@ -174,7 +184,7 @@ class NotificationDispatcher:
         )
         user = user_result.scalar_one_or_none()
         if not user:
-            raise ValueError("User not found")
+            raise ApiUserError("notification.dispatch.user_not_found")
 
         # Get outfit with items loaded
         outfit_result = await self.db.execute(
@@ -184,7 +194,7 @@ class NotificationDispatcher:
         )
         outfit = outfit_result.scalar_one_or_none()
         if not outfit:
-            raise ValueError("Outfit not found")
+            raise ApiUserError("notification.dispatch.outfit_not_found")
 
         # Get enabled channels sorted by priority
         channels_result = await self.db.execute(
@@ -204,7 +214,7 @@ class NotificationDispatcher:
                 NotificationResult(
                     channel="none",
                     status=DeliveryStatus.FAILED,
-                    error="No notification channels configured",
+                    error=_dispatch_msg("notification.dispatch.no_channels"),
                 )
             ]
 
@@ -264,7 +274,7 @@ class NotificationDispatcher:
             return NotificationResult(
                 channel=notification.channel,
                 status=DeliveryStatus.FAILED,
-                error="User not found",
+                error=_dispatch_msg("notification.dispatch.user_not_found"),
             )
 
         # Get outfit with items loaded
@@ -278,7 +288,7 @@ class NotificationDispatcher:
             return NotificationResult(
                 channel=notification.channel,
                 status=DeliveryStatus.FAILED,
-                error="Outfit not found",
+                error=_dispatch_msg("notification.dispatch.outfit_not_found"),
             )
 
         # Get the channel config for this notification's channel
@@ -296,7 +306,9 @@ class NotificationDispatcher:
             return NotificationResult(
                 channel=notification.channel,
                 status=DeliveryStatus.FAILED,
-                error=f"Channel {notification.channel} not configured or disabled",
+                error=_dispatch_msg(
+                    "notification.dispatch.channel_disabled", channel=notification.channel
+                ),
             )
 
         # Attempt to send
@@ -334,7 +346,9 @@ class NotificationDispatcher:
                 return NotificationResult(
                     channel=channel_config.channel,
                     status=DeliveryStatus.FAILED,
-                    error=f"Unknown channel: {channel_config.channel}",
+                    error=_dispatch_msg(
+                        "notification.dispatch.unknown_channel", channel=channel_config.channel
+                    ),
                 )
 
             if result.get("success"):
@@ -355,7 +369,7 @@ class NotificationDispatcher:
             return NotificationResult(
                 channel=channel_config.channel,
                 status=DeliveryStatus.FAILED,
-                error=str(e),
+                error=translate_validation_message(str(e), None),
             )
 
     def _build_ntfy_notification(

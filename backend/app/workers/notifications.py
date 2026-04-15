@@ -25,6 +25,7 @@ from app.services.notification_providers import (
 from app.services.notification_service import DeliveryStatus, NotificationDispatcher
 from app.services.recommendation_service import RecommendationService
 from app.services.weather_service import WeatherService
+from app.utils.api_errors import ApiUserError
 from app.utils.redis_lock import distributed_lock
 from app.workers.db import get_db_session
 
@@ -57,7 +58,16 @@ async def send_notification(ctx: dict, user_id: str, outfit_id: str):
         app_url = os.getenv("APP_URL", "http://localhost:3000")
         dispatcher = NotificationDispatcher(db, app_url)
 
-        results = await dispatcher.send_outfit_notification(user_id=user_id, outfit_id=outfit_id)
+        try:
+            results = await dispatcher.send_outfit_notification(
+                user_id=user_id, outfit_id=outfit_id
+            )
+        except ApiUserError as e:
+            from app.utils.i18n import translate
+
+            msg = translate("zh", e.message_key, **e.params)
+            logger.warning("send_outfit_notification failed: %s", msg)
+            return {"success": False, "error": msg}
 
         await db.commit()
 
@@ -220,11 +230,18 @@ async def process_scheduled_notification(ctx: dict, schedule_id: str):
 
         app_url = os.getenv("APP_URL", "http://localhost:3000")
         dispatcher = NotificationDispatcher(db, app_url)
-        await dispatcher.send_outfit_notification(
-            user_id=str(user.id),
-            outfit_id=str(outfit.id),
-            for_tomorrow=is_for_tomorrow,
-        )
+        try:
+            await dispatcher.send_outfit_notification(
+                user_id=str(user.id),
+                outfit_id=str(outfit.id),
+                for_tomorrow=is_for_tomorrow,
+            )
+        except ApiUserError as e:
+            from app.utils.i18n import translate
+
+            msg = translate("zh", e.message_key, **e.params)
+            logger.warning("send_outfit_notification failed for schedule %s: %s", schedule_id, msg)
+            return {"status": "skipped", "reason": msg}
 
         await db.commit()
 

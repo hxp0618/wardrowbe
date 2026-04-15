@@ -64,16 +64,13 @@ async def get_auth_config() -> AuthConfigResponse:
 
 
 @router.get("/status", response_model=AuthStatusResponse)
-async def auth_status() -> AuthStatusResponse:
+async def auth_status(http_request: Request) -> AuthStatusResponse:
     mode = settings.get_auth_mode()
     if mode == "unknown":
         return AuthStatusResponse(
             configured=False,
             mode=mode,
-            error=(
-                "No authentication method configured. "
-                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or enable DEBUG mode."
-            ),
+            error=translate_request(http_request, "auth.status_no_method_configured"),
         )
     return AuthStatusResponse(configured=True, mode=mode)
 
@@ -110,7 +107,7 @@ async def sync_user(
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=str(e),
+                detail=translate_validation_message(str(e), request),
             ) from None
 
         if oidc_claims.get("sub") != sync_data.external_id:

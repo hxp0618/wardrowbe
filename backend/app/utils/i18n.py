@@ -125,6 +125,17 @@ MESSAGES_ZH: dict[str, str] = {
     "error.bulk_process_failed": "处理图片失败。",
     "error.ai_parse_json_failed": "无法解析 AI 返回的 JSON。",
     "error.ai_response_not_dict": "AI 返回格式应为对象，但实际不是。",
+    "error.oidc_discovery_failed": "无法连接 OIDC 提供商，请稍后重试。",
+    "error.oidc_token_invalid": "OIDC 令牌无效或已过期。",
+    "auth.status_no_method_configured": "未配置登录方式。请设置 OIDC_ISSUER_URL 与 OIDC_CLIENT_ID，或开启 DEBUG 模式。",
+    "error.weather_latitude_range": "纬度 {value} 无效，必须在 -90 到 90 之间。",
+    "error.weather_longitude_range": "经度 {value} 无效，必须在 -180 到 180 之间。",
+    "error.field_required": "缺少必填字段。",
+    "notification.dispatch.user_not_found": "未找到用户。",
+    "notification.dispatch.outfit_not_found": "未找到穿搭。",
+    "notification.dispatch.no_channels": "未配置任何通知渠道。",
+    "notification.dispatch.channel_disabled": "通道 {channel} 未配置或已禁用。",
+    "notification.dispatch.unknown_channel": "未知通道：{channel}",
 }
 
 MESSAGES_EN: dict[str, str] = {
@@ -248,6 +259,18 @@ MESSAGES_EN: dict[str, str] = {
     "error.bulk_process_failed": "Failed to process image",
     "error.ai_parse_json_failed": "Could not parse AI response as JSON.",
     "error.ai_response_not_dict": "Expected dict from AI response.",
+    "error.oidc_discovery_failed": "Failed to contact OIDC provider",
+    "error.oidc_token_invalid": "Invalid OIDC token",
+    "auth.status_no_method_configured": "No authentication method configured. "
+    "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or enable DEBUG mode.",
+    "error.weather_latitude_range": "Invalid latitude {value}: must be between -90 and 90",
+    "error.weather_longitude_range": "Invalid longitude {value}: must be between -180 and 180",
+    "error.field_required": "Field required",
+    "notification.dispatch.user_not_found": "User not found",
+    "notification.dispatch.outfit_not_found": "Outfit not found",
+    "notification.dispatch.no_channels": "No notification channels configured",
+    "notification.dispatch.channel_disabled": "Channel {channel} not configured or disabled",
+    "notification.dispatch.unknown_channel": "Unknown channel: {channel}",
 }
 
 LOCALES: dict[str, dict[str, str]] = {
@@ -308,6 +331,10 @@ _VALIDATION_MSG_TO_KEY: dict[str, str] = {
 
 _INVALID_OCCASION_RE = re.compile(r"^Invalid occasion\. Must be one of: (.+)$", re.DOTALL)
 _CHANNEL_CONFIGURED_RE = re.compile(r"^Channel (\w+) already configured$")
+_WEATHER_LAT_RE = re.compile(r"^Invalid latitude (.+): must be between -90 and 90$")
+_WEATHER_LON_RE = re.compile(r"^Invalid longitude (.+): must be between -180 and 180$")
+_CHANNEL_DISABLED_RE = re.compile(r"^Channel (\w+) not configured or disabled$")
+_UNKNOWN_CHANNEL_RE = re.compile(r"^Unknown channel: (.+)$")
 
 
 def translate_validation_message(msg: str, request: Request | None) -> str:
@@ -335,4 +362,28 @@ def translate_validation_message(msg: str, request: Request | None) -> str:
         return translate(locale, "error.ai_parse_json_failed")
     if s.startswith("Expected dict, got"):
         return translate(locale, "error.ai_response_not_dict")
+    if s == "Failed to contact OIDC provider":
+        return translate(locale, "error.oidc_discovery_failed")
+    if s == "Invalid OIDC token":
+        return translate(locale, "error.oidc_token_invalid")
+    m_lat = _WEATHER_LAT_RE.match(s)
+    if m_lat:
+        return translate(locale, "error.weather_latitude_range", value=m_lat.group(1).strip())
+    m_lon = _WEATHER_LON_RE.match(s)
+    if m_lon:
+        return translate(locale, "error.weather_longitude_range", value=m_lon.group(1).strip())
+    if s == "Field required":
+        return translate(locale, "error.field_required")
+    if s == "User not found":
+        return translate(locale, "notification.dispatch.user_not_found")
+    if s == "Outfit not found":
+        return translate(locale, "notification.dispatch.outfit_not_found")
+    if s == "No notification channels configured":
+        return translate(locale, "notification.dispatch.no_channels")
+    m_cd = _CHANNEL_DISABLED_RE.match(s)
+    if m_cd:
+        return translate(locale, "notification.dispatch.channel_disabled", channel=m_cd.group(1))
+    m_uk = _UNKNOWN_CHANNEL_RE.match(s)
+    if m_uk:
+        return translate(locale, "notification.dispatch.unknown_channel", channel=m_uk.group(1))
     return msg

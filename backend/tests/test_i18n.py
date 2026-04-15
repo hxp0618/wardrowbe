@@ -37,6 +37,13 @@ def test_learning_interpretation_and_insight_keys():
     assert "{color}" not in translate("zh", "learning.insight.love_color_title", color="蓝")
 
 
+def test_translate_validation_message_oidc_and_field_required():
+    req = Mock()
+    req.headers = {}
+    assert "OIDC" in translate_validation_message("Invalid OIDC token", req)
+    assert "必填" in translate_validation_message("Field required", req)
+
+
 def test_translate_validation_message_known_strings():
     req = Mock()
     req.headers = {}

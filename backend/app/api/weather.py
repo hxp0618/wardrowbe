@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.models.user import User
 from app.services.weather_service import WeatherService, WeatherServiceError
+from app.utils.api_errors import ApiUserError
 from app.utils.auth import get_current_user
 from app.utils.i18n import translate_request
 
@@ -70,6 +71,11 @@ async def get_current_weather(
 
     try:
         weather = await weather_service.get_current_weather(float(lat), float(lon))
+    except ApiUserError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=translate_request(http_request, e.message_key, **e.params),
+        ) from None
     except WeatherServiceError as e:
         logger.error(f"Weather service error: {e}")
         raise HTTPException(
@@ -114,6 +120,11 @@ async def get_weather_forecast(
 
     try:
         forecast = await weather_service.get_daily_forecast(float(lat), float(lon), days)
+    except ApiUserError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=translate_request(http_request, e.message_key, **e.params),
+        ) from None
     except WeatherServiceError as e:
         logger.error(f"Weather service error: {e}")
         raise HTTPException(
