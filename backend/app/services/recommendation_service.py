@@ -26,6 +26,7 @@ from app.services.ai_service import AIService
 from app.services.item_scorer import get_season, score_items
 from app.services.suggestion_cache import pop_suggestion, push_suggestions
 from app.services.weather_service import WeatherData, WeatherService, WeatherServiceError
+from app.utils.api_errors import ApiUserError
 from app.utils.clothing import deduplicate_by_body_slot
 from app.utils.prompts import load_prompt
 from app.utils.timezone import get_user_today
@@ -542,7 +543,7 @@ class RecommendationService:
         valid_ids = unique_ids
 
         if not valid_ids:
-            raise AIRecommendationError("AI did not select any valid items")
+            raise ApiUserError("error.ai_no_valid_items", status_code=503)
 
         # Deduplicate by body slot (e.g. prevent shorts + pants)
         items_result = await self.db.execute(
@@ -634,16 +635,14 @@ class RecommendationService:
             weather = weather_override
         else:
             if user.location_lat is None or user.location_lon is None:
-                raise ValueError("User location not set. Please set location in settings.")
+                raise ApiUserError("error.user_location_not_set")
             try:
                 weather = await self.weather_service.get_current_weather(
                     float(user.location_lat), float(user.location_lon)
                 )
             except WeatherServiceError as e:
                 logger.error(f"Weather service failed: {e}")
-                raise ValueError(
-                    "Could not fetch weather data. Please try again or provide weather manually."
-                ) from e
+                raise ApiUserError("error.weather_fetch_failed") from e
 
         preferences = user.preferences
 
@@ -683,10 +682,7 @@ class RecommendationService:
                 logger.info(f"Force-included {len(forced_items)} items in recommendation")
 
         if len(candidates) < 2:
-            raise InsufficientWardrobeError(
-                "Not enough items in wardrobe for recommendation. "
-                "Please add more items or adjust filters."
-            )
+            raise ApiUserError("error.insufficient_items_recommendation")
 
         # Check cache for pre-generated suggestions
         if use_cache:
@@ -835,18 +831,8 @@ class RecommendationService:
 
             return outfit
 
-        except AIRecommendationError:
+        except ApiUserError:
             raise
         except Exception as e:
             logger.error(f"AI recommendation failed: {e}")
-            raise AIRecommendationError(
-                "AI service is not available. Please check your AI endpoint configuration in Settings."
-            ) from e
-
-
-class InsufficientWardrobeError(Exception):
-    pass
-
-
-class AIRecommendationError(Exception):
-    pass
+            raise ApiUserError("error.ai_recommendation_unavailable", status_code=503) from e

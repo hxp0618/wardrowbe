@@ -3,8 +3,8 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, computed_field, field_validator
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, Field, computed_field
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -14,14 +14,12 @@ from app.models.item import ClothingItem
 from app.models.outfit import FamilyOutfitRating, Outfit, OutfitItem, OutfitStatus, UserFeedback
 from app.models.user import User
 from app.services.learning_service import LearningService
-from app.services.recommendation_service import (
-    AIRecommendationError,
-    InsufficientWardrobeError,
-    RecommendationService,
-)
+from app.services.recommendation_service import RecommendationService
 from app.services.suggestion_cache import clear_suggestions
 from app.services.weather_service import WeatherData
+from app.utils.api_errors import ApiUserError
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 from app.utils.rate_limit import rate_limit_by_user
 from app.utils.signed_urls import sign_image_url
 from app.utils.timezone import get_user_today
@@ -45,20 +43,6 @@ class WeatherOverrideRequest(BaseModel):
 
 class SuggestRequest(BaseModel):
     occasion: str | None = None
-
-    @field_validator("occasion")
-    @classmethod
-    def validate_occasion(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        v = v.strip().lower()
-        if len(v) > 50:
-            raise ValueError("Occasion must be 50 characters or less")
-        if v not in VALID_OCCASIONS:
-            raise ValueError(
-                f"Invalid occasion. Must be one of: {', '.join(sorted(VALID_OCCASIONS))}"
-            )
-        return v
 
     time_of_day: Literal["morning", "afternoon", "evening", "night", "full day"] | None = Field(
         None, description="Time of day for styling context"
@@ -336,10 +320,29 @@ def outfit_to_response(
 @router.post("/suggest", response_model=OutfitResponse)
 async def suggest_outfit(
     request: SuggestRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OutfitResponse:
     await rate_limit_by_user(current_user.id, "suggest", 10, 60)
+
+    occasion = request.occasion
+    if occasion is not None:
+        occasion = occasion.strip().lower()
+        if len(occasion) > 50:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=translate_request(http_request, "error.occasion_too_long"),
+            )
+        if occasion not in VALID_OCCASIONS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=translate_request(
+                    http_request,
+                    "error.invalid_occasion",
+                    occasions=", ".join(sorted(VALID_OCCASIONS)),
+                ),
+            )
 
     # Convert weather override to WeatherData if provided
     weather_override = None
@@ -361,7 +364,6 @@ async def suggest_outfit(
 
     service = RecommendationService(db)
 
-    occasion = request.occasion
     if occasion is None:
         if current_user.preferences and current_user.preferences.default_occasion:
             occasion = current_user.preferences.default_occasion
@@ -377,16 +379,12 @@ async def suggest_outfit(
             include_items=request.include_items,
             time_of_day=request.time_of_day,
         )
-    except InsufficientWardrobeError as e:
+    except ApiUserError as e:
+        if e.status_code == 503:
+            logger.error("AI recommendation error: %s", e.message_key)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from None
-    except AIRecommendationError as e:
-        logger.error(f"AI recommendation error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
+            status_code=e.status_code,
+            detail=translate_request(http_request, e.message_key, **e.params),
         ) from None
     except ValueError as e:
         raise HTTPException(
@@ -401,6 +399,7 @@ async def suggest_outfit(
 
 @router.get("", response_model=OutfitListResponse)
 async def list_outfits(
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     page: int = Query(1, ge=1),
@@ -418,7 +417,7 @@ async def list_outfits(
         if not current_user.family_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You must be in a family to view family member outfits",
+                detail=translate_request(http_request, "error.family_required_for_member_outfits"),
             )
         member_result = await db.execute(
             select(User).where(User.id == family_member_id, User.is_active.is_(True))
@@ -427,7 +426,7 @@ async def list_outfits(
         if not member or member.family_id != current_user.family_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="User is not in your family",
+                detail=translate_request(http_request, "error.not_in_your_family"),
             )
         target_user_id = family_member_id
 
@@ -501,6 +500,7 @@ async def list_outfits(
 @router.get("/{outfit_id}", response_model=OutfitResponse)
 async def get_outfit(
     outfit_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OutfitResponse:
@@ -520,7 +520,7 @@ async def get_outfit(
     if not outfit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Outfit not found",
+            detail=translate_request(http_request, "error.outfit_not_found"),
         )
 
     return outfit_to_response(
@@ -531,6 +531,7 @@ async def get_outfit(
 @router.post("/{outfit_id}/accept", response_model=OutfitResponse)
 async def accept_outfit(
     outfit_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OutfitResponse:
@@ -550,7 +551,7 @@ async def accept_outfit(
     if not outfit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Outfit not found",
+            detail=translate_request(http_request, "error.outfit_not_found"),
         )
 
     outfit.status = OutfitStatus.accepted
@@ -566,6 +567,7 @@ async def accept_outfit(
 @router.post("/{outfit_id}/reject", response_model=OutfitResponse)
 async def reject_outfit(
     outfit_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OutfitResponse:
@@ -585,7 +587,7 @@ async def reject_outfit(
     if not outfit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Outfit not found",
+            detail=translate_request(http_request, "error.outfit_not_found"),
         )
 
     outfit.status = OutfitStatus.rejected
@@ -603,6 +605,7 @@ async def reject_outfit(
 @router.delete("/{outfit_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_outfit(
     outfit_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
@@ -614,7 +617,7 @@ async def delete_outfit(
     if not outfit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Outfit not found",
+            detail=translate_request(http_request, "error.outfit_not_found"),
         )
 
     await db.delete(outfit)
@@ -625,6 +628,7 @@ async def delete_outfit(
 async def submit_feedback(
     outfit_id: UUID,
     request: FeedbackRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> FeedbackResponse:
@@ -643,7 +647,7 @@ async def submit_feedback(
     if not outfit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Outfit not found",
+            detail=translate_request(http_request, "error.outfit_not_found"),
         )
 
     # Create or update feedback
@@ -775,6 +779,7 @@ async def submit_feedback(
 @router.get("/{outfit_id}/feedback", response_model=FeedbackResponse)
 async def get_feedback(
     outfit_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> FeedbackResponse:
@@ -790,13 +795,13 @@ async def get_feedback(
     if not outfit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Outfit not found",
+            detail=translate_request(http_request, "error.outfit_not_found"),
         )
 
     if not outfit.feedback:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No feedback found for this outfit",
+            detail=translate_request(http_request, "error.no_feedback_for_outfit"),
         )
 
     feedback = outfit.feedback
@@ -821,6 +826,7 @@ async def get_feedback(
 async def submit_family_rating(
     outfit_id: UUID,
     request: FamilyRatingRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> FamilyRatingResponse:
@@ -829,20 +835,23 @@ async def submit_family_rating(
     outfit = result.scalar_one_or_none()
 
     if not outfit:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=translate_request(http_request, "error.outfit_not_found"),
+        )
 
     # Cannot rate your own outfit
     if outfit.user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot rate your own outfit",
+            detail=translate_request(http_request, "error.cannot_rate_own_outfit"),
         )
 
     # Verify same family
     if not current_user.family_id or not outfit.user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must be in the same family to rate outfits",
+            detail=translate_request(http_request, "error.family_required_to_rate"),
         )
 
     # Check the outfit owner is in the same family
@@ -853,7 +862,7 @@ async def submit_family_rating(
     if not owner or owner.family_id != current_user.family_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must be in the same family to rate outfits",
+            detail=translate_request(http_request, "error.family_required_to_rate"),
         )
 
     # Check for existing rating (upsert)
@@ -896,6 +905,7 @@ async def submit_family_rating(
 @router.get("/{outfit_id}/family-ratings", response_model=list[FamilyRatingResponse])
 async def get_family_ratings(
     outfit_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> list[FamilyRatingResponse]:
@@ -903,18 +913,27 @@ async def get_family_ratings(
     outfit = result.scalar_one_or_none()
 
     if not outfit:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=translate_request(http_request, "error.outfit_not_found"),
+        )
 
     # Verify caller owns the outfit or is in the same family as the owner
     if outfit.user_id != current_user.id:
         if not current_user.family_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=translate_request(http_request, "error.access_denied"),
+            )
         owner_result = await db.execute(
             select(User).where(User.id == outfit.user_id, User.is_active.is_(True))
         )
         owner = owner_result.scalar_one_or_none()
         if not owner or owner.family_id != current_user.family_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=translate_request(http_request, "error.access_denied"),
+            )
 
     # Get ratings with user info
     ratings_result = await db.execute(
@@ -942,6 +961,7 @@ async def get_family_ratings(
 @router.delete("/{outfit_id}/family-rating", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_family_rating(
     outfit_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
@@ -958,7 +978,7 @@ async def delete_family_rating(
     if not rating:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Rating not found",
+            detail=translate_request(http_request, "error.rating_not_found"),
         )
 
     await db.delete(rating)

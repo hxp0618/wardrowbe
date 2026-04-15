@@ -3,11 +3,11 @@
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import { useMessages } from 'next-intl';
+import { useLocale, useMessages } from 'next-intl';
 import { toast, Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/components/auth-provider';
-import { ApiError, NetworkError } from '@/lib/api';
+import { ApiError, NetworkError, setApiAcceptLanguage } from '@/lib/api';
 import { pickApiMessages, setApiClientMessages } from '@/lib/api-messages';
 
 function handleError(error: unknown) {
@@ -28,6 +28,12 @@ function handleError(error: unknown) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const messages = useMessages();
+  const locale = useLocale();
+
+  useEffect(() => {
+    setApiAcceptLanguage(locale);
+    return () => setApiAcceptLanguage(null);
+  }, [locale]);
 
   useEffect(() => {
     const apiMsgs = pickApiMessages(messages as Record<string, unknown>);
