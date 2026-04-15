@@ -13,6 +13,7 @@ import {
   Calendar,
   Mail,
   MessageSquare,
+  Smartphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,12 +72,14 @@ const DAYS = DAY_KEYS.map((key, i) => ({ value: i, key }));
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   ntfy: <Bell className="h-5 w-5" />,
   mattermost: <MessageSquare className="h-5 w-5" />,
+  bark: <Smartphone className="h-5 w-5" />,
   email: <Mail className="h-5 w-5" />,
 };
 
 const CHANNEL_LABEL_KEYS: Record<string, string> = {
   ntfy: 'channelLabels.ntfy',
   mattermost: 'channelLabels.mattermost',
+  bark: 'channelLabels.bark',
   email: 'channelLabels.email',
 };
 
@@ -107,6 +110,11 @@ function ChannelCard({
               <p className="text-sm text-muted-foreground">
                 {setting.channel === 'ntfy' && setting.config.topic}
                 {setting.channel === 'mattermost' && t('channels.webhookConfigured')}
+                {setting.channel === 'bark' &&
+                  (setting.config.device_key &&
+                  String(setting.config.device_key).length >= 4
+                    ? `***${String(setting.config.device_key).slice(-4)}`
+                    : t('channels.barkDeviceConfigured'))}
                 {setting.channel === 'email' && setting.config.address}
               </p>
             </div>
@@ -143,7 +151,7 @@ function ChannelCard({
 }
 
 interface ChannelFormData {
-  channel: 'ntfy' | 'mattermost' | 'email';
+  channel: 'ntfy' | 'mattermost' | 'email' | 'bark';
   enabled: boolean;
   priority: number;
   config: Record<string, string>;
@@ -163,9 +171,10 @@ function AddChannelDialog({
   const t = useTranslations('notifications');
   const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
-  const [channel, setChannel] = useState<'ntfy' | 'mattermost' | 'email'>('ntfy');
+  const [channel, setChannel] = useState<'ntfy' | 'mattermost' | 'email' | 'bark'>('ntfy');
   const [config, setConfig] = useState<Record<string, string>>({});
   const [ntfyDefaults, setNtfyDefaults] = useState<{ server: string; token: string } | null>(null);
+  const [barkDefaults, setBarkDefaults] = useState<{ server: string } | null>(null);
 
   useEffect(() => {
     if (open && !ntfyDefaults) {
@@ -184,14 +193,29 @@ function AddChannelDialog({
   }, [open, ntfyDefaults, channel, config.server]);
 
   useEffect(() => {
+    if (open && !barkDefaults) {
+      fetch('/api/v1/notifications/defaults/bark')
+        .then((res) => res.json())
+        .then((data) => setBarkDefaults(data))
+        .catch(() => setBarkDefaults({ server: 'https://api.day.app' }));
+    }
+  }, [open, barkDefaults]);
+
+  useEffect(() => {
     if (channel === 'ntfy' && ntfyDefaults) {
-      setConfig({ server: ntfyDefaults.server, token: ntfyDefaults.token });
+      setConfig({ server: ntfyDefaults.server, token: ntfyDefaults.token || '' });
     } else if (channel === 'email') {
       setConfig(userEmail ? { address: userEmail } : {});
+    } else if (channel === 'bark' && barkDefaults) {
+      setConfig({
+        server: barkDefaults.server,
+        device_key: '',
+        group: 'Wardrowbe',
+      });
     } else {
       setConfig({});
     }
-  }, [channel, ntfyDefaults, userEmail]);
+  }, [channel, ntfyDefaults, barkDefaults, userEmail]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,6 +230,10 @@ function AddChannelDialog({
     }
     if (channel === 'email' && !config.address?.trim()) {
       toast.error(t('validation.emailRequired'));
+      return;
+    }
+    if (channel === 'bark' && !config.device_key?.trim()) {
+      toast.error(t('validation.barkDeviceKeyRequired'));
       return;
     }
 
@@ -252,7 +280,7 @@ function AddChannelDialog({
               <Label>{t('addChannelDialog.channelType')}</Label>
               <Select
                 value={channel}
-                onValueChange={(v: 'ntfy' | 'mattermost' | 'email') => {
+                onValueChange={(v: 'ntfy' | 'mattermost' | 'email' | 'bark') => {
                   setChannel(v);
                   setConfig({});
                 }}
@@ -263,6 +291,7 @@ function AddChannelDialog({
                 <SelectContent>
                   <SelectItem value="ntfy">{t('addChannelDialog.ntfyPush')}</SelectItem>
                   <SelectItem value="mattermost">{t('addChannelDialog.mattermost')}</SelectItem>
+                  <SelectItem value="bark">{t('addChannelDialog.bark')}</SelectItem>
                   <SelectItem value="email">{t('addChannelDialog.email')}</SelectItem>
                 </SelectContent>
               </Select>
@@ -322,6 +351,43 @@ function AddChannelDialog({
                   {t('addChannelDialog.webhookHint')}
                 </p>
               </div>
+            )}
+
+            {channel === 'bark' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="bark-server">{t('addChannelDialog.serverUrl')}</Label>
+                  <Input
+                    id="bark-server"
+                    value={config.server || 'https://api.day.app'}
+                    onChange={(e) => setConfig({ ...config, server: e.target.value })}
+                    placeholder="https://api.day.app"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bark-device">{t('addChannelDialog.barkDeviceKey')} *</Label>
+                  <Input
+                    id="bark-device"
+                    type="password"
+                    autoComplete="off"
+                    value={config.device_key || ''}
+                    onChange={(e) => setConfig({ ...config, device_key: e.target.value })}
+                    placeholder="xxxxxxxx"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">{t('addChannelDialog.barkDeviceKeyHint')}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bark-group">{t('addChannelDialog.barkGroup')}</Label>
+                  <Input
+                    id="bark-group"
+                    value={config.group ?? 'Wardrowbe'}
+                    onChange={(e) => setConfig({ ...config, group: e.target.value })}
+                    placeholder="Wardrowbe"
+                  />
+                  <p className="text-xs text-muted-foreground">{t('addChannelDialog.barkGroupHint')}</p>
+                </div>
+              </>
             )}
 
             {channel === 'email' && (

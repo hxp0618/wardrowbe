@@ -13,6 +13,7 @@ from app.models.notification import Notification, NotificationSettings
 from app.models.schedule import Schedule
 from app.models.user import User
 from app.schemas.notification import (
+    BarkConfig,
     EmailConfig,
     ExpoPushConfig,
     MattermostConfig,
@@ -103,6 +104,16 @@ async def get_ntfy_defaults(
     }
 
 
+@router.get("/defaults/bark")
+async def get_bark_defaults(
+    current_user: User = Depends(get_current_user),
+):
+    settings = get_settings()
+    return {
+        "server": settings.bark_server or "https://api.day.app",
+    }
+
+
 # ============= Notification Settings =============
 
 
@@ -131,9 +142,9 @@ async def create_notification_setting(
         elif data.channel == "email":
             EmailConfig(**data.config)
         elif data.channel == "expo_push":
-            from app.schemas.notification import ExpoPushConfig
-
             ExpoPushConfig(**data.config)
+        elif data.channel == "bark":
+            BarkConfig(**data.config)
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e.errors()[0]["msg"])) from None
 
@@ -190,6 +201,8 @@ async def update_notification_setting(
                 EmailConfig(**data.config)
             elif existing.channel == "expo_push":
                 ExpoPushConfig(**data.config)
+            elif existing.channel == "bark":
+                BarkConfig(**data.config)
         except ValidationError as e:
             raise HTTPException(status_code=400, detail=str(e.errors()[0]["msg"])) from None
 

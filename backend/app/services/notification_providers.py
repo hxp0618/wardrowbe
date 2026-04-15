@@ -4,7 +4,13 @@ from dataclasses import dataclass, field
 
 import httpx
 
-from app.schemas.notification import EmailConfig, ExpoPushConfig, MattermostConfig, NtfyConfig
+from app.schemas.notification import (
+    BarkConfig,
+    EmailConfig,
+    ExpoPushConfig,
+    MattermostConfig,
+    NtfyConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +157,72 @@ class MattermostProvider:
         try:
             result = await self.send(
                 MattermostMessage(text="This is a test message from Wardrowbe.")
+            )
+            if result.get("success"):
+                return True, "Test notification sent successfully"
+            return False, result.get("error", "Unknown error")
+        except Exception as e:
+            return False, str(e)
+
+
+# Bark Provider (iOS — Fin Bark)
+@dataclass
+class BarkMessage:
+    title: str
+    body: str
+    url: str | None = None
+
+
+class BarkProvider:
+    def __init__(self, config: BarkConfig):
+        self.server = config.server.rstrip("/")
+        self.device_key = config.device_key
+        self.group = config.group
+
+    async def send(self, message: BarkMessage) -> dict:
+        payload: dict = {
+            "device_key": self.device_key,
+            "title": message.title,
+            "body": message.body,
+        }
+        if self.group:
+            payload["group"] = self.group
+        if message.url:
+            payload["url"] = message.url
+
+        push_url = f"{self.server}/push"
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                response = await client.post(
+                    push_url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+                if response.status_code != 200:
+                    error = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning("Bark request failed: %s", error)
+                    return {"success": False, "error": error}
+                try:
+                    data = response.json()
+                except Exception:
+                    return {"success": True}
+                code = data.get("code", 200)
+                if code == 200:
+                    return {"success": True, "response": data}
+                err_msg = data.get("message", str(data))
+                logger.warning("Bark API error: %s", err_msg)
+                return {"success": False, "error": err_msg}
+        except Exception as e:
+            logger.exception("Bark send failed")
+            return {"success": False, "error": str(e)}
+
+    async def test_connection(self) -> tuple[bool, str]:
+        try:
+            result = await self.send(
+                BarkMessage(
+                    title="Wardrowbe Test",
+                    body="This is a test notification from Wardrowbe.",
+                )
             )
             if result.get("success"):
                 return True, "Test notification sent successfully"

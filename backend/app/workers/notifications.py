@@ -12,9 +12,11 @@ from app.models.notification import Notification, NotificationSettings, Notifica
 from app.models.outfit import Outfit, OutfitSource, OutfitStatus
 from app.models.schedule import Schedule
 from app.models.user import User
-from app.schemas.notification import EmailConfig, ExpoPushConfig, NtfyConfig
+from app.schemas.notification import BarkConfig, EmailConfig, ExpoPushConfig, NtfyConfig
 from app.services.learning_service import LearningService
 from app.services.notification_providers import (
+    BarkMessage,
+    BarkProvider,
     EmailProvider,
     ExpoPushMessage,
     ExpoPushProvider,
@@ -425,6 +427,7 @@ async def _check_wash_reminders_inner(ctx: dict):
                             provider = NtfyProvider(NtfyConfig(**channel.config))
                             send_result = await provider.send(
                                 NtfyNotification(
+                                    topic="",
                                     title=title,
                                     message=body,
                                     click=f"{app_url}/dashboard/wardrobe",
@@ -433,6 +436,17 @@ async def _check_wash_reminders_inner(ctx: dict):
                             )
                             sent = send_result.get("success", False)
                             sent_channel = "ntfy"
+                        elif channel.channel == "bark":
+                            provider = BarkProvider(BarkConfig(**channel.config))
+                            send_result = await provider.send(
+                                BarkMessage(
+                                    title=title,
+                                    body=body,
+                                    url=f"{app_url}/dashboard/wardrobe",
+                                )
+                            )
+                            sent = send_result.get("success", False)
+                            sent_channel = "bark"
                         elif channel.channel == "email":
                             email_provider = EmailProvider(EmailConfig(**channel.config))
                             send_result = await email_provider.send(

@@ -58,6 +58,7 @@ services:
       NTFY_SERVER: ${NTFY_SERVER:-}
       NTFY_TOKEN: ${NTFY_TOKEN:-}
       MATTERMOST_WEBHOOK_URL: ${MATTERMOST_WEBHOOK_URL:-}
+      BARK_SERVER: ${BARK_SERVER:-}
     volumes:
       - wardrobe_data:/data/wardrobe
     ports:

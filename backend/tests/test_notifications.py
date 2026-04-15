@@ -37,6 +37,28 @@ class TestNotificationSettings:
         assert data["enabled"] is True
 
     @pytest.mark.asyncio
+    async def test_create_bark_setting(self, client: AsyncClient, test_user, auth_headers):
+        """Test creating a Bark notification setting."""
+        response = await client.post(
+            "/api/v1/notifications/settings",
+            json={
+                "channel": "bark",
+                "config": {
+                    "server": "https://api.day.app",
+                    "device_key": "testdevicekey123456",
+                    "group": "Wardrowbe",
+                },
+                "enabled": True,
+                "priority": 1,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["channel"] == "bark"
+        assert data["enabled"] is True
+
+    @pytest.mark.asyncio
     async def test_create_email_setting(self, client: AsyncClient, test_user, auth_headers):
         """Test creating an email notification setting."""
         response = await client.post(
@@ -164,3 +186,15 @@ class TestNotificationDefaults:
         # Should have server and has_token fields
         assert "server" in data
         assert "has_token" in data
+
+    @pytest.mark.asyncio
+    async def test_get_bark_defaults(self, client: AsyncClient, test_user, auth_headers):
+        """Test getting default Bark server for the UI."""
+        response = await client.get(
+            "/api/v1/notifications/defaults/bark",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "server" in data
+        assert data["server"].startswith("http")

@@ -699,7 +699,8 @@
       "channelAdded": "通知渠道已添加",
       "channelEnabled": "渠道已启用",
       "channelDisabled": "渠道已禁用",
-      "webhookConfigured": "Webhook 已配置"
+      "webhookConfigured": "Webhook 已配置",
+      "barkDeviceConfigured": "已配置 Bark 设备密钥"
     },
     "schedules": {
       "title": "推送计划",
@@ -722,6 +723,7 @@
       "ntfyPush": "ntfy 推送通知",
       "mattermost": "Mattermost",
       "email": "邮箱",
+      "bark": "Bark（iOS）",
       "serverUrl": "服务器地址",
       "topic": "主题",
       "topicHint": "在 ntfy 应用中订阅此主题",
@@ -730,6 +732,10 @@
       "webhookUrl": "Webhook 地址",
       "webhookHint": "在 Mattermost 设置中创建传入 webhook",
       "emailAddress": "邮箱地址",
+      "barkDeviceKey": "设备密钥",
+      "barkDeviceKeyHint": "在 Bark 应用的「服务器」页面复制",
+      "barkGroup": "分组（可选）",
+      "barkGroupHint": "在 Bark 中显示的通知分组名称",
       "adding": "添加中..."
     },
     "addScheduleDialog": {
@@ -753,12 +759,14 @@
     "channelLabels": {
       "ntfy": "ntfy 推送",
       "mattermost": "Mattermost",
-      "email": "邮箱"
+      "email": "邮箱",
+      "bark": "Bark"
     },
     "validation": {
       "topicRequired": "ntfy 需要主题",
       "webhookRequired": "Mattermost 需要 Webhook 地址",
-      "emailRequired": "需要邮箱地址"
+      "emailRequired": "需要邮箱地址",
+      "barkDeviceKeyRequired": "请填写 Bark 设备密钥"
     },
     "errors": {
       "addChannelFailed": "添加渠道失败",
