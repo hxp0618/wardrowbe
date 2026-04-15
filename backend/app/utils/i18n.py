@@ -78,6 +78,15 @@ MESSAGES_ZH: dict[str, str] = {
     "error.bg_removal_not_available": "抠图服务不可用。使用 rembg：pip install rembg[cpu]。使用 HTTP 提供方：设置 BG_REMOVAL_PROVIDER=http 与 BG_REMOVAL_URL。",
     "error.remove_background_failed": "去除背景失败。",
     "error.max_additional_images": "每件衣物最多 4 张附加图片。",
+    "analytics.insight.start_add_items": "先从向衣橱里添加一些衣物开始吧！",
+    "analytics.insight.never_worn": "你有 {count} 件衣物从未穿过，不妨试试新搭配！",
+    "analytics.insight.heavy_color": "衣橱里 {color} 占比 {pct}%，可以考虑增加一些其他色系。",
+    "analytics.insight.limited_colors": "衣橱颜色种类较少，可以尝试探索新色彩。",
+    "analytics.insight.more_tops_than_bottoms": "上装明显多于下装，可以考虑添置裤装或裙装。",
+    "analytics.insight.more_bottoms_than_tops": "下装多于上装，可以考虑添置一些上衣。",
+    "analytics.insight.great_acceptance": "品味不错！你会接受 {rate}% 的推荐穿搭。",
+    "analytics.insight.low_acceptance": "你拒绝了不少推荐，可以尝试更新风格偏好。",
+    "analytics.insight.no_outfits_this_week": "本周还没有生成穿搭，试试看获取一条推荐吧！",
 }
 
 MESSAGES_EN: dict[str, str] = {
@@ -156,6 +165,15 @@ MESSAGES_EN: dict[str, str] = {
     "For rembg: pip install rembg[cpu]. For HTTP provider: set BG_REMOVAL_PROVIDER=http and BG_REMOVAL_URL.",
     "error.remove_background_failed": "Failed to remove background",
     "error.max_additional_images": "Maximum of 4 additional images per item",
+    "analytics.insight.start_add_items": "Start by adding some items to your wardrobe!",
+    "analytics.insight.never_worn": "You have {count} items you've never worn. Consider styling them!",
+    "analytics.insight.heavy_color": "Your wardrobe is heavy on {color} ({pct}%). Consider adding variety!",
+    "analytics.insight.limited_colors": "Your wardrobe has limited color variety. Explore new colors!",
+    "analytics.insight.more_tops_than_bottoms": "You have many more tops than bottoms. Consider adding pants or skirts!",
+    "analytics.insight.more_bottoms_than_tops": "You have more bottoms than tops. Consider adding some shirts!",
+    "analytics.insight.great_acceptance": "Great taste! You accept {rate}% of suggestions.",
+    "analytics.insight.low_acceptance": "You reject many suggestions. Consider updating your style preferences.",
+    "analytics.insight.no_outfits_this_week": "You haven't generated any outfits this week. Try getting a suggestion!",
 }
 
 LOCALES: dict[str, dict[str, str]] = {

@@ -24,3 +24,8 @@ def test_resolve_locale_from_accept_language():
 def test_translate_zh_and_en():
     assert "衣橱" in translate("zh", "error.insufficient_items_pairing")
     assert "Not enough items" in translate("en", "error.insufficient_items_pairing")
+
+
+def test_analytics_insight_keys():
+    assert "添加" in translate("zh", "analytics.insight.start_add_items")
+    assert "wardrobe" in translate("en", "analytics.insight.start_add_items").lower()

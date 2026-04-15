@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, computed_field
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,9 +12,16 @@ from app.models.item import ClothingItem, ItemStatus
 from app.models.outfit import Outfit, OutfitStatus, UserFeedback
 from app.models.user import User
 from app.utils.auth import get_current_user
+from app.utils.i18n import resolve_locale, translate_request
 from app.utils.signed_urls import sign_image_url
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
+
+
+def _week_period_label(week_start: datetime, request: Request | None) -> str:
+    if resolve_locale(request) == "zh":
+        return f"{week_start.month}月{week_start.day}日"
+    return week_start.strftime("%b %d")
 
 
 class ColorDistribution(BaseModel):
@@ -78,6 +85,7 @@ class AnalyticsResponse(BaseModel):
 
 @router.get("", response_model=AnalyticsResponse)
 async def get_analytics(
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     days: int = Query(30, ge=7, le=365, description="Number of days for trends"),
@@ -304,7 +312,7 @@ async def get_analytics(
 
         acceptance_trend.append(
             AcceptanceRateTrend(
-                period=week_start.strftime("%b %d"),
+                period=_week_period_label(week_start, http_request),
                 total=week_total,
                 accepted=week_accepted,
                 rejected=week_rejected,
@@ -318,12 +326,16 @@ async def get_analytics(
     insights = []
 
     if total_items == 0:
-        insights.append("Start by adding some items to your wardrobe!")
+        insights.append(translate_request(http_request, "analytics.insight.start_add_items"))
     else:
         # Wardrobe insights
         if len(never_worn) > 0:
             insights.append(
-                f"You have {len(never_worn)} items you've never worn. Consider styling them!"
+                translate_request(
+                    http_request,
+                    "analytics.insight.never_worn",
+                    count=len(never_worn),
+                )
             )
 
         # Color insights
@@ -331,10 +343,15 @@ async def get_analytics(
             top_color = color_distribution[0].color
             if color_distribution[0].percentage > 40:
                 insights.append(
-                    f"Your wardrobe is heavy on {top_color} ({color_distribution[0].percentage}%). Consider adding variety!"
+                    translate_request(
+                        http_request,
+                        "analytics.insight.heavy_color",
+                        color=top_color,
+                        pct=f"{color_distribution[0].percentage:.1f}",
+                    )
                 )
             elif len(color_distribution) <= 3 and ready_items > 10:
-                insights.append("Your wardrobe has limited color variety. Explore new colors!")
+                insights.append(translate_request(http_request, "analytics.insight.limited_colors"))
 
         # Type insights
         if type_distribution:
@@ -352,23 +369,35 @@ async def get_analytics(
                 ratio = tops / bottoms
                 if ratio > 3:
                     insights.append(
-                        "You have many more tops than bottoms. Consider adding pants or skirts!"
+                        translate_request(
+                            http_request,
+                            "analytics.insight.more_tops_than_bottoms",
+                        )
                     )
                 elif ratio < 0.5:
-                    insights.append("You have more bottoms than tops. Consider adding some shirts!")
+                    insights.append(
+                        translate_request(
+                            http_request,
+                            "analytics.insight.more_bottoms_than_tops",
+                        )
+                    )
 
         # Outfit insights
         if acceptance_rate is not None:
             if acceptance_rate > 80:
-                insights.append(f"Great taste! You accept {acceptance_rate:.0f}% of suggestions.")
-            elif acceptance_rate < 50:
                 insights.append(
-                    "You reject many suggestions. Consider updating your style preferences."
+                    translate_request(
+                        http_request,
+                        "analytics.insight.great_acceptance",
+                        rate=int(round(acceptance_rate)),
+                    )
                 )
+            elif acceptance_rate < 50:
+                insights.append(translate_request(http_request, "analytics.insight.low_acceptance"))
 
         if outfits_this_week == 0 and total_outfits > 0:
             insights.append(
-                "You haven't generated any outfits this week. Try getting a suggestion!"
+                translate_request(http_request, "analytics.insight.no_outfits_this_week")
             )
 
     return AnalyticsResponse(
