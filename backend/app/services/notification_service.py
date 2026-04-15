@@ -12,7 +12,13 @@ from sqlalchemy.orm import selectinload
 from app.models.notification import Notification, NotificationSettings, NotificationStatus
 from app.models.outfit import Outfit, OutfitItem
 from app.models.user import User
-from app.schemas.notification import BarkConfig, EmailConfig, ExpoPushConfig, MattermostConfig, NtfyConfig
+from app.schemas.notification import (
+    BarkConfig,
+    EmailConfig,
+    ExpoPushConfig,
+    MattermostConfig,
+    NtfyConfig,
+)
 from app.services.notification_providers import (
     BarkMessage,
     BarkProvider,
@@ -178,7 +184,9 @@ class NotificationService:
                     ExpoPushConfig(**setting.config)
                 ).test_connection()
             elif setting.channel == "bark":
-                success, message = await BarkProvider(BarkConfig(**setting.config)).test_connection()
+                success, message = await BarkProvider(
+                    BarkConfig(**setting.config)
+                ).test_connection()
             else:
                 return False, _dispatch_msg(
                     "notification.dispatch.unknown_channel", channel=setting.channel
