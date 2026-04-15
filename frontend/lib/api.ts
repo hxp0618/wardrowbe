@@ -26,6 +26,7 @@ class NetworkError extends Error {
 }
 
 let accessToken: string | null = null;
+let acceptLanguageHeader: string | null = null;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
@@ -33,6 +34,11 @@ export function setAccessToken(token: string | null) {
 
 export function getAccessToken(): string | null {
   return accessToken;
+}
+
+/** Pass UI locale (e.g. from next-intl) so API error messages match the user's language. */
+export function setApiAcceptLanguage(locale: string | null) {
+  acceptLanguageHeader = locale;
 }
 
 async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
@@ -51,6 +57,9 @@ async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promis
 
   if (accessToken) {
     headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+  if (acceptLanguageHeader) {
+    headers['Accept-Language'] = acceptLanguageHeader;
   }
 
   let response: Response;

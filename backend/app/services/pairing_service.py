@@ -11,6 +11,7 @@ from app.models.item import ClothingItem, ItemStatus
 from app.models.outfit import FamilyOutfitRating, Outfit, OutfitItem, OutfitSource, OutfitStatus
 from app.models.user import User
 from app.services.ai_service import AIService
+from app.utils.api_errors import ApiUserError
 from app.utils.clothing import deduplicate_by_body_slot
 from app.utils.prompts import load_prompt
 from app.utils.timezone import get_user_today
@@ -171,14 +172,12 @@ class PairingService:
         # Get source item
         source_item = await self.get_source_item(user.id, source_item_id)
         if not source_item:
-            raise ValueError("Source item not found or not available")
+            raise ApiUserError("error.source_item_unavailable")
 
         # Get available items
         available_items = await self.get_available_items(user, source_item_id)
         if len(available_items) < 2:
-            raise InsufficientItemsError(
-                "Not enough items in wardrobe for pairing. Add more items."
-            )
+            raise ApiUserError("error.insufficient_items_pairing")
 
         # Get user preferences for AI endpoints
         preferences = user.preferences
@@ -213,9 +212,7 @@ class PairingService:
             pairings_data = self._parse_ai_response(result.content)
         except Exception as e:
             logger.error(f"AI pairing generation failed: {e}")
-            raise AIGenerationError(
-                "AI service is not available. Check your AI endpoint configuration."
-            ) from e
+            raise ApiUserError("error.ai_pairing_unavailable", status_code=503) from e
 
         # Create outfit records for each pairing
         created_outfits = []
@@ -385,11 +382,3 @@ class PairingService:
         outfits = list(result.scalars().all())
 
         return outfits, total
-
-
-class InsufficientItemsError(Exception):
-    pass
-
-
-class AIGenerationError(Exception):
-    pass

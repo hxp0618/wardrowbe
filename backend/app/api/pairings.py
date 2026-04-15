@@ -3,7 +3,7 @@ from datetime import date, datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, computed_field
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,12 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.outfit import Outfit, OutfitSource
 from app.models.user import User
-from app.services.pairing_service import (
-    AIGenerationError,
-    InsufficientItemsError,
-    PairingService,
-)
+from app.services.pairing_service import PairingService
+from app.utils.api_errors import ApiUserError
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 from app.utils.signed_urls import sign_image_url
 
 logger = logging.getLogger(__name__)
@@ -216,6 +214,7 @@ def pairing_to_response(outfit: Outfit) -> PairingResponse:
 async def generate_pairings(
     item_id: UUID,
     request: GeneratePairingsRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> GeneratePairingsResponse:
@@ -227,16 +226,12 @@ async def generate_pairings(
             source_item_id=item_id,
             num_pairings=request.num_pairings,
         )
-    except InsufficientItemsError as e:
+    except ApiUserError as e:
+        if e.status_code == 503:
+            logger.error("AI pairing generation error: %s", e.message_key)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from None
-    except AIGenerationError as e:
-        logger.error(f"AI pairing generation error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
+            status_code=e.status_code,
+            detail=translate_request(http_request, e.message_key, **e.params),
         ) from None
     except ValueError as e:
         raise HTTPException(
@@ -303,6 +298,7 @@ async def list_item_pairings(
 @router.delete("/{pairing_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_pairing(
     pairing_id: UUID,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
@@ -320,7 +316,7 @@ async def delete_pairing(
     if not pairing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Pairing not found",
+            detail=translate_request(request, "error.pairing_not_found"),
         )
 
     await db.delete(pairing)

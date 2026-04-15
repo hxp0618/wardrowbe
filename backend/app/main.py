@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from app.api.router import api_router
 from app.config import get_settings
 from app.database import engine
+from app.utils.i18n import translate_request
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "Accept-Language"],
 )
 
 # Enable GZip compression for responses > 500 bytes
@@ -65,7 +66,7 @@ async def validation_exception_handler(
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": "Validation error",
+            "detail": translate_request(request, "error.validation"),
             "errors": errors,
         },
     )
@@ -81,7 +82,7 @@ async def pydantic_validation_handler(request: Request, exc: ValidationError) ->
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": "Validation error",
+            "detail": translate_request(request, "error.validation"),
             "errors": errors,
         },
     )
@@ -95,6 +96,6 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": "An unexpected error occurred. Please try again later.",
+            "detail": translate_request(request, "error.unexpected"),
         },
     )
