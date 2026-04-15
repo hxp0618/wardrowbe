@@ -3,7 +3,7 @@ import os
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -28,38 +28,40 @@ from app.schemas.notification import EmailConfig
 from app.services.family_service import FamilyService
 from app.services.notification_providers import EmailProvider, build_family_invite_email
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/families", tags=["Families"])
 
 
-def require_admin(user: User) -> None:
+def require_admin(user: User, request: Request | None = None) -> None:
     if user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
+            detail=translate_request(request, "error.admin_required"),
         )
 
 
-def require_family_admin(user: User) -> None:
+def require_family_admin(user: User, request: Request | None = None) -> None:
     if user.family_id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not in a family",
+            detail=translate_request(request, "error.not_in_family"),
         )
-    require_admin(user)
+    require_admin(user, request)
 
 
 @router.get("/me", response_model=FamilyResponse)
 async def get_my_family(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> FamilyResponse:
     if current_user.family_id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not in a family",
+            detail=translate_request(request, "error.not_in_family"),
         )
 
     family_service = FamilyService(db)
@@ -68,7 +70,7 @@ async def get_my_family(
     if family is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Family not found",
+            detail=translate_request(request, "error.family_not_found"),
         )
 
     pending_invites = await family_service.get_pending_invites(family)
@@ -105,13 +107,14 @@ async def get_my_family(
 @router.post("", response_model=FamilyCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_family(
     family_data: FamilyCreate,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> FamilyCreateResponse:
     if current_user.family_id is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="You are already in a family. Leave your current family first.",
+            detail=translate_request(request, "error.already_in_family_leave_first"),
         )
 
     family_service = FamilyService(db)
@@ -129,10 +132,11 @@ async def create_family(
 @router.patch("/me", response_model=FamilyResponse)
 async def update_family(
     family_data: FamilyUpdate,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> FamilyResponse:
-    require_family_admin(current_user)
+    require_family_admin(current_user, request)
 
     family_service = FamilyService(db)
     family = await family_service.get_user_family(current_user)
@@ -140,7 +144,7 @@ async def update_family(
     if family is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Family not found",
+            detail=translate_request(request, "error.family_not_found"),
         )
 
     family = await family_service.update(family, family_data)
@@ -179,10 +183,11 @@ async def update_family(
 
 @router.post("/me/regenerate-code", response_model=InviteCodeResponse)
 async def regenerate_invite_code(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> InviteCodeResponse:
-    require_family_admin(current_user)
+    require_family_admin(current_user, request)
 
     family_service = FamilyService(db)
     family = await family_service.get_user_family(current_user)
@@ -190,7 +195,7 @@ async def regenerate_invite_code(
     if family is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Family not found",
+            detail=translate_request(request, "error.family_not_found"),
         )
 
     new_code = await family_service.regenerate_invite_code(family)
@@ -201,23 +206,24 @@ async def regenerate_invite_code(
 
 @router.post("/join", response_model=JoinFamilyResponse)
 async def join_family(
-    request: JoinFamilyRequest,
+    join_body: JoinFamilyRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> JoinFamilyResponse:
     if current_user.family_id is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="You are already in a family. Leave your current family first.",
+            detail=translate_request(http_request, "error.already_in_family_leave_first"),
         )
 
     family_service = FamilyService(db)
-    family = await family_service.join_family(current_user, request.invite_code)
+    family = await family_service.join_family(current_user, join_body.invite_code)
 
     if family is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid invite code",
+            detail=translate_request(http_request, "error.invalid_invite_code"),
         )
 
     await db.commit()
@@ -231,29 +237,30 @@ async def join_family(
 
 @router.post("/join-by-token", response_model=JoinFamilyResponse)
 async def join_family_by_token(
-    request: JoinByTokenRequest,
+    join_body: JoinByTokenRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> JoinFamilyResponse:
     if current_user.family_id is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="You are already in a family. Leave your current family first.",
+            detail=translate_request(http_request, "error.already_in_family_leave_first"),
         )
 
     family_service = FamilyService(db)
-    invite = await family_service.get_invite_by_token(request.token)
+    invite = await family_service.get_invite_by_token(join_body.token)
 
     if invite is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid or expired invite link",
+            detail=translate_request(http_request, "error.invalid_or_expired_invite"),
         )
 
     if invite.email.lower() != current_user.email.lower():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This invite was sent to a different email address",
+            detail=translate_request(http_request, "error.invite_wrong_email"),
         )
 
     family = await family_service.accept_invite_by_token(invite, current_user)
@@ -263,7 +270,7 @@ async def join_family_by_token(
         logger.error("Family %s not found after accepting invite %s", invite.family_id, invite.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Family not found",
+            detail=translate_request(http_request, "error.family_not_found"),
         )
 
     return JoinFamilyResponse(
@@ -275,13 +282,14 @@ async def join_family_by_token(
 
 @router.post("/me/leave", response_model=MessageResponse)
 async def leave_family(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> MessageResponse:
     if current_user.family_id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not in a family",
+            detail=translate_request(request, "error.not_in_family"),
         )
 
     family_service = FamilyService(db)
@@ -290,7 +298,7 @@ async def leave_family(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot leave: you are the only admin. Transfer admin role first or remove all other members.",
+            detail=translate_request(request, "error.cannot_leave_sole_admin"),
         )
 
     await db.commit()
@@ -300,10 +308,11 @@ async def leave_family(
 @router.post("/me/invite", response_model=InviteResponse, status_code=status.HTTP_201_CREATED)
 async def invite_member(
     invite_data: InviteMemberRequest,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> InviteResponse:
-    require_family_admin(current_user)
+    require_family_admin(current_user, request)
 
     family_service = FamilyService(db)
     family = await family_service.get_user_family(current_user)
@@ -311,7 +320,7 @@ async def invite_member(
     if family is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Family not found",
+            detail=translate_request(request, "error.family_not_found"),
         )
 
     invite = await family_service.create_invite(family, current_user, invite_data)
@@ -341,10 +350,11 @@ async def invite_member(
 @router.delete("/me/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def cancel_invite(
     invite_id: UUID,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
-    require_family_admin(current_user)
+    require_family_admin(current_user, request)
 
     family_service = FamilyService(db)
     invite = await family_service.get_invite_by_id(invite_id)
@@ -352,14 +362,14 @@ async def cancel_invite(
     if invite is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invite not found",
+            detail=translate_request(request, "error.invite_not_found"),
         )
 
     # Verify invite belongs to user's family
     if invite.family_id != current_user.family_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invite not found",
+            detail=translate_request(request, "error.invite_not_in_family"),
         )
 
     await family_service.cancel_invite(invite)
@@ -369,16 +379,17 @@ async def cancel_invite(
 @router.patch("/me/members/{member_id}", response_model=FamilyMember)
 async def update_member_role(
     member_id: UUID,
-    request: UpdateMemberRoleRequest,
+    body: UpdateMemberRoleRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> FamilyMember:
-    require_family_admin(current_user)
+    require_family_admin(current_user, http_request)
 
     if member_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot change your own role",
+            detail=translate_request(http_request, "error.cannot_change_own_role"),
         )
 
     family_service = FamilyService(db)
@@ -387,15 +398,15 @@ async def update_member_role(
     if family is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Family not found",
+            detail=translate_request(http_request, "error.family_not_found"),
         )
 
-    member = await family_service.update_member_role(family, member_id, request.role)
+    member = await family_service.update_member_role(family, member_id, body.role)
 
     if member is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found in your family",
+            detail=translate_request(http_request, "error.member_not_in_family"),
         )
 
     await db.commit()
@@ -413,15 +424,16 @@ async def update_member_role(
 @router.delete("/me/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_member(
     member_id: UUID,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
-    require_family_admin(current_user)
+    require_family_admin(current_user, request)
 
     if member_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot remove yourself. Use /leave instead.",
+            detail=translate_request(request, "error.cannot_remove_self_use_leave"),
         )
 
     family_service = FamilyService(db)
@@ -430,7 +442,7 @@ async def remove_member(
     if family is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Family not found",
+            detail=translate_request(request, "error.family_not_found"),
         )
 
     success = await family_service.remove_member(family, member_id)
@@ -438,7 +450,7 @@ async def remove_member(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found in your family",
+            detail=translate_request(request, "error.member_not_in_family"),
         )
 
     await db.commit()

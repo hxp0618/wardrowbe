@@ -1,12 +1,13 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from app.models.user import User
 from app.services.weather_service import WeatherService, WeatherServiceError
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class WeatherOverride(BaseModel):
 
 @router.get("/current", response_model=WeatherResponse)
 async def get_current_weather(
+    http_request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     latitude: float | None = Query(None, ge=-90, le=90),
     longitude: float | None = Query(None, ge=-180, le=180),
@@ -61,7 +63,7 @@ async def get_current_weather(
     if lat is None or lon is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Location not set. Please provide coordinates or set your location in settings.",
+            detail=translate_request(http_request, "error.weather_location_required"),
         )
 
     weather_service = WeatherService()
@@ -72,7 +74,7 @@ async def get_current_weather(
         logger.error(f"Weather service error: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Weather service temporarily unavailable",
+            detail=translate_request(http_request, "error.weather_service_unavailable"),
         ) from None
 
     return WeatherResponse(
@@ -92,6 +94,7 @@ async def get_current_weather(
 
 @router.get("/forecast", response_model=ForecastResponse)
 async def get_weather_forecast(
+    http_request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     latitude: float | None = Query(None, ge=-90, le=90),
     longitude: float | None = Query(None, ge=-180, le=180),
@@ -104,7 +107,7 @@ async def get_weather_forecast(
     if lat is None or lon is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Location not set. Please provide coordinates or set your location in settings.",
+            detail=translate_request(http_request, "error.weather_location_required"),
         )
 
     weather_service = WeatherService()
@@ -115,7 +118,7 @@ async def get_weather_forecast(
         logger.error(f"Weather service error: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Weather service temporarily unavailable",
+            detail=translate_request(http_request, "error.weather_service_unavailable"),
         ) from None
 
     return ForecastResponse(

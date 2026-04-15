@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,13 +10,14 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import AuthSession, TokenPayload
 from app.services.user_service import UserService
+from app.utils.i18n import translate_request
 
 settings = get_settings()
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def decode_token(token: str) -> TokenPayload:
+def decode_token(token: str, request: Request | None = None) -> TokenPayload:
     try:
         payload = jwt.decode(
             token,
@@ -28,18 +29,19 @@ def decode_token(token: str) -> TokenPayload:
     except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail=translate_request(request, "error.token_invalid"),
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail=translate_request(request, "error.token_invalid"),
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
 
 
 async def get_current_user_optional(
+    request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User | None:
@@ -47,7 +49,7 @@ async def get_current_user_optional(
         return None
 
     try:
-        token_data = decode_token(credentials.credentials)
+        token_data = decode_token(credentials.credentials, request)
         user_service = UserService(db)
         return await user_service.get_by_external_id(token_data.sub)
     except HTTPException:
@@ -55,6 +57,7 @@ async def get_current_user_optional(
 
 
 async def get_current_user(
+    request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
@@ -62,20 +65,20 @@ async def get_current_user(
     user = None
 
     if credentials:
-        token_data = decode_token(credentials.credentials)
+        token_data = decode_token(credentials.credentials, request)
         user = await user_service.get_by_external_id(token_data.sub)
 
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
+            detail=translate_request(request, "error.not_authenticated"),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive",
+            detail=translate_request(request, "error.user_inactive"),
         )
 
     return user

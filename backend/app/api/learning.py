@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from app.models.learning import UserLearningProfile
 from app.models.user import User
 from app.services.learning_service import LearningService
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 
 logger = logging.getLogger(__name__)
 
@@ -373,6 +374,7 @@ async def generate_insights(
 @router.post("/insights/{insight_id}/acknowledge")
 async def acknowledge_insight(
     insight_id: UUID,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
@@ -384,7 +386,7 @@ async def acknowledge_insight(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Insight not found",
+            detail=translate_request(http_request, "error.insight_not_found"),
         )
 
     return {"acknowledged": True}

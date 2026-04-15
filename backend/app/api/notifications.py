@@ -2,7 +2,7 @@ from datetime import datetime, time, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +29,7 @@ from app.schemas.notification import (
 )
 from app.services.notification_service import NotificationService
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 
 router = APIRouter()
 
@@ -155,13 +156,17 @@ async def create_notification_setting(
 @router.get("/settings/{setting_id}", response_model=NotificationSettingsResponse)
 async def get_notification_setting(
     setting_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)
     setting = await service.get_setting_by_id(setting_id, current_user.id)
     if not setting:
-        raise HTTPException(status_code=404, detail="Setting not found")
+        raise HTTPException(
+            status_code=404,
+            detail=translate_request(request, "error.notification_setting_not_found"),
+        )
     return setting
 
 
@@ -169,6 +174,7 @@ async def get_notification_setting(
 async def update_notification_setting(
     setting_id: UUID,
     data: NotificationSettingsUpdate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -178,7 +184,10 @@ async def update_notification_setting(
     if data.config is not None:
         existing = await service.get_setting_by_id(setting_id, current_user.id)
         if not existing:
-            raise HTTPException(status_code=404, detail="Setting not found")
+            raise HTTPException(
+                status_code=404,
+                detail=translate_request(request, "error.notification_setting_not_found"),
+            )
 
         # Validate channel-specific config
         try:
@@ -201,7 +210,10 @@ async def update_notification_setting(
         config=data.config,
     )
     if not setting:
-        raise HTTPException(status_code=404, detail="Setting not found")
+        raise HTTPException(
+            status_code=404,
+            detail=translate_request(request, "error.notification_setting_not_found"),
+        )
     await db.commit()
     return setting
 
@@ -209,15 +221,21 @@ async def update_notification_setting(
 @router.delete("/settings/{setting_id}", response_model=MessageResponse)
 async def delete_notification_setting(
     setting_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)
     success = await service.delete_setting(setting_id, current_user.id)
     if not success:
-        raise HTTPException(status_code=404, detail="Setting not found")
+        raise HTTPException(
+            status_code=404,
+            detail=translate_request(request, "error.notification_setting_not_found"),
+        )
     await db.commit()
-    return MessageResponse(message="Notification setting deleted")
+    return MessageResponse(
+        message=translate_request(request, "message.notification_setting_deleted")
+    )
 
 
 @router.post("/settings/{setting_id}/test", response_model=TestNotificationResponse)
@@ -243,13 +261,16 @@ class PushTokenRequest(BaseModel):
 @router.post("/push-token", response_model=NotificationSettingsResponse)
 async def register_push_token(
     data: PushTokenRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     try:
         ExpoPushConfig(push_token=data.push_token)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid push token format") from None
+        raise HTTPException(
+            status_code=400, detail=translate_request(request, "error.push_token_invalid")
+        ) from None
 
     # Check if expo_push channel already exists
     existing = await db.execute(
@@ -307,6 +328,7 @@ async def list_schedules(
 @router.post("/schedules", response_model=ScheduleResponse, status_code=201)
 async def create_schedule(
     data: ScheduleCreate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -332,7 +354,9 @@ async def create_schedule(
         )
     )
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="An identical schedule already exists")
+        raise HTTPException(
+            status_code=409, detail=translate_request(request, "error.schedule_duplicate")
+        )
 
     schedule = Schedule(
         user_id=current_user.id,
@@ -353,6 +377,7 @@ async def create_schedule(
 @router.get("/schedules/{schedule_id}", response_model=ScheduleResponse)
 async def get_schedule(
     schedule_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -369,7 +394,9 @@ async def get_schedule(
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        raise HTTPException(
+            status_code=404, detail=translate_request(request, "error.schedule_not_found")
+        )
 
     return _schedule_to_local_response(schedule, user_tz)
 
@@ -378,6 +405,7 @@ async def get_schedule(
 async def update_schedule(
     schedule_id: UUID,
     data: ScheduleUpdate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -394,7 +422,9 @@ async def update_schedule(
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        raise HTTPException(
+            status_code=404, detail=translate_request(request, "error.schedule_not_found")
+        )
 
     if data.notification_time is not None:
         # Get current local day to use for conversion
@@ -422,6 +452,7 @@ async def update_schedule(
 @router.delete("/schedules/{schedule_id}", response_model=MessageResponse)
 async def delete_schedule(
     schedule_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -432,11 +463,13 @@ async def delete_schedule(
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        raise HTTPException(
+            status_code=404, detail=translate_request(request, "error.schedule_not_found")
+        )
 
     await db.delete(schedule)
     await db.commit()
-    return MessageResponse(message="Schedule deleted")
+    return MessageResponse(message=translate_request(request, "message.schedule_deleted"))
 
 
 # ============= Notification History =============

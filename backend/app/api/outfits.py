@@ -324,7 +324,7 @@ async def suggest_outfit(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OutfitResponse:
-    await rate_limit_by_user(current_user.id, "suggest", 10, 60)
+    await rate_limit_by_user(current_user.id, http_request, "suggest", 10, 60)
 
     occasion = request.occasion
     if occasion is not None:

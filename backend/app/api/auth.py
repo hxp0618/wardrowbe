@@ -18,6 +18,7 @@ from app.schemas.user import (
 )
 from app.services.user_service import UserEmailConflictError, UserService
 from app.utils.auth import get_current_user
+from app.utils.i18n import translate_request
 from app.utils.oidc import validate_oidc_id_token
 from app.utils.rate_limit import rate_limit_by_ip
 
@@ -90,7 +91,7 @@ async def sync_user(
         if not sync_data.id_token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="OIDC id_token is required for authentication",
+                detail=translate_request(request, "error.oidc_token_required"),
             )
 
         valid_audiences = [settings.oidc_client_id]
@@ -115,7 +116,7 @@ async def sync_user(
         if oidc_claims.get("sub") != sync_data.external_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token subject does not match external_id",
+                detail=translate_request(request, "error.token_subject_mismatch"),
             )
 
         claims_email = oidc_claims.get("email", "").lower().strip()
@@ -123,7 +124,7 @@ async def sync_user(
         if claims_email and request_email and claims_email != request_email:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token email does not match request email",
+                detail=translate_request(request, "error.token_email_mismatch"),
             )
 
         # Check provider migration: different external_id, same email requires verified email
@@ -133,12 +134,14 @@ async def sync_user(
             if oidc_claims.get("email_verified") is not True:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already associated with another account. Verified email required for migration.",
+                    detail=translate_request(
+                        request, "error.email_migration_requires_verification"
+                    ),
                 )
     else:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="No authentication method configured",
+            detail=translate_request(request, "error.no_auth_method_configured"),
         )
 
     user_service = UserService(db)
