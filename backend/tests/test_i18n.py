@@ -44,11 +44,6 @@ def test_translate_validation_message_oidc_and_field_required():
     assert "必填" in translate_validation_message("Field required", req)
 
 
-def test_health_status_keys():
-    assert translate("zh", "health.status_ok") == "正常"
-    assert translate("en", "health.status_ok") == "healthy"
-
-
 def test_translate_validation_message_known_strings():
     req = Mock()
     req.headers = {}

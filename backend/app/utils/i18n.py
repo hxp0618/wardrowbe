@@ -158,9 +158,6 @@ MESSAGES_ZH: dict[str, str] = {
     "notification.email.text_occasion": "场合：{occasion}",
     "notification.email.text_view_link": "查看穿搭：{url}",
     "notification.expo.body_fallback": "你的穿搭已准备好！",
-    "health.status_ok": "正常",
-    "health.status_fail": "异常",
-    "health.check_db_error": "数据库不可用：{error}",
 }
 
 MESSAGES_EN: dict[str, str] = {
@@ -318,9 +315,6 @@ MESSAGES_EN: dict[str, str] = {
     "notification.email.text_occasion": "Occasion: {occasion}",
     "notification.email.text_view_link": "View outfit: {url}",
     "notification.expo.body_fallback": "Your outfit is ready!",
-    "health.status_ok": "healthy",
-    "health.status_fail": "unhealthy",
-    "health.check_db_error": "unhealthy: {error}",
 }
 
 LOCALES: dict[str, dict[str, str]] = {

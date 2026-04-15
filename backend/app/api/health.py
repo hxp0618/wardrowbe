@@ -1,42 +1,33 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services.ai_service import get_ai_service
-from app.utils.i18n import translate_request
 
 router = APIRouter()
 
 
 @router.get("/health")
-async def health_check(http_request: Request) -> dict[str, str]:
-    return {"status": translate_request(http_request, "health.status_ok")}
+async def health_check() -> dict[str, str]:
+    return {"status": "healthy"}
 
 
 @router.get("/health/ready")
-async def readiness_check(
-    http_request: Request, db: AsyncSession = Depends(get_db)
-) -> dict[str, Any]:
-    fail = translate_request(http_request, "health.status_fail")
-    ok = translate_request(http_request, "health.status_ok")
-
-    checks: dict[str, str] = {
-        "database": fail,
+async def readiness_check(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+    checks = {
+        "database": "unhealthy",
     }
 
     try:
         await db.execute(text("SELECT 1"))
-        checks["database"] = ok
+        checks["database"] = "healthy"
     except Exception as e:
-        checks["database"] = translate_request(http_request, "health.check_db_error", error=str(e))
+        checks["database"] = f"unhealthy: {str(e)}"
 
-    def _is_ok(v: str) -> bool:
-        return v == ok
-
-    overall = ok if all(_is_ok(v) for v in checks.values()) else fail
+    overall = "healthy" if all(v == "healthy" for v in checks.values()) else "unhealthy"
 
     return {
         "status": overall,
