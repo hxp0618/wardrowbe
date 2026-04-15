@@ -15,7 +15,7 @@ from app.models.learning import UserLearningProfile
 from app.models.user import User
 from app.services.learning_service import LearningService
 from app.utils.auth import get_current_user
-from app.utils.i18n import translate_request
+from app.utils.i18n import resolve_locale, translate, translate_request
 
 logger = logging.getLogger(__name__)
 
@@ -102,22 +102,22 @@ class LearningInsightsResponse(BaseModel):
     preference_suggestions: dict
 
 
-def _interpret_score(score: float) -> str:
+def _interpret_score(score: float, locale: str) -> str:
     """Convert numeric score to human-readable interpretation."""
     if score >= 0.5:
-        return "strongly liked"
-    elif score >= 0.2:
-        return "liked"
-    elif score >= -0.2:
-        return "neutral"
-    elif score >= -0.5:
-        return "disliked"
-    else:
-        return "strongly disliked"
+        return translate(locale, "learning.interpretation.strongly_liked")
+    if score >= 0.2:
+        return translate(locale, "learning.interpretation.liked")
+    if score >= -0.2:
+        return translate(locale, "learning.interpretation.neutral")
+    if score >= -0.5:
+        return translate(locale, "learning.interpretation.disliked")
+    return translate(locale, "learning.interpretation.strongly_disliked")
 
 
 @router.get("", response_model=LearningInsightsResponse)
 async def get_learning_insights(
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> LearningInsightsResponse:
@@ -128,6 +128,7 @@ async def get_learning_insights(
     and suggested preference updates based on feedback history.
     """
     learning_service = LearningService(db)
+    locale = resolve_locale(http_request)
 
     # Get or compute learning profile
     result = await db.execute(
@@ -150,7 +151,7 @@ async def get_learning_insights(
                 LearnedColorScore(
                     color=color,
                     score=score,
-                    interpretation=_interpret_score(score),
+                    interpretation=_interpret_score(score, locale),
                 )
                 for color, score in sorted(
                     profile.learned_color_scores.items(),
@@ -256,6 +257,7 @@ async def get_learning_insights(
 
 @router.post("/recompute", response_model=LearningProfileResponse)
 async def recompute_learning_profile(
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> LearningProfileResponse:
@@ -266,6 +268,7 @@ async def recompute_learning_profile(
     Usually happens automatically, but can be triggered manually.
     """
     learning_service = LearningService(db)
+    locale = resolve_locale(http_request)
 
     profile = await learning_service.recompute_learning_profile(current_user.id)
 
@@ -280,7 +283,7 @@ async def recompute_learning_profile(
             LearnedColorScore(
                 color=color,
                 score=score,
-                interpretation=_interpret_score(score),
+                interpretation=_interpret_score(score, locale),
             )
             for color, score in sorted(
                 profile.learned_color_scores.items(),
@@ -345,6 +348,7 @@ async def recompute_learning_profile(
 
 @router.post("/generate-insights", response_model=list[InsightResponse])
 async def generate_insights(
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> list[InsightResponse]:
@@ -355,7 +359,9 @@ async def generate_insights(
     """
     learning_service = LearningService(db)
 
-    insights = await learning_service.generate_insights(current_user.id)
+    insights = await learning_service.generate_insights(
+        current_user.id, locale=resolve_locale(http_request)
+    )
 
     return [
         InsightResponse(

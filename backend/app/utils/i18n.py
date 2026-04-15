@@ -87,6 +87,21 @@ MESSAGES_ZH: dict[str, str] = {
     "analytics.insight.great_acceptance": "品味不错！你会接受 {rate}% 的推荐穿搭。",
     "analytics.insight.low_acceptance": "你拒绝了不少推荐，可以尝试更新风格偏好。",
     "analytics.insight.no_outfits_this_week": "本周还没有生成穿搭，试试看获取一条推荐吧！",
+    "learning.interpretation.strongly_liked": "非常喜欢",
+    "learning.interpretation.liked": "喜欢",
+    "learning.interpretation.neutral": "一般",
+    "learning.interpretation.disliked": "不太喜欢",
+    "learning.interpretation.strongly_disliked": "很不喜欢",
+    "learning.insight.love_color_title": "你很喜欢{color}！",
+    "learning.insight.love_color_desc": "你的反馈显示你明显偏爱{color}色单品，我们会在推荐中优先考虑这些颜色。",
+    "learning.insight.avoid_color_title": "对{color}不太感冒",
+    "learning.insight.avoid_color_desc": "你常会拒绝包含{color}的穿搭，我们会尽量提供替代方案。",
+    "learning.insight.great_match_title": "非常合拍！",
+    "learning.insight.great_match_desc": "你会接受我们 {pct}% 的推荐，我们正在更好地了解你的风格。",
+    "learning.insight.help_learn_title": "帮我们了解你的风格",
+    "learning.insight.help_learn_desc": "你拒绝了不少推荐，可以更新偏好设置以帮助我们改进。",
+    "learning.insight.style_pattern_title": "你的风格：{style}",
+    "learning.insight.style_pattern_desc": "根据你的反馈，你更偏向 {styles} 等风格。",
 }
 
 MESSAGES_EN: dict[str, str] = {
@@ -174,6 +189,21 @@ MESSAGES_EN: dict[str, str] = {
     "analytics.insight.great_acceptance": "Great taste! You accept {rate}% of suggestions.",
     "analytics.insight.low_acceptance": "You reject many suggestions. Consider updating your style preferences.",
     "analytics.insight.no_outfits_this_week": "You haven't generated any outfits this week. Try getting a suggestion!",
+    "learning.interpretation.strongly_liked": "strongly liked",
+    "learning.interpretation.liked": "liked",
+    "learning.interpretation.neutral": "neutral",
+    "learning.interpretation.disliked": "disliked",
+    "learning.interpretation.strongly_disliked": "strongly disliked",
+    "learning.insight.love_color_title": "You love {color}!",
+    "learning.insight.love_color_desc": "Your feedback shows a strong preference for {color} items. We'll prioritize these in your recommendations.",
+    "learning.insight.avoid_color_title": "Not a fan of {color}",
+    "learning.insight.avoid_color_desc": "You tend to reject outfits with {color}. We'll suggest alternatives.",
+    "learning.insight.great_match_title": "Great match!",
+    "learning.insight.great_match_desc": "You accept {pct}% of our suggestions. We're learning your style well!",
+    "learning.insight.help_learn_title": "Help us learn your style",
+    "learning.insight.help_learn_desc": "You've rejected many suggestions. Consider updating your preferences to help us improve.",
+    "learning.insight.style_pattern_title": "Your style: {style}",
+    "learning.insight.style_pattern_desc": "Based on your feedback, you gravitate towards {styles} styles.",
 }
 
 LOCALES: dict[str, dict[str, str]] = {

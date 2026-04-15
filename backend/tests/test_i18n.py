@@ -29,3 +29,9 @@ def test_translate_zh_and_en():
 def test_analytics_insight_keys():
     assert "添加" in translate("zh", "analytics.insight.start_add_items")
     assert "wardrobe" in translate("en", "analytics.insight.start_add_items").lower()
+
+
+def test_learning_interpretation_and_insight_keys():
+    assert "喜欢" in translate("zh", "learning.interpretation.liked")
+    assert translate("en", "learning.interpretation.liked") == "liked"
+    assert "{color}" not in translate("zh", "learning.insight.love_color_title", color="蓝")

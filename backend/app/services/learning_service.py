@@ -30,6 +30,7 @@ from app.models.learning import (
 )
 from app.models.outfit import Outfit, OutfitItem, OutfitStatus, UserFeedback
 from app.models.preference import UserPreference
+from app.utils.i18n import translate
 from app.utils.signed_urls import sign_image_url
 
 logger = logging.getLogger(__name__)
@@ -824,7 +825,7 @@ class LearningService:
 
         return preferences
 
-    async def generate_insights(self, user_id: UUID) -> list[StyleInsight]:
+    async def generate_insights(self, user_id: UUID, locale: str = "zh") -> list[StyleInsight]:
         """Generate human-readable insights about the user's style."""
         profile = await self._get_or_create_profile(user_id)
 
@@ -850,8 +851,14 @@ class LearningService:
                         user_id=user_id,
                         category="color",
                         insight_type="positive",
-                        title=f"You love {best_color}!",
-                        description=f"Your feedback shows a strong preference for {best_color} items. We'll prioritize these in your recommendations.",
+                        title=translate(
+                            locale, "learning.insight.love_color_title", color=best_color
+                        ),
+                        description=translate(
+                            locale,
+                            "learning.insight.love_color_desc",
+                            color=best_color,
+                        ),
                         confidence=Decimal(str(min(0.95, abs(top_colors[0][1])))),
                         supporting_data={"color": best_color, "score": top_colors[0][1]},
                         expires_at=expiry,
@@ -866,8 +873,14 @@ class LearningService:
                         user_id=user_id,
                         category="color",
                         insight_type="negative",
-                        title=f"Not a fan of {avoided[0]}",
-                        description=f"You tend to reject outfits with {avoided[0]}. We'll suggest alternatives.",
+                        title=translate(
+                            locale, "learning.insight.avoid_color_title", color=avoided[0]
+                        ),
+                        description=translate(
+                            locale,
+                            "learning.insight.avoid_color_desc",
+                            color=avoided[0],
+                        ),
                         confidence=Decimal("0.7"),
                         supporting_data={"colors": avoided},
                         expires_at=expiry,
@@ -883,8 +896,12 @@ class LearningService:
                         user_id=user_id,
                         category="overall",
                         insight_type="positive",
-                        title="Great match!",
-                        description=f"You accept {rate * 100:.0f}% of our suggestions. We're learning your style well!",
+                        title=translate(locale, "learning.insight.great_match_title"),
+                        description=translate(
+                            locale,
+                            "learning.insight.great_match_desc",
+                            pct=int(round(rate * 100)),
+                        ),
                         confidence=Decimal("0.9"),
                         supporting_data={"acceptance_rate": rate},
                         expires_at=expiry,
@@ -896,8 +913,8 @@ class LearningService:
                         user_id=user_id,
                         category="overall",
                         insight_type="suggestion",
-                        title="Help us learn your style",
-                        description="You've rejected many suggestions. Consider updating your preferences to help us improve.",
+                        title=translate(locale, "learning.insight.help_learn_title"),
+                        description=translate(locale, "learning.insight.help_learn_desc"),
                         confidence=Decimal("0.8"),
                         supporting_data={"acceptance_rate": rate},
                         expires_at=expiry,
@@ -917,8 +934,16 @@ class LearningService:
                         user_id=user_id,
                         category="style",
                         insight_type="pattern",
-                        title=f"Your style: {top_styles[0][0]}",
-                        description=f"Based on your feedback, you gravitate towards {', '.join(s for s, _ in top_styles)} styles.",
+                        title=translate(
+                            locale,
+                            "learning.insight.style_pattern_title",
+                            style=top_styles[0][0],
+                        ),
+                        description=translate(
+                            locale,
+                            "learning.insight.style_pattern_desc",
+                            styles=", ".join(s for s, _ in top_styles),
+                        ),
                         confidence=Decimal(str(min(0.9, abs(top_styles[0][1])))),
                         supporting_data={"styles": dict(top_styles)},
                         expires_at=expiry,
