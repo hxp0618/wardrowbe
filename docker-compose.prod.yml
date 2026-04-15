@@ -68,6 +68,7 @@ services:
       NTFY_SERVER: ${NTFY_SERVER:-}
       NTFY_TOPIC: ${NTFY_TOPIC:-}
       NTFY_TOKEN: ${NTFY_TOKEN:-}
+      BARK_SERVER: ${BARK_SERVER:-}
       APP_URL: ${APP_URL:-https://localhost:3000}
       OIDC_SKIP_SSL_VERIFY: ${OIDC_SKIP_SSL_VERIFY:-false}
     volumes:
@@ -113,6 +114,7 @@ services:
       NTFY_SERVER: ${NTFY_SERVER:-}
       NTFY_TOPIC: ${NTFY_TOPIC:-}
       NTFY_TOKEN: ${NTFY_TOKEN:-}
+      BARK_SERVER: ${BARK_SERVER:-}
       APP_URL: ${APP_URL:-https://localhost:3000}
     volumes:
       - uploads_data:/data/uploads

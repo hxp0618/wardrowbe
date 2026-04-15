@@ -14,7 +14,7 @@ function useSetTokenIfAvailable() {
 export interface NotificationSettings {
   id: string;
   user_id: string;
-  channel: 'ntfy' | 'mattermost' | 'email';
+  channel: 'ntfy' | 'mattermost' | 'email' | 'bark';
   enabled: boolean;
   priority: number;
   config: Record<string, string>;
@@ -64,7 +64,7 @@ export function useCreateNotificationSetting() {
 
   return useMutation({
     mutationFn: async (data: {
-      channel: 'ntfy' | 'mattermost' | 'email';
+      channel: 'ntfy' | 'mattermost' | 'email' | 'bark';
       enabled: boolean;
       priority: number;
       config: Record<string, string>;

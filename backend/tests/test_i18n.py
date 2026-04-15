@@ -2,7 +2,12 @@
 
 from unittest.mock import Mock
 
-from app.utils.i18n import DEFAULT_LOCALE, resolve_locale, translate, translate_validation_message
+from app.utils.i18n import (
+    DEFAULT_LOCALE,
+    resolve_locale,
+    translate,
+    translate_validation_message,
+)
 
 
 def test_default_locale_is_chinese():

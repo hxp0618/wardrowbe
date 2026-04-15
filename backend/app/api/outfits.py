@@ -344,6 +344,24 @@ async def suggest_outfit(
                 ),
             )
 
+    occasion = request.occasion
+    if occasion is not None:
+        occasion = occasion.strip().lower()
+        if len(occasion) > 50:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=translate_request(http_request, "error.occasion_too_long"),
+            )
+        if occasion not in VALID_OCCASIONS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=translate_request(
+                    http_request,
+                    "error.invalid_occasion",
+                    occasions=", ".join(sorted(VALID_OCCASIONS)),
+                ),
+            )
+
     # Convert weather override to WeatherData if provided
     weather_override = None
     if request.weather_override:

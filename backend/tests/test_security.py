@@ -146,6 +146,31 @@ class TestMattermostWebhookValidation:
         assert "hooks" in config.webhook_url
 
 
+class TestBarkConfigValidation:
+    def test_rejects_short_device_key(self):
+        from app.schemas.notification import BarkConfig
+
+        with pytest.raises(ValidationError):
+            BarkConfig(server="https://api.day.app", device_key="short")
+
+    def test_rejects_invalid_server_scheme(self):
+        from app.schemas.notification import BarkConfig
+
+        with pytest.raises(ValidationError):
+            BarkConfig(server="ftp://api.day.app", device_key="abcd1234567890")
+
+    def test_accepts_valid(self):
+        from app.schemas.notification import BarkConfig
+
+        config = BarkConfig(
+            server="https://api.day.app",
+            device_key="myDeviceKey123456",
+            group=None,
+        )
+        assert config.server == "https://api.day.app"
+        assert config.group is None
+
+
 class TestHealthEndpointInfoLeak:
     @pytest.mark.asyncio
     async def test_ai_health_strips_sensitive_info(self, client):

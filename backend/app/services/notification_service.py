@@ -12,8 +12,10 @@ from sqlalchemy.orm import selectinload
 from app.models.notification import Notification, NotificationSettings, NotificationStatus
 from app.models.outfit import Outfit, OutfitItem
 from app.models.user import User
-from app.schemas.notification import EmailConfig, ExpoPushConfig, MattermostConfig, NtfyConfig
+from app.schemas.notification import BarkConfig, EmailConfig, ExpoPushConfig, MattermostConfig, NtfyConfig
 from app.services.notification_providers import (
+    BarkMessage,
+    BarkProvider,
     EmailMessage,
     EmailProvider,
     ExpoPushMessage,
@@ -175,6 +177,8 @@ class NotificationService:
                 success, message = await ExpoPushProvider(
                     ExpoPushConfig(**setting.config)
                 ).test_connection()
+            elif setting.channel == "bark":
+                success, message = await BarkProvider(BarkConfig(**setting.config)).test_connection()
             else:
                 return False, _dispatch_msg(
                     "notification.dispatch.unknown_channel", channel=setting.channel
@@ -355,6 +359,11 @@ class NotificationDispatcher:
             elif channel_config.channel == "expo_push":
                 provider = ExpoPushProvider(ExpoPushConfig(**channel_config.config))
                 message = self._build_expo_push_message(outfit, user, for_tomorrow)
+                result = await provider.send(message)
+
+            elif channel_config.channel == "bark":
+                provider = BarkProvider(BarkConfig(**channel_config.config))
+                message = self._build_bark_message(outfit, user, for_tomorrow)
                 result = await provider.send(message)
 
             else:
@@ -669,4 +678,35 @@ class NotificationDispatcher:
             title=title,
             body=body,
             data={"outfit_id": str(outfit.id), "screen": "history"},
+        )
+
+    def _build_bark_message(
+        self, outfit: Outfit, _user: User, for_tomorrow: bool = False
+    ) -> BarkMessage:
+        weather = outfit.weather_data or {}
+        temp = weather.get("temperature")
+        day_label = "Tomorrow" if for_tomorrow else "Today"
+
+        if temp is not None:
+            title = f"{day_label}'s {outfit.occasion.title()} - {temp}\u00b0C"
+        else:
+            title = f"{day_label}'s {outfit.occasion.title()} Outfit"
+
+        parts = []
+        if outfit.reasoning:
+            parts.append(outfit.reasoning)
+        highlights = []
+        if outfit.ai_raw_response and isinstance(outfit.ai_raw_response, dict):
+            highlights = outfit.ai_raw_response.get("highlights", [])
+        if highlights and isinstance(highlights, list):
+            parts.append("\n".join(f"• {h}" for h in highlights[:3]))
+        if outfit.style_notes:
+            parts.append(f"Tip: {outfit.style_notes}")
+
+        body = "\n\n".join(parts) if parts else "Your outfit is ready!"
+
+        return BarkMessage(
+            title=title,
+            body=body,
+            url=f"{self.app_url}/dashboard/history",
         )

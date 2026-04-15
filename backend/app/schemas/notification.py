@@ -67,9 +67,45 @@ class ExpoPushConfig(BaseModel):
         return v
 
 
+class BarkConfig(BaseModel):
+    """Bark (iOS) push via HTTP API — https://github.com/Finb/Bark"""
+
+    server: str = "https://api.day.app"
+    device_key: str
+    group: str | None = "Wardrowbe"
+
+    @field_validator("server")
+    @classmethod
+    def validate_server(cls, v: str) -> str:
+        if not v.startswith("http://") and not v.startswith("https://"):
+            raise ValueError("Server URL must start with http:// or https://")
+        if len(v) > 500:
+            raise ValueError("Server URL must be 500 characters or fewer")
+        return v.rstrip("/")
+
+    @field_validator("device_key")
+    @classmethod
+    def validate_device_key(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 8:
+            raise ValueError("device_key must be at least 8 characters")
+        if len(v) > 500:
+            raise ValueError("device_key must be 500 characters or fewer")
+        return v
+
+    @field_validator("group")
+    @classmethod
+    def validate_group(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        if len(v) > 100:
+            raise ValueError("group must be 100 characters or fewer")
+        return v
+
+
 # Notification settings schemas
 class NotificationSettingsBase(BaseModel):
-    channel: Literal["ntfy", "mattermost", "email", "expo_push"]
+    channel: Literal["ntfy", "mattermost", "email", "expo_push", "bark"]
     enabled: bool = True
     priority: int = 1
     config: dict

@@ -699,7 +699,8 @@
       "channelAdded": "Notification channel added",
       "channelEnabled": "Channel enabled",
       "channelDisabled": "Channel disabled",
-      "webhookConfigured": "Webhook configured"
+      "webhookConfigured": "Webhook configured",
+      "barkDeviceConfigured": "Bark device configured"
     },
     "schedules": {
       "title": "Delivery Schedule",
@@ -722,6 +723,7 @@
       "ntfyPush": "ntfy Push Notifications",
       "mattermost": "Mattermost",
       "email": "Email",
+      "bark": "Bark (iOS)",
       "serverUrl": "Server URL",
       "topic": "Topic",
       "topicHint": "Subscribe to this topic in your ntfy app",
@@ -730,6 +732,10 @@
       "webhookUrl": "Webhook URL",
       "webhookHint": "Create an incoming webhook in Mattermost settings",
       "emailAddress": "Email Address",
+      "barkDeviceKey": "Device key",
+      "barkDeviceKeyHint": "Copy from the Bark app (Server section)",
+      "barkGroup": "Group (optional)",
+      "barkGroupHint": "Shown as a group in the Bark app",
       "adding": "Adding..."
     },
     "addScheduleDialog": {
@@ -753,12 +759,14 @@
     "channelLabels": {
       "ntfy": "ntfy Push",
       "mattermost": "Mattermost",
-      "email": "Email"
+      "email": "Email",
+      "bark": "Bark"
     },
     "validation": {
       "topicRequired": "Topic is required for ntfy",
       "webhookRequired": "Webhook URL is required for Mattermost",
-      "emailRequired": "Email address is required"
+      "emailRequired": "Email address is required",
+      "barkDeviceKeyRequired": "Bark device key is required"
     },
     "errors": {
       "addChannelFailed": "Failed to add channel",
