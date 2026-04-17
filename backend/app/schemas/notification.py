@@ -5,6 +5,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, field_validator
 
+from app.config import get_settings
+from app.utils.network import validate_public_url
+
 
 # Channel-specific configurations
 class NtfyConfig(BaseModel):
@@ -103,9 +106,97 @@ class BarkConfig(BaseModel):
         return v
 
 
+WEBHOOK_FORMATS = {
+    "json",
+    "discord",
+    "slack",
+    "telegram",
+    "lark",
+    "feishu",
+    "dingtalk",
+    "wecom",
+    "teams",
+}
+
+
+class WebhookConfig(BaseModel):
+    """Generic outbound webhook that can target custom endpoints or popular IM platforms.
+
+    ``format`` selects the payload shape built by the provider. ``template`` is an
+    optional JSON string (used only when ``format == "json"``) supporting placeholders
+    like ``{title}``, ``{body}``, ``{url}``, ``{occasion}``, ``{day}``, ``{temperature}``,
+    ``{condition}``. ``chat_id`` is required for ``format == "telegram"`` (the webhook
+    URL should be the bot's ``sendMessage`` endpoint).
+    """
+
+    url: str
+    method: Literal["POST", "PUT", "PATCH"] = "POST"
+    format: Literal[
+        "json",
+        "discord",
+        "slack",
+        "telegram",
+        "lark",
+        "feishu",
+        "dingtalk",
+        "wecom",
+        "teams",
+    ] = "json"
+    headers: dict[str, str] | None = None
+    template: str | None = None
+    chat_id: str | None = None
+    verify_tls: bool = True
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        v = v.strip()
+        if not v.startswith("http://") and not v.startswith("https://"):
+            raise ValueError("Webhook URL must start with http:// or https://")
+        if len(v) > 2000:
+            raise ValueError("Webhook URL must be 2000 characters or fewer")
+        return validate_public_url(v, allow_private=get_settings().allow_private_webhook)
+
+    @field_validator("headers")
+    @classmethod
+    def validate_headers(cls, v: dict[str, str] | None) -> dict[str, str] | None:
+        if v is None:
+            return None
+        if len(v) > 20:
+            raise ValueError("At most 20 custom headers are allowed")
+        for key, val in v.items():
+            if not isinstance(key, str) or not isinstance(val, str):
+                raise ValueError("Header keys and values must be strings")
+            if len(key) > 100 or len(val) > 1000:
+                raise ValueError("Header key must be <= 100 and value <= 1000 characters")
+        return v
+
+    @field_validator("template")
+    @classmethod
+    def validate_template(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        if len(v) > 4000:
+            raise ValueError("Template must be 4000 characters or fewer")
+        return v
+
+    @field_validator("chat_id")
+    @classmethod
+    def validate_chat_id(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        v = v.strip()
+        if len(v) > 100:
+            raise ValueError("chat_id must be 100 characters or fewer")
+        return v
+
+
 # Notification settings schemas
 class NotificationSettingsBase(BaseModel):
-    channel: Literal["ntfy", "mattermost", "email", "expo_push", "bark"]
+    channel: Literal["ntfy", "mattermost", "email", "expo_push", "bark", "webhook"]
     enabled: bool = True
     priority: int = 1
     config: dict

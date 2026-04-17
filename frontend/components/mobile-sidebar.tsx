@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
-import { X, Home, Shirt, Sparkles, Layers, History, BarChart3, Brain, Settings, Users, Bell, HeartHandshake } from 'lucide-react';
+import { X, Home, Shirt, Sparkles, Layers, History, BarChart3, Brain, Settings, Users, Bell, HeartHandshake, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
@@ -20,6 +20,7 @@ const navigation = [
 const secondaryNavigation = [
   { nameKey: 'family' as const, href: '/dashboard/family', icon: Users },
   { nameKey: 'notifications' as const, href: '/dashboard/notifications', icon: Bell },
+  { nameKey: 'backup' as const, href: '/dashboard/settings/backup', icon: Archive },
   { nameKey: 'settings' as const, href: '/dashboard/settings', icon: Settings },
 ];
 
@@ -117,7 +118,13 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                     const claimedByPrimary = navigation.some(
                       (primary) => pathname === primary.href || pathname.startsWith(primary.href + '/')
                     );
-                    const isActive = matchesPath && !claimedByPrimary;
+                    const claimedByMoreSpecific = secondaryNavigation.some(
+                      (other) =>
+                        other.href !== item.href &&
+                        other.href.startsWith(item.href + '/') &&
+                        (pathname === other.href || pathname.startsWith(other.href + '/'))
+                    );
+                    const isActive = matchesPath && !claimedByPrimary && !claimedByMoreSpecific;
                     return (
                       <li key={item.nameKey}>
                         <Link

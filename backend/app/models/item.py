@@ -22,6 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
+    from app.models.folder import Folder
     from app.models.outfit import Outfit
     from app.models.user import User
 
@@ -92,6 +93,9 @@ class ClothingItem(Base):
     purchase_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     notes: Mapped[str | None] = mapped_column(Text)
     favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Number of identical physical copies the user owns of this item.
+    # Used for outfit availability when the same piece is "in laundry" etc.
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     # Lifecycle
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -116,6 +120,12 @@ class ClothingItem(Base):
         back_populates="item",
         cascade="all, delete-orphan",
         order_by="ItemImage.position",
+    )
+    folders: Mapped[list["Folder"]] = relationship(
+        "Folder",
+        secondary="item_folders",
+        back_populates="items",
+        lazy="selectin",
     )
 
 

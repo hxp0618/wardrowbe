@@ -16,6 +16,7 @@ from app.models.outfit import (
     OutfitStatus,
 )
 from app.models.user import User
+from app.utils.i18n import translate
 
 
 def _make_item(user_id, item_type="shirt", **kwargs) -> ClothingItem:
@@ -216,7 +217,7 @@ class TestFamilyRatingEndpoint:
             headers=auth_headers,
         )
         assert response.status_code == 400
-        assert "Cannot rate your own" in response.json()["detail"]
+        assert response.json()["detail"] == translate("zh", "error.cannot_rate_own_outfit")
 
     @pytest.mark.asyncio
     async def test_family_member_can_rate(

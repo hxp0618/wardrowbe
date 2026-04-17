@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### ✨ Features
+
+* Wardrobe items now support uploading up to 5 photos (1 primary + 4 additional) and tracking a `quantity` for identical pieces. AI analysis consumes all provided images.
+* New wardrobe folders (M2M) with icons/colors, quick tab filtering, and bulk "Add to folder" from the wardrobe selection toolbar.
+* Manual outfit creation dialog: hand-build outfits from existing items with optional "use for AI learning" toggle.
+* `/outfits/suggest` accepts a `target_date` in the next 15 days and uses the forecast for that day. The suggestion page exposes a date picker with "Today / Tomorrow / In 3 days / This weekend" presets.
+* Settings → Backup & Restore: export a single ZIP with items, folders, outfits, preferences, notification settings (without secrets), and all image files. Re-import on any instance to merge the data with fresh IDs.
+* New generic Webhook notification channel with payload presets for Discord, Slack, Telegram Bot API, Lark/Feishu, DingTalk, WeCom (企业微信), and Microsoft Teams, plus a "Generic JSON" mode with a user-defined template.
+
 ## [1.2.3](https://github.com/Anyesh/wardrowbe/compare/wardrowbe-v1.2.2...wardrowbe-v1.2.3) (2026-03-30)
 
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { X, Trash2, RefreshCw, Loader2, CheckSquare, Square, MinusSquare, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { X, Trash2, RefreshCw, Loader2, CheckSquare, Square, MinusSquare, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FolderPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -14,6 +14,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+import type { FolderRef } from '@/lib/types';
 
 export interface BulkSelection {
   mode: 'none' | 'some' | 'all';
@@ -31,6 +40,10 @@ interface BulkActionToolbarProps {
   onReanalyze: () => void;
   isDeleting?: boolean;
   isReanalyzing?: boolean;
+  // Folder actions
+  folders?: FolderRef[];
+  onAddToFolder?: (folderId: string) => void;
+  isAddingToFolder?: boolean;
   // Pagination props
   page: number;
   pageSize: number;
@@ -47,12 +60,16 @@ export function BulkActionToolbar({
   onReanalyze,
   isDeleting = false,
   isReanalyzing = false,
+  folders = [],
+  onAddToFolder,
+  isAddingToFolder = false,
   page,
   pageSize,
   onPageChange,
 }: BulkActionToolbarProps) {
   const t = useTranslations('bulkActions');
   const tc = useTranslations('common');
+  const tf = useTranslations('folders');
   const selectedCount = selection.mode === 'all'
     ? totalItems - selection.excludedIds.size
     : selection.selectedIds.size;
@@ -145,6 +162,38 @@ export function BulkActionToolbar({
               <RefreshCw className="h-4 w-4" />
             )}
           </Button>
+          {onAddToFolder && folders.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  disabled={isAddingToFolder}
+                  aria-label={tf('addToFolder')}
+                >
+                  {isAddingToFolder ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FolderPlus className="h-4 w-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
+                <DropdownMenuLabel>{tf('addToFolder')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {folders.map((folder) => (
+                  <DropdownMenuItem
+                    key={folder.id}
+                    onClick={() => onAddToFolder(folder.id)}
+                  >
+                    {folder.icon && <span className="mr-2">{folder.icon}</span>}
+                    {folder.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button

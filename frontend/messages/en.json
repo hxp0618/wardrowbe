@@ -38,6 +38,7 @@
     "aiLearning": "AI Learning",
     "family": "Family",
     "notifications": "Notifications",
+    "backup": "Backup & Restore",
     "settings": "Settings",
     "home": "Home",
     "suggest": "Suggest",
@@ -175,7 +176,11 @@
     "bulkReanalyzeSuccess": "Queued {count} items for re-analysis",
     "bulkReanalyzeSuccessLong": "Queued {count} items for re-analysis. This may take a while.",
     "bulkReanalyzeFailed": "Failed to queue {count} items",
-    "bulkReanalyzeError": "Failed to queue items for re-analysis"
+    "bulkReanalyzeError": "Failed to queue items for re-analysis",
+    "allFolders": "All",
+    "manageFolders": "Manage",
+    "addToFolderSuccess": "Added {count} items to folder",
+    "addToFolderFailed": "Failed to add items to folder"
   },
   "suggest": {
     "greeting": {
@@ -184,6 +189,13 @@
       "evening": "Good evening"
     },
     "subtitle": "Let's find the perfect outfit for your day",
+    "manualOutfit": "Manual outfit",
+    "whenWearing": "When are you wearing this?",
+    "dateToday": "Today",
+    "dateTomorrow": "Tomorrow",
+    "dateIn3Days": "In 3 days",
+    "dateThisWeekend": "This weekend",
+    "forecastLabel": "Forecast for {date}",
     "whatsTheOccasion": "What's the occasion?",
     "overrideWeather": "Override weather",
     "weatherOverrideActive": "Weather override active",
@@ -685,6 +697,36 @@
     "updatePreferences": "Update Preferences",
     "lastUpdated": "Learning profile last updated: {date}"
   },
+  "backup": {
+    "title": "Backup & Restore",
+    "subtitle": "Export your wardrobe, outfits, and settings as a ZIP, or restore from a previous export.",
+    "exportCard": {
+      "title": "Export backup",
+      "description": "Download a ZIP containing items, folders, outfits, preferences, and notification settings (without secrets) plus all images.",
+      "button": "Download ZIP",
+      "preparing": "Preparing archive…",
+      "started": "Backup download started."
+    },
+    "importCard": {
+      "title": "Restore from backup",
+      "description": "Select a previously exported ZIP to import. Items and outfits are added with new IDs so existing entries are preserved.",
+      "selectFile": "Select ZIP file",
+      "selectedFile": "Selected: {name}",
+      "button": "Start import",
+      "uploading": "Uploading…",
+      "confirmTitle": "Restore from this backup?",
+      "confirmBody": "This will add the imported items, folders, and outfits to your account. Existing notification channels will be kept as-is (imports are skipped for channels you already configured). Continue?",
+      "confirm": "Restore",
+      "cancel": "Cancel",
+      "success": "Restore complete: {items} items, {folders} folders, {outfits} outfits, {notifications} channels.",
+      "failure": "Restore failed"
+    },
+    "warning": {
+      "title": "About backups",
+      "secrets": "Exported backups never include API keys, OIDC client secrets, or webhook tokens. Re-enter those after restoring.",
+      "size": "Maximum import size is 1 GiB."
+    }
+  },
   "notifications": {
     "title": "Notifications",
     "subtitle": "Configure how and when you receive outfit recommendations",
@@ -736,6 +778,29 @@
       "barkDeviceKeyHint": "Copy from the Bark app (Server section)",
       "barkGroup": "Group (optional)",
       "barkGroupHint": "Shown as a group in the Bark app",
+      "webhook": "Generic Webhook",
+      "webhookUrlLabel": "Webhook URL",
+      "webhookUrlHint": "Paste the full endpoint URL. For Telegram, use the bot's sendMessage URL.",
+      "webhookFormat": "Payload format",
+      "webhookFormatHint": "Pick an IM preset, or 'JSON' for a custom payload.",
+      "webhookFormatLabels": {
+        "json": "Generic JSON",
+        "discord": "Discord",
+        "slack": "Slack",
+        "telegram": "Telegram Bot",
+        "lark": "Lark",
+        "feishu": "Feishu (飞书)",
+        "dingtalk": "DingTalk (钉钉)",
+        "wecom": "WeCom (企业微信)",
+        "teams": "Microsoft Teams"
+      },
+      "webhookChatId": "Chat ID",
+      "webhookChatIdHint": "The Telegram chat or channel to post into.",
+      "webhookMethod": "HTTP method",
+      "webhookHeaders": "Extra headers (JSON)",
+      "webhookHeadersHint": "Optional JSON object. Example: {\"Authorization\": \"Bearer xxx\"}",
+      "webhookTemplate": "Custom JSON body template",
+      "webhookTemplateHint": "Optional. Use placeholders like {title}, {body}, {summary}, {url}, {occasion}, {temperature}.",
       "adding": "Adding..."
     },
     "addScheduleDialog": {
@@ -760,13 +825,17 @@
       "ntfy": "ntfy Push",
       "mattermost": "Mattermost",
       "email": "Email",
-      "bark": "Bark"
+      "bark": "Bark",
+      "webhook": "Webhook"
     },
     "validation": {
       "topicRequired": "Topic is required for ntfy",
       "webhookRequired": "Webhook URL is required for Mattermost",
       "emailRequired": "Email address is required",
-      "barkDeviceKeyRequired": "Bark device key is required"
+      "barkDeviceKeyRequired": "Bark device key is required",
+      "webhookUrlRequired": "Webhook URL is required",
+      "webhookChatIdRequired": "Chat ID is required for the Telegram format",
+      "webhookHeadersInvalid": "Extra headers must be a valid JSON object"
     },
     "errors": {
       "addChannelFailed": "Failed to add channel",
@@ -997,7 +1066,63 @@
     "discardDescription": "You have {count} image(s) selected that will be lost if you close this dialog.",
     "keepEditing": "Keep editing",
     "discard": "Discard",
-    "previewAlt": "Preview"
+    "previewAlt": "Preview",
+    "dragOrTapMulti": "Drag & drop up to {max} images of this item, or tap to select",
+    "multiImageHint": "Add multiple views of the SAME item (front, back, tag) for better AI tagging",
+    "imagesOfSameItem": "{count}/{max} images of this item",
+    "mainPhoto": "Main",
+    "setAsMain": "Set as main",
+    "addMore": "Add more",
+    "maxImagesReached": "Maximum {max} images per item",
+    "quantity": "Quantity",
+    "quantityHint": "How many identical copies of this item you own"
+  },
+  "folders": {
+    "manageTitle": "Manage Folders",
+    "manageDescription": "Create, edit, and organize your wardrobe folders.",
+    "createNew": "New folder",
+    "name": "Name",
+    "namePlaceholder": "Work outfits",
+    "icon": "Icon",
+    "color": "Color",
+    "addFolder": "Add folder",
+    "existing": "Existing folders ({count})",
+    "emptyList": "No folders yet.",
+    "edit": "Edit",
+    "createSuccess": "Folder created",
+    "createFailed": "Failed to create folder",
+    "updateSuccess": "Folder updated",
+    "updateFailed": "Failed to update folder",
+    "deleteConfirm": "Delete folder \"{name}\"? Items will not be deleted.",
+    "deleteSuccess": "Folder deleted",
+    "deleteFailed": "Failed to delete folder",
+    "addToFolder": "Add to folder",
+    "addedToFolder": "Added to folder"
+  },
+  "manualOutfit": {
+    "title": "Manual outfit",
+    "description": "Pick items yourself to create an outfit. Optionally teach the AI your taste.",
+    "occasion": "Occasion",
+    "date": "Date",
+    "notes": "Style notes",
+    "notesPlaceholder": "Optional — why this outfit works for you",
+    "useForLearning": "Use for AI learning",
+    "useForLearningHint": "Treat this outfit as a positive example when training your style.",
+    "selectedCount": "Selected ({count})",
+    "emptyPreview": "No items selected yet.",
+    "noItems": "Your wardrobe is empty.",
+    "selectAtLeastOne": "Please select at least one item.",
+    "create": "Create outfit",
+    "createSuccess": "Outfit created",
+    "createFailed": "Failed to create outfit",
+    "group": {
+      "top": "Tops",
+      "bottom": "Bottoms",
+      "outerwear": "Outerwear",
+      "shoes": "Shoes",
+      "accessory": "Accessories",
+      "other": "Other"
+    }
   },
   "bulkActions": {
     "all": "All",

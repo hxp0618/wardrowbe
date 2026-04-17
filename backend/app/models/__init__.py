@@ -1,4 +1,5 @@
 from app.models.family import Family, FamilyInvite
+from app.models.folder import Folder, item_folders
 from app.models.item import ClothingItem, ItemHistory, ItemImage, WashHistory
 from app.models.learning import (
     ItemPairScore,
@@ -32,4 +33,6 @@ __all__ = [
     "OutfitItem",
     "UserFeedback",
     "Notification",
+    "Folder",
+    "item_folders",
 ]

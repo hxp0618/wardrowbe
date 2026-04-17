@@ -56,13 +56,14 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
   const tt = useTranslations('taxonomy');
 
   // Single upload state
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [singleFiles, setSingleFiles] = useState<FileWithPreview[]>([]);
   const [type, setType] = useState('');
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [primaryColor, setPrimaryColor] = useState('');
   const [notes, setNotes] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const MAX_IMAGES_PER_ITEM = 5;
 
   // Bulk upload state
   const [bulkFiles, setBulkFiles] = useState<FileWithPreview[]>([]);
@@ -84,18 +85,27 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
     };
   }, []);
 
-  // Single file drop handler
+  // Single-item drop handler: accepts multiple images of the SAME item
   const onDropSingle = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      setFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  }, []);
+    if (acceptedFiles.length === 0) return;
+    setSingleFiles((prev) => {
+      const remaining = MAX_IMAGES_PER_ITEM - prev.length;
+      const taken = acceptedFiles.slice(0, Math.max(0, remaining));
+      const mapped: FileWithPreview[] = taken.map((file) => {
+        const preview = URL.createObjectURL(file);
+        blobUrlsRef.current.add(preview);
+        return {
+          file,
+          preview,
+          id: `${file.name}-${Date.now()}-${Math.random()}`,
+        };
+      });
+      if (acceptedFiles.length > taken.length) {
+        toast.warning(t('maxImagesReached', { max: MAX_IMAGES_PER_ITEM }));
+      }
+      return [...prev, ...mapped];
+    });
+  }, [t]);
 
   // Bulk file drop handler
   const onDropBulk = useCallback((acceptedFiles: File[]) => {
@@ -120,8 +130,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.webp', '.heic', '.heif'],
     },
-    maxFiles: 1,
-    multiple: false,
+    multiple: true,
   });
 
   const { getRootProps: getBulkRootProps, getInputProps: getBulkInputProps, isDragActive: isBulkDragActive } = useDropzone({
@@ -136,16 +145,19 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
   const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!file) return;
+    if (singleFiles.length === 0) return;
 
     const formData = new FormData();
-    formData.append('image', file);
-    // Type is optional - AI will detect if not provided
+    // First image is the primary; remaining images go as additional images for the SAME item
+    singleFiles.forEach((f) => {
+      formData.append('images', f.file);
+    });
     if (type) formData.append('type', type);
     if (name) formData.append('name', name);
     if (brand) formData.append('brand', brand);
     if (primaryColor) formData.append('primary_color', primaryColor);
     if (notes) formData.append('notes', notes);
+    formData.append('quantity', String(Math.max(1, Math.min(99, quantity || 1))));
 
     try {
       await createItem.mutateAsync(formData);
@@ -177,7 +189,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
   };
 
   // Check if there are unsaved files that would be lost on close
-  const hasUnsavedFiles = (file !== null) || (bulkFiles.length > 0 && !bulkResult);
+  const hasUnsavedFiles = (singleFiles.length > 0) || (bulkFiles.length > 0 && !bulkResult);
 
   const handleCloseRequest = () => {
     // Show confirmation if there are unsaved files and not currently uploading
@@ -190,13 +202,17 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
 
   const handleClose = () => {
     // Single upload cleanup
-    setFile(null);
-    setPreview(null);
+    singleFiles.forEach((f) => {
+      URL.revokeObjectURL(f.preview);
+      blobUrlsRef.current.delete(f.preview);
+    });
+    setSingleFiles([]);
     setType('');
     setName('');
     setBrand('');
     setPrimaryColor('');
     setNotes('');
+    setQuantity(1);
 
     // Bulk upload cleanup - also clean up from the ref
     bulkFiles.forEach((f) => {
@@ -212,8 +228,33 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
   };
 
   const clearSingleFile = () => {
-    setFile(null);
-    setPreview(null);
+    singleFiles.forEach((f) => {
+      URL.revokeObjectURL(f.preview);
+      blobUrlsRef.current.delete(f.preview);
+    });
+    setSingleFiles([]);
+  };
+
+  const removeSingleFile = (id: string) => {
+    setSingleFiles((prev) => {
+      const toRemove = prev.find((f) => f.id === id);
+      if (toRemove) {
+        URL.revokeObjectURL(toRemove.preview);
+        blobUrlsRef.current.delete(toRemove.preview);
+      }
+      return prev.filter((f) => f.id !== id);
+    });
+  };
+
+  const promoteToPrimary = (id: string) => {
+    setSingleFiles((prev) => {
+      const idx = prev.findIndex((f) => f.id === id);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      const [picked] = next.splice(idx, 1);
+      next.unshift(picked);
+      return next;
+    });
   };
 
   const removeBulkFile = (id: string) => {
@@ -256,7 +297,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
           {/* Single Item Upload */}
           <TabsContent value="single" className="space-y-4">
             <form onSubmit={handleSingleSubmit} className="space-y-4">
-              {!preview ? (
+              {singleFiles.length === 0 ? (
                 <div
                   {...getSingleRootProps()}
                   className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
@@ -270,28 +311,70 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                   <p className="mt-2 text-sm text-muted-foreground">
                     {isSingleDragActive
                       ? t('dropImage')
-                      : t('dragOrTap')}
+                      : t('dragOrTapMulti', { max: MAX_IMAGES_PER_ITEM })}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t('fileTypes')}
                   </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t('multiImageHint')}
+                  </p>
                 </div>
               ) : (
-                <div className="relative">
-                  <img
-                    src={preview}
-                    alt={t('previewAlt')}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 h-8 w-8"
-                    onClick={clearSingleFile}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      {t('imagesOfSameItem', { count: singleFiles.length, max: MAX_IMAGES_PER_ITEM })}
+                    </p>
+                    <Button type="button" variant="ghost" size="sm" onClick={clearSingleFile}>
+                      {t('clearAll')}
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {singleFiles.map((f, idx) => (
+                      <div key={f.id} className="relative group">
+                        <img
+                          src={f.preview}
+                          alt={f.file.name}
+                          className={`w-full aspect-square object-cover rounded-md border ${idx === 0 ? 'ring-2 ring-primary' : ''}`}
+                        />
+                        {idx === 0 ? (
+                          <span className="absolute top-1 left-1 text-[10px] bg-primary text-primary-foreground rounded px-1 py-0.5">
+                            {t('mainPhoto')}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => promoteToPrimary(f.id)}
+                            className="absolute bottom-1 left-1 text-[10px] bg-background/80 border rounded px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            {t('setAsMain')}
+                          </button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeSingleFile(f.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                    {singleFiles.length < MAX_IMAGES_PER_ITEM && (
+                      <div
+                        {...getSingleRootProps()}
+                        className={`flex items-center justify-center aspect-square rounded-md border-2 border-dashed cursor-pointer hover:border-primary/50 ${isSingleDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}`}
+                      >
+                        <input {...getSingleInputProps()} />
+                        <div className="flex flex-col items-center text-muted-foreground">
+                          <Upload className="h-5 w-5" />
+                          <span className="text-[10px] mt-1">{t('addMore')}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -356,6 +439,24 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">{t('quantity')}</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={quantity}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        setQuantity(Number.isFinite(v) ? v : 1);
+                      }}
+                    />
+                    <p className="text-[10px] text-muted-foreground">{t('quantityHint')}</p>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="notes">{t('notesLabel')}</Label>
                   <Input
@@ -373,7 +474,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!file || createItem.isPending}
+                  disabled={singleFiles.length === 0 || createItem.isPending}
                 >
                   {createItem.isPending ? (
                     <>

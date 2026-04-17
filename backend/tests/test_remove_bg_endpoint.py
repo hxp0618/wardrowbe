@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.item import ClothingItem, ItemStatus
 from app.schemas.item import RemoveBackgroundRequest
+from app.utils.i18n import translate
 
 
 class TestRemoveBackgroundRequest:
@@ -65,7 +66,7 @@ class TestRemoveBackgroundEndpoint:
             headers=auth_headers,
         )
         assert response.status_code == 400
-        assert "no image" in response.json()["detail"]
+        assert response.json()["detail"] == translate("zh", "error.item_no_image")
 
     @pytest.mark.asyncio
     async def test_unauthenticated(self, client: AsyncClient):

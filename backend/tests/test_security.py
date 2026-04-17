@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.notification import NtfyConfig, ScheduleBase, ScheduleUpdate
+from app.utils.i18n import translate
 
 
 class TestAIEndpointSchemeValidation:
@@ -83,7 +84,7 @@ class TestBulkUploadLimit:
             headers=auth_headers,
         )
         assert response.status_code == 400
-        assert "Maximum 20" in response.json()["detail"]
+        assert response.json()["detail"] == translate("zh", "error.bulk_max_20_images")
 
 
 class TestNtfyServerValidation:
@@ -235,7 +236,7 @@ class TestAuthEmailValidation:
                 },
             )
             assert response.status_code == 401
-            assert "email does not match" in response.json()["detail"]
+            assert response.json()["detail"] == translate("zh", "error.token_email_mismatch")
 
     @pytest.mark.asyncio
     async def test_oidc_allows_matching_email_case_insensitive(self, client, db_session):
@@ -297,7 +298,9 @@ class TestProviderMigrationRequiresVerifiedEmail:
                 },
             )
             assert response.status_code == 409
-            assert "Verified email required" in response.json()["detail"]
+            assert response.json()["detail"] == translate(
+                "zh", "error.email_migration_requires_verification"
+            )
 
     @pytest.mark.asyncio
     async def test_verified_allows_migration(self, client, db_session, test_user):

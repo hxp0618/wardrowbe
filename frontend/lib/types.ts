@@ -50,7 +50,9 @@ export interface Item {
   wash_interval?: number;
   needs_wash: boolean;
   effective_wash_interval: number;
+  quantity: number;
   additional_images: ItemImage[];
+  folders: FolderRef[];
   is_archived: boolean;
   archived_at?: string;
   archive_reason?: string;
@@ -77,6 +79,22 @@ export interface ItemFilter {
   search?: string;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
+  folder_id?: string;
+}
+
+export interface FolderRef {
+  id: string;
+  name: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface Folder extends FolderRef {
+  user_id: string;
+  position: number;
+  item_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StyleProfile {
@@ -317,6 +335,16 @@ export interface SuggestRequest {
   };
   exclude_items?: string[];
   include_items?: string[];
+  target_date?: string;
+}
+
+export interface ManualOutfitRequest {
+  occasion: string;
+  scheduled_for?: string;
+  items: Array<{ item_id: string; layer_type?: string }>;
+  style_notes?: string;
+  reasoning?: string;
+  use_for_learning?: boolean;
 }
 
 // Pairing types

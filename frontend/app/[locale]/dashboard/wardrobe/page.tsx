@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/i18n/navigation';
-import { Plus, Search, Heart, Grid3X3, Loader2, AlertCircle, RefreshCw, Droplets, ArrowUpDown, SlidersHorizontal, X } from 'lucide-react';
+import { Plus, Search, Heart, Grid3X3, Loader2, AlertCircle, RefreshCw, Droplets, ArrowUpDown, SlidersHorizontal, X, FolderOpen, Folder as FolderIcon, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,7 +28,9 @@ import {
 import { AddItemDialog } from '@/components/add-item-dialog';
 import { ItemDetailDialog } from '@/components/item-detail-dialog';
 import { BulkActionToolbar, BulkSelection } from '@/components/bulk-action-toolbar';
+import { FolderManageDialog } from '@/components/folder-manage-dialog';
 import { useItems, useItem, useItemTypes, useReanalyzeItem, useBulkDeleteItems, useBulkReanalyzeItems, BulkOperationParams } from '@/lib/hooks/use-items';
+import { useFolders, useAddItemsToFolder } from '@/lib/hooks/use-folders';
 import { useUserProfile } from '@/lib/hooks/use-user';
 import { CLOTHING_TYPES, CLOTHING_COLORS, Item } from '@/lib/types';
 import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
@@ -242,6 +244,7 @@ export default function WardrobePage() {
   const { data: userProfile } = useUserProfile();
   const userTimezone = userProfile?.timezone || 'UTC';
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [selection, setSelection] = useState<BulkSelection>({
     mode: 'none',
     selectedIds: new Set(),
@@ -253,8 +256,11 @@ export default function WardrobePage() {
   const [sortIndex, setSortIndex] = useState(0);
   const [needsWash, setNeedsWash] = useState<boolean | undefined>(undefined);
   const [favoriteFilter, setFavoriteFilter] = useState<boolean | undefined>(undefined);
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
+  const { data: folders = [] } = useFolders();
+  const addItemsToFolder = useAddItemsToFolder();
 
   // Open item detail dialog from URL param (e.g. ?item=uuid from outfit pages)
   useEffect(() => {
@@ -274,6 +280,7 @@ export default function WardrobePage() {
     is_archived: false,
     sort_by: sortOption.value,
     sort_order: sortOption.order,
+    folder_id: activeFolder ?? undefined,
   };
 
   const activeFilterCount = [
@@ -304,7 +311,19 @@ export default function WardrobePage() {
   // Clear selection when filters change (but not page - allow cross-page selection)
   useEffect(() => {
     setSelection({ mode: 'none', selectedIds: new Set(), excludedIds: new Set() });
-  }, [search, typeFilter, needsWash, favoriteFilter, sortIndex]);
+  }, [search, typeFilter, needsWash, favoriteFilter, sortIndex, activeFolder]);
+
+  const handleAddSelectionToFolder = async (folderId: string) => {
+    const itemIds = Array.from(selection.selectedIds);
+    if (itemIds.length === 0) return;
+    try {
+      await addItemsToFolder.mutateAsync({ folderId, itemIds });
+      toast.success(t('addToFolderSuccess', { count: itemIds.length }));
+      setSelection({ mode: 'none', selectedIds: new Set(), excludedIds: new Set() });
+    } catch {
+      toast.error(t('addToFolderFailed'));
+    }
+  };
 
   const handleRetry = (itemId: string) => {
     reanalyze.mutate(itemId);
@@ -444,6 +463,54 @@ export default function WardrobePage() {
       </div>
 
       <div className="space-y-3">
+        {/* Folder tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <Button
+            size="sm"
+            variant={activeFolder === null ? 'default' : 'outline'}
+            className="h-8 shrink-0"
+            onClick={() => {
+              setActiveFolder(null);
+              setPage(1);
+            }}
+          >
+            <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
+            {t('allFolders')}
+          </Button>
+          {folders.map((folder) => {
+            const selected = activeFolder === folder.id;
+            return (
+              <Button
+                key={folder.id}
+                size="sm"
+                variant={selected ? 'default' : 'outline'}
+                className="h-8 shrink-0"
+                onClick={() => {
+                  setActiveFolder(selected ? null : folder.id);
+                  setPage(1);
+                }}
+              >
+                {folder.icon ? (
+                  <span className="mr-1.5">{folder.icon}</span>
+                ) : (
+                  <FolderIcon className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {folder.name}
+                <span className="ml-1.5 text-[10px] opacity-70">{folder.item_count}</span>
+              </Button>
+            );
+          })}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 shrink-0 text-muted-foreground"
+            onClick={() => setFolderDialogOpen(true)}
+          >
+            <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+            {t('manageFolders')}
+          </Button>
+        </div>
+
         {/* Main row: search + sort + filter toggle */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -636,12 +703,16 @@ export default function WardrobePage() {
         onReanalyze={handleBulkReanalyze}
         isDeleting={bulkDelete.isPending}
         isReanalyzing={bulkReanalyze.isPending}
+        folders={folders}
+        onAddToFolder={handleAddSelectionToFolder}
+        isAddingToFolder={addItemsToFolder.isPending}
         page={page}
         pageSize={20}
         onPageChange={handlePageChange}
       />
 
       <AddItemDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
+      <FolderManageDialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen} />
       <ItemDetailDialog
         item={detailItem}
         open={!!detailItemId}

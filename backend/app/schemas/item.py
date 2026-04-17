@@ -48,6 +48,7 @@ class ItemBase(BaseModel):
     purchase_date: date | None = None
     purchase_price: Decimal | None = Field(None, ge=0)
     favorite: bool = False
+    quantity: int = Field(default=1, ge=1, le=99)
 
 
 class ItemCreate(ItemBase):
@@ -69,6 +70,7 @@ class ItemUpdate(BaseModel):
     colors: list[str] | None = None
     primary_color: str | None = None
     wash_interval: int | None = None
+    quantity: int | None = Field(None, ge=1, le=99)
 
 
 class ItemResponse(ItemBase):
@@ -101,6 +103,7 @@ class ItemResponse(ItemBase):
     wash_interval: int | None = None
     needs_wash: bool = False
     additional_images: list["ItemImageResponse"] = Field(default_factory=list)
+    folders: list["ItemFolderRef"] = Field(default_factory=list)
     is_archived: bool = False
     archived_at: datetime | None = None
     archive_reason: str | None = None
@@ -153,6 +156,7 @@ class ItemFilter(BaseModel):
     search: str | None = None
     sort_by: str | None = None
     sort_order: str = "desc"
+    folder_id: UUID | None = None
 
 
 class LogWearRequest(BaseModel):
@@ -258,6 +262,17 @@ class ItemImageResponse(BaseModel):
         if self.medium_path:
             return sign_image_url(self.medium_path)
         return None
+
+
+class ItemFolderRef(BaseModel):
+    """Lightweight folder reference embedded inside ItemResponse."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    icon: str | None = None
+    color: str | None = None
 
 
 class ReorderImagesRequest(BaseModel):

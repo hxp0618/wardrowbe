@@ -4,14 +4,21 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.item import ClothingItem
-from app.models.outfit import FamilyOutfitRating, Outfit, OutfitItem, OutfitStatus, UserFeedback
+from app.models.outfit import (
+    FamilyOutfitRating,
+    Outfit,
+    OutfitItem,
+    OutfitSource,
+    OutfitStatus,
+    UserFeedback,
+)
 from app.models.user import User
 from app.services.learning_service import LearningService
 from app.services.recommendation_service import RecommendationService
@@ -52,6 +59,22 @@ class SuggestRequest(BaseModel):
     )
     exclude_items: list[UUID] = Field(default_factory=list, description="Items to exclude")
     include_items: list[UUID] = Field(default_factory=list, description="Items to include")
+    target_date: date | None = Field(
+        None,
+        description="Plan an outfit for a future date (today..+15 days).",
+    )
+
+    @field_validator("occasion")
+    @classmethod
+    def validate_occasion(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        if len(normalized) > 50:
+            raise ValueError(f"Occasion must be 50 characters or less")
+        if normalized not in VALID_OCCASIONS:
+            raise ValueError(f"Invalid occasion. Must be one of: {', '.join(sorted(VALID_OCCASIONS))}")
+        return normalized
 
 
 class OutfitItemResponse(BaseModel):
@@ -132,6 +155,32 @@ class OutfitResponse(BaseModel):
     family_rating_average: float | None = None
     family_rating_count: int | None = None
     created_at: datetime
+
+
+class ManualOutfitItem(BaseModel):
+    item_id: UUID
+    layer_type: str | None = Field(None, max_length=20)
+
+
+class ManualOutfitRequest(BaseModel):
+    """Create a manually-curated outfit from user-selected items."""
+
+    occasion: str = Field(default="casual", max_length=50)
+    scheduled_for: date | None = Field(
+        None,
+        description="Target date. Defaults to user's today.",
+    )
+    items: list[ManualOutfitItem] = Field(
+        min_length=1,
+        max_length=20,
+        description="User-selected items, order matters (first = top).",
+    )
+    style_notes: str | None = Field(None, max_length=1000)
+    reasoning: str | None = Field(None, max_length=2000)
+    use_for_learning: bool = Field(
+        default=True,
+        description="If true, treat this outfit as a positive AI learning signal.",
+    )
 
 
 class OutfitListResponse(BaseModel):
@@ -388,6 +437,20 @@ async def suggest_outfit(
         else:
             occasion = "casual"
 
+    target_date = request.target_date
+    if target_date is not None:
+        today = get_user_today(current_user)
+        if target_date < today:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=translate_request(http_request, "error.target_date_in_past"),
+            )
+        if (target_date - today).days > 15:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=translate_request(http_request, "error.target_date_too_far"),
+            )
+
     try:
         outfit = await service.generate_recommendation(
             user=current_user,
@@ -396,6 +459,7 @@ async def suggest_outfit(
             exclude_items=request.exclude_items,
             include_items=request.include_items,
             time_of_day=request.time_of_day,
+            scheduled_date=target_date,
         )
     except ApiUserError as e:
         if e.status_code == 503:
@@ -413,6 +477,110 @@ async def suggest_outfit(
     # Fetch wore_instead items for this single outfit
     wore_instead_map = await fetch_wore_instead_items_map(db, [outfit], user_id=current_user.id)
     return outfit_to_response(outfit, wore_instead_map)
+
+
+@router.post("/manual", response_model=OutfitResponse, status_code=status.HTTP_201_CREATED)
+async def create_manual_outfit(
+    request: ManualOutfitRequest,
+    http_request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> OutfitResponse:
+    """Create an outfit manually from user-selected items.
+
+    When ``use_for_learning`` is true (default) an accepted feedback record is
+    created immediately so the learning pipeline treats it as a positive signal.
+    """
+    occasion = (request.occasion or "casual").strip().lower() or "casual"
+    if occasion not in VALID_OCCASIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=translate_request(
+                http_request,
+                "error.invalid_occasion",
+                occasions=", ".join(sorted(VALID_OCCASIONS)),
+            ),
+        )
+
+    item_ids = [oi.item_id for oi in request.items]
+    if len(set(item_ids)) != len(item_ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=translate_request(http_request, "error.duplicate_items"),
+        )
+
+    items_result = await db.execute(
+        select(ClothingItem).where(
+            and_(
+                ClothingItem.id.in_(item_ids),
+                ClothingItem.user_id == current_user.id,
+                ClothingItem.is_archived.is_(False),
+            )
+        )
+    )
+    found_items = {item.id: item for item in items_result.scalars().all()}
+    if len(found_items) != len(item_ids):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=translate_request(http_request, "error.item_not_found"),
+        )
+
+    scheduled = request.scheduled_for or get_user_today(current_user)
+
+    outfit = Outfit(
+        user_id=current_user.id,
+        occasion=occasion,
+        scheduled_for=scheduled,
+        source=OutfitSource.manual,
+        status=OutfitStatus.accepted,
+        responded_at=datetime.utcnow(),
+        reasoning=request.reasoning,
+        style_notes=request.style_notes,
+    )
+    db.add(outfit)
+    await db.flush()
+
+    for position, oi in enumerate(request.items):
+        db.add(
+            OutfitItem(
+                outfit_id=outfit.id,
+                item_id=oi.item_id,
+                position=position,
+                layer_type=oi.layer_type,
+            )
+        )
+
+    if request.use_for_learning:
+        db.add(
+            UserFeedback(
+                outfit_id=outfit.id,
+                accepted=True,
+                rating=5,
+            )
+        )
+
+    await db.commit()
+
+    reload_query = (
+        select(Outfit)
+        .where(Outfit.id == outfit.id)
+        .options(
+            selectinload(Outfit.items).selectinload(OutfitItem.item),
+            selectinload(Outfit.feedback),
+            selectinload(Outfit.family_ratings).selectinload(FamilyOutfitRating.user),
+        )
+    )
+    outfit = (await db.execute(reload_query)).scalar_one()
+
+    if request.use_for_learning:
+        try:
+            await LearningService(db).process_feedback(outfit.id, current_user.id)
+        except Exception as e:
+            logger.warning(
+                "Manual outfit learning processing failed for outfit %s: %s", outfit.id, e
+            )
+
+    return outfit_to_response(outfit)
 
 
 @router.get("", response_model=OutfitListResponse)

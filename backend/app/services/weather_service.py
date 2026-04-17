@@ -1,7 +1,7 @@
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 import httpx
 import redis.asyncio as aioredis
@@ -328,6 +328,50 @@ class WeatherService:
             condition_code=tomorrow.condition_code,
             is_day=True,  # Assume daytime for outfit recommendations
             uv_index=0,  # Not available in daily forecast
+            timestamp=datetime.utcnow(),
+        )
+
+    async def get_weather_for_date(
+        self, latitude: float, longitude: float, target_date: date
+    ) -> WeatherData:
+        """Return forecast WeatherData for a target date within the forecast window.
+
+        If target_date is today (or in the past), falls back to current weather.
+        If target_date is more than 16 days ahead the forecast is clamped.
+        """
+        today = date.today()
+        if target_date <= today:
+            return await self.get_current_weather(latitude, longitude)
+
+        days_ahead = (target_date - today).days + 1
+        forecasts = await self.get_daily_forecast(
+            latitude, longitude, days=min(days_ahead, 16)
+        )
+        match: DailyForecast | None = None
+        target_iso = target_date.isoformat()
+        for f in forecasts:
+            if f.date == target_iso:
+                match = f
+                break
+        if match is None and forecasts:
+            match = forecasts[-1]
+        if match is None:
+            logger.warning("No forecast for %s, falling back to current weather", target_date)
+            return await self.get_current_weather(latitude, longitude)
+
+        avg_temp = (match.temp_min + match.temp_max) / 2
+        feels_like = match.temp_max
+        return WeatherData(
+            temperature=round(avg_temp, 1),
+            feels_like=round(feels_like, 1),
+            humidity=50,
+            precipitation_chance=match.precipitation_chance,
+            precipitation_mm=0,
+            wind_speed=0,
+            condition=match.condition,
+            condition_code=match.condition_code,
+            is_day=True,
+            uv_index=0,
             timestamp=datetime.utcnow(),
         )
 

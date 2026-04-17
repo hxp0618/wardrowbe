@@ -1,6 +1,8 @@
+import json
 import logging
 import os
 from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 
@@ -10,6 +12,7 @@ from app.schemas.notification import (
     ExpoPushConfig,
     MattermostConfig,
     NtfyConfig,
+    WebhookConfig,
 )
 
 logger = logging.getLogger(__name__)
@@ -379,6 +382,207 @@ class ExpoPushProvider:
             )
             if result.get("success"):
                 return True, "Test push notification sent successfully"
+            return False, result.get("error", "Unknown error")
+        except Exception as e:
+            return False, str(e)
+
+
+# Generic Webhook Provider (supports Discord/Slack/Telegram/Lark/DingTalk/WeCom/Teams/JSON)
+@dataclass
+class WebhookMessage:
+    title: str
+    body: str
+    url: str | None = None
+    occasion: str | None = None
+    day: str | None = None
+    temperature: float | int | None = None
+    condition: str | None = None
+    highlights: list[str] = field(default_factory=list)
+    tip: str | None = None
+    extra: dict[str, Any] = field(default_factory=dict)
+
+
+class WebhookProvider:
+    """Generic HTTP webhook with format presets for common IM platforms.
+
+    Supported formats:
+      - ``json``: default structured payload or user-provided ``template``
+      - ``discord``: Discord-compatible ``content`` + ``embeds``
+      - ``slack`` / ``teams``: Slack-compatible ``text``
+      - ``telegram``: Telegram Bot API ``sendMessage`` payload (requires ``chat_id``)
+      - ``lark`` / ``feishu``: Lark/Feishu incoming-webhook text message
+      - ``dingtalk``: DingTalk incoming-webhook text message
+      - ``wecom``: WeCom (企业微信) group robot text message
+    """
+
+    def __init__(self, config: WebhookConfig):
+        self.url = config.url
+        self.method = config.method or "POST"
+        self.format = config.format or "json"
+        self.headers = dict(config.headers or {})
+        self.template = config.template
+        self.chat_id = config.chat_id
+        self.verify_tls = bool(config.verify_tls)
+
+    def _text_summary(self, message: WebhookMessage) -> str:
+        parts: list[str] = []
+        if message.body:
+            parts.append(message.body)
+        if message.highlights:
+            parts.append("\n".join(f"• {h}" for h in message.highlights[:3]))
+        if message.tip:
+            parts.append(f"Tip: {message.tip}")
+        return "\n\n".join(parts) if parts else message.title
+
+    def _render_template(self, message: WebhookMessage) -> dict[str, Any] | list[Any] | str | None:
+        if not self.template:
+            return None
+        try:
+            values = {
+                "title": message.title,
+                "body": message.body,
+                "url": message.url or "",
+                "occasion": message.occasion or "",
+                "day": message.day or "",
+                "temperature": "" if message.temperature is None else message.temperature,
+                "condition": message.condition or "",
+                "summary": self._text_summary(message),
+                "tip": message.tip or "",
+                "highlights": ", ".join(message.highlights or []),
+            }
+            rendered = self.template.format(**values)
+        except (KeyError, IndexError, ValueError) as e:
+            logger.warning("Webhook template rendering failed: %s", e)
+            return None
+        try:
+            return json.loads(rendered)
+        except json.JSONDecodeError:
+            return rendered
+
+    def _build_payload(self, message: WebhookMessage) -> Any:
+        fmt = self.format
+        summary = self._text_summary(message)
+
+        if fmt == "json":
+            rendered = self._render_template(message)
+            if rendered is not None:
+                return rendered
+            return {
+                "title": message.title,
+                "body": message.body,
+                "summary": summary,
+                "url": message.url,
+                "occasion": message.occasion,
+                "day": message.day,
+                "temperature": message.temperature,
+                "condition": message.condition,
+                "highlights": message.highlights,
+                "tip": message.tip,
+                **(message.extra or {}),
+            }
+
+        if fmt == "discord":
+            embed: dict[str, Any] = {
+                "title": message.title,
+                "description": summary,
+                "color": 0x3B82F6,
+            }
+            if message.url:
+                embed["url"] = message.url
+            return {"content": f"**{message.title}**", "embeds": [embed]}
+
+        if fmt in {"slack", "teams"}:
+            text = f"*{message.title}*\n{summary}"
+            if message.url:
+                text += f"\n<{message.url}|View outfit>"
+            return {"text": text}
+
+        if fmt == "telegram":
+            text_lines = [f"*{message.title}*", summary]
+            if message.url:
+                text_lines.append(message.url)
+            payload: dict[str, Any] = {
+                "text": "\n\n".join(text_lines),
+                "parse_mode": "Markdown",
+                "disable_web_page_preview": False,
+            }
+            if self.chat_id:
+                payload["chat_id"] = self.chat_id
+            return payload
+
+        if fmt in {"lark", "feishu"}:
+            text_lines = [message.title, summary]
+            if message.url:
+                text_lines.append(message.url)
+            return {
+                "msg_type": "text",
+                "content": {"text": "\n\n".join(text_lines)},
+            }
+
+        if fmt == "dingtalk":
+            text_lines = [message.title, summary]
+            if message.url:
+                text_lines.append(message.url)
+            return {
+                "msgtype": "text",
+                "text": {"content": "\n\n".join(text_lines)},
+            }
+
+        if fmt == "wecom":
+            text_lines = [message.title, summary]
+            if message.url:
+                text_lines.append(message.url)
+            return {
+                "msgtype": "text",
+                "text": {"content": "\n\n".join(text_lines)},
+            }
+
+        return {"title": message.title, "body": summary, "url": message.url}
+
+    async def send(self, message: WebhookMessage) -> dict:
+        payload = self._build_payload(message)
+        headers = {"Content-Type": "application/json", "User-Agent": "Wardrowbe/1.0"}
+        headers.update(self.headers)
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=30.0, follow_redirects=True, verify=self.verify_tls
+            ) as client:
+                request_kwargs: dict[str, Any] = {"headers": headers}
+                if isinstance(payload, (dict, list)):
+                    request_kwargs["json"] = payload
+                else:
+                    request_kwargs["content"] = str(payload)
+                response = await client.request(self.method, self.url, **request_kwargs)
+
+                if 200 <= response.status_code < 300:
+                    try:
+                        body = response.json()
+                    except Exception:
+                        body = None
+                    return {"success": True, "status_code": response.status_code, "response": body}
+
+                error = f"HTTP {response.status_code}: {response.text[:500]}"
+                logger.warning("Webhook request failed: %s", error)
+                return {"success": False, "error": error}
+        except Exception as e:
+            logger.exception("Webhook send failed")
+            return {"success": False, "error": str(e)}
+
+    async def test_connection(self) -> tuple[bool, str]:
+        try:
+            result = await self.send(
+                WebhookMessage(
+                    title="Wardrowbe Test",
+                    body="This is a test notification from Wardrowbe.",
+                    occasion="casual",
+                    day="today",
+                    highlights=["Test highlight"],
+                    tip="Everything looks good!",
+                )
+            )
+            if result.get("success"):
+                return True, "Test webhook sent successfully"
             return False, result.get("error", "Unknown error")
         except Exception as e:
             return False, str(e)

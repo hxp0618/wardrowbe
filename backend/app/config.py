@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     ntfy_token: str | None = None
     # Bark (optional default server for UI pre-fill; device_key is per-user in settings)
     bark_server: str | None = None
+    allow_private_webhook: bool = False
     # Legacy/other providers
     mattermost_webhook_url: str | None = None
     smtp_host: str | None = None

@@ -70,6 +70,7 @@ async def list_items(
     search: str | None = None,
     sort_by: str | None = None,
     sort_order: str = "desc",
+    folder_id: UUID | None = Query(None, description="Filter by folder membership"),
 ) -> ItemListResponse:
     color_list = colors.split(",") if colors else None
 
@@ -84,6 +85,7 @@ async def list_items(
         search=search,
         sort_by=sort_by,
         sort_order=sort_order,
+        folder_id=folder_id,
     )
 
     item_service = ItemService(db)
@@ -108,7 +110,14 @@ async def create_item(
     http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-    image: UploadFile = File(...),
+    image: UploadFile | None = File(None),
+    images: list[UploadFile] | None = File(
+        None,
+        description=(
+            "Multiple images for one item. First image becomes the primary; the rest are stored as "
+            "additional images."
+        ),
+    ),
     type: str | None = Form(None),  # Optional - AI will detect if not provided
     subtype: str | None = Form(None),
     name: str | None = Form(None),
@@ -117,23 +126,45 @@ async def create_item(
     colors: str | None = Form(None),
     primary_color: str | None = Form(None),
     favorite: bool = Form(False),
+    quantity: int = Form(1, ge=1, le=99),
 ) -> ItemResponse:
-    # Validate and process image
+    # Accept either legacy single `image` or new `images[]`; new field takes priority when present.
+    uploads: list[UploadFile] = []
+    if images:
+        uploads.extend([f for f in images if f is not None])
+    if image is not None:
+        uploads.append(image)
+    if not uploads:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=translate_request(http_request, "error.bulk_at_least_one_image"),
+        )
+    if len(uploads) > 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=translate_request(http_request, "error.max_images_per_item"),
+        )
+
     image_service = ImageService()
     item_service = ItemService(db)
 
-    content = await image.read()
-    content_type = image.content_type or "application/octet-stream"
+    primary_upload = uploads[0]
+    additional_uploads = uploads[1:]
 
-    if not image_service.validate_image(content, content_type):
+    primary_content = await primary_upload.read()
+    primary_content_type = primary_upload.content_type or "application/octet-stream"
+
+    if not image_service.validate_image(primary_content, primary_content_type):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=translate_request(http_request, "error.invalid_image_format"),
         )
 
-    # Compute hash and check for duplicates BEFORE storing
+    # Compute hash and check for duplicates BEFORE storing (primary image only)
     try:
-        image_hash = image_service.compute_phash(content, image.filename or "upload.jpg")
+        image_hash = image_service.compute_phash(
+            primary_content, primary_upload.filename or "upload.jpg"
+        )
         existing = await item_service.find_duplicate_by_hash(current_user.id, image_hash)
         if existing:
             raise HTTPException(
@@ -148,12 +179,12 @@ async def create_item(
         logger.warning(f"Failed to compute image hash: {e}")
         # Continue without duplicate check if hash computation fails
 
-    # Process and store image
+    # Process and store primary image
     try:
         image_paths = await image_service.process_and_store(
             user_id=current_user.id,
-            image_data=content,
-            original_filename=image.filename or "upload.jpg",
+            image_data=primary_content,
+            original_filename=primary_upload.filename or "upload.jpg",
         )
     except ValueError as e:
         raise HTTPException(
@@ -161,10 +192,8 @@ async def create_item(
             detail=translate_validation_message(str(e), http_request),
         ) from None
 
-    # Parse colors from comma-separated string
     color_list = colors.split(",") if colors else None
 
-    # Create item - use "unknown" if type not provided (AI will detect)
     item_data = ItemCreate(
         type=type or "unknown",
         subtype=subtype,
@@ -174,6 +203,7 @@ async def create_item(
         colors=color_list,
         primary_color=primary_color,
         favorite=favorite,
+        quantity=quantity,
     )
 
     item = await item_service.create(
@@ -182,18 +212,69 @@ async def create_item(
         image_paths=image_paths,
     )
 
-    # Queue AI tagging job
+    # Process additional images
+    additional_paths: list[str] = []
+    if additional_uploads:
+        from app.models.item import ItemImage
+
+        for position, extra in enumerate(additional_uploads):
+            try:
+                extra_content = await extra.read()
+                extra_content_type = extra.content_type or "application/octet-stream"
+
+                if not image_service.validate_image(extra_content, extra_content_type):
+                    logger.warning(
+                        "Skipping invalid additional image for item %s: %s",
+                        item.id,
+                        extra.filename,
+                    )
+                    continue
+
+                extra_paths = await image_service.process_and_store(
+                    user_id=current_user.id,
+                    image_data=extra_content,
+                    original_filename=extra.filename or f"extra_{position}.jpg",
+                )
+                db.add(
+                    ItemImage(
+                        item_id=item.id,
+                        image_path=extra_paths["image_path"],
+                        thumbnail_path=extra_paths.get("thumbnail_path"),
+                        medium_path=extra_paths.get("medium_path"),
+                        position=position,
+                    )
+                )
+                additional_paths.append(extra_paths["image_path"])
+            except Exception as e:
+                logger.warning(
+                    "Failed to store additional image %s for item %s: %s",
+                    extra.filename,
+                    item.id,
+                    e,
+                )
+        await db.flush()
+        await db.refresh(item, ["additional_images"])
+
+    # Queue AI tagging job (include additional images if any)
     try:
         redis = await create_pool(get_redis_settings())
         try:
             full_image_path = f"{settings.storage_path}/{image_paths['image_path']}"
+            extra_full_paths = [
+                f"{settings.storage_path}/{p}" for p in additional_paths
+            ]
             await redis.enqueue_job(
                 "tag_item_image",
                 str(item.id),
                 full_image_path,
+                extra_full_paths,
                 _queue_name="arq:tagging",
             )
-            logger.info(f"Queued AI tagging job for item {item.id}")
+            logger.info(
+                "Queued AI tagging job for item %s with %s additional images",
+                item.id,
+                len(extra_full_paths),
+            )
         finally:
             await redis.aclose()
     except Exception as e:

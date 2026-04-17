@@ -34,6 +34,7 @@ export function useItems(filters: ItemFilter = {}, page = 1, pageSize = 20) {
       if (filters.is_archived !== undefined) params.is_archived = String(filters.is_archived);
       if (filters.sort_by) params.sort_by = filters.sort_by;
       if (filters.sort_order) params.sort_order = filters.sort_order;
+      if (filters.folder_id) params.folder_id = filters.folder_id;
 
       return api.get<ItemListResponse>('/items', { params });
     },

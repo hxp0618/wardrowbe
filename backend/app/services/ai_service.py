@@ -608,38 +608,64 @@ class AIService:
         return None, last_error, None
 
     async def analyze_image(self, image_path: str | Path) -> ClothingTags:
+        return await self.analyze_images([image_path])
+
+    async def analyze_images(self, image_paths: list[str | Path]) -> ClothingTags:
+        """
+        Analyze one or more images that represent the SAME clothing item
+        (e.g. front/back/tag shots) and produce a single set of tags.
+
+        Images are preprocessed once each; the vision model receives them all
+        in a single multi-image message so it can reason about them together.
+        """
+        if not image_paths:
+            raise ValueError("analyze_images requires at least one image path")
+
         logger.info(
-            "Starting AI image analysis image_path=%s endpoint_count=%s",
-            image_path,
+            "Starting AI image analysis image_count=%s endpoint_count=%s",
+            len(image_paths),
             len(self._endpoints),
         )
-        image_base64 = self._preprocess_image(image_path)
 
-        # System/user separation for injection protection
-        messages_tags = [
-            {"role": "system", "content": TAGGING_PROMPT},
-            {
-                "role": "user",
-                "content": [
+        image_contents: list[dict] = []
+        for p in image_paths:
+            try:
+                b64 = self._preprocess_image(p)
+                image_contents.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
-                    },
-                ],
-            },
+                        "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+                    }
+                )
+            except Exception as e:
+                logger.warning("Failed to preprocess image %s: %s", p, e)
+
+        if not image_contents:
+            raise ValueError("No valid images could be preprocessed for AI analysis")
+
+        # System/user separation for injection protection.
+        # When multiple images are provided we hint the model to treat them as the same item.
+        user_prefix: list[dict] = []
+        if len(image_contents) > 1:
+            user_prefix.append(
+                {
+                    "type": "text",
+                    "text": (
+                        f"The following {len(image_contents)} images are DIFFERENT views of the "
+                        "SAME clothing item (e.g. front, back, label). Produce ONE unified set of "
+                        "tags that best describes the item across all views."
+                    ),
+                }
+            )
+
+        messages_tags = [
+            {"role": "system", "content": TAGGING_PROMPT},
+            {"role": "user", "content": user_prefix + image_contents},
         ]
 
         messages_desc = [
             {"role": "system", "content": DESCRIPTION_PROMPT},
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
-                    },
-                ],
-            },
+            {"role": "user", "content": user_prefix + image_contents},
         ]
 
         tags = ClothingTags()
@@ -657,8 +683,8 @@ class AIService:
         if err:
             last_error = err
             logger.warning(
-                "AI tags pass failed image_path=%s error_type=%s error=%s",
-                image_path,
+                "AI tags pass failed image_count=%s error_type=%s error=%s",
+                len(image_paths),
                 type(err).__name__,
                 str(err),
             )
@@ -672,16 +698,16 @@ class AIService:
             tags.description = description
         elif err:
             logger.warning(
-                "AI description pass failed image_path=%s error_type=%s error=%s",
-                image_path,
+                "AI description pass failed image_count=%s error_type=%s error=%s",
+                len(image_paths),
                 type(err).__name__,
                 str(err),
             )
 
         if tags.type == "unknown" and not tags.description and last_error:
             logger.error(
-                "AI image analysis failed image_path=%s last_error_type=%s last_error=%s",
-                image_path,
+                "AI image analysis failed image_count=%s last_error_type=%s last_error=%s",
+                len(image_paths),
                 type(last_error).__name__,
                 str(last_error),
             )

@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
+from app.config import get_settings
 from app.models.notification import NotificationSettings
 
 
@@ -57,6 +58,60 @@ class TestNotificationSettings:
         data = response.json()
         assert data["channel"] == "bark"
         assert data["enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_webhook_setting_rejects_private_url(
+        self,
+        client: AsyncClient,
+        test_user,
+        auth_headers,
+    ):
+        response = await client.post(
+            "/api/v1/notifications/settings",
+            json={
+                "channel": "webhook",
+                "config": {
+                    "url": "http://127.0.0.1:8080/hook",
+                    "format": "json",
+                },
+                "enabled": True,
+                "priority": 1,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_create_webhook_setting_allows_private_url_when_opted_in(
+        self,
+        client: AsyncClient,
+        test_user,
+        auth_headers,
+        monkeypatch,
+    ):
+        monkeypatch.setenv("ALLOW_PRIVATE_WEBHOOK", "true")
+        get_settings.cache_clear()
+        try:
+            response = await client.post(
+                "/api/v1/notifications/settings",
+                json={
+                    "channel": "webhook",
+                    "config": {
+                        "url": "http://127.0.0.1:8080/hook",
+                        "format": "json",
+                    },
+                    "enabled": True,
+                    "priority": 1,
+                },
+                headers=auth_headers,
+            )
+        finally:
+            monkeypatch.delenv("ALLOW_PRIVATE_WEBHOOK", raising=False)
+            get_settings.cache_clear()
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["channel"] == "webhook"
 
     @pytest.mark.asyncio
     async def test_create_email_setting(self, client: AsyncClient, test_user, auth_headers):

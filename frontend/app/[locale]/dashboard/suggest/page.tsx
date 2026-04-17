@@ -53,6 +53,8 @@ import {
   getWeatherConditionLabel,
 } from '@/lib/taxonomy-i18n';
 import { TempUnit, formatTemp, displayValue, toF, toCelsius } from '@/lib/temperature';
+import { ManualOutfitDialog } from '@/components/manual-outfit-dialog';
+import { Pencil } from 'lucide-react';
 
 // Map occasion values to icons and colors
 const OCCASION_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = {
@@ -178,6 +180,64 @@ function WeatherCard({ weather, isLoading, temperatureUnit }: { weather?: Weathe
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function toISODate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function TargetDatePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const t = useTranslations('suggest');
+  const today = new Date();
+  const minDate = toISODate(today);
+  const maxDate = toISODate(addDays(today, 15));
+  const presets = [
+    { label: t('dateToday'), value: '' },
+    { label: t('dateTomorrow'), value: toISODate(addDays(today, 1)) },
+    { label: t('dateIn3Days'), value: toISODate(addDays(today, 3)) },
+    { label: t('dateThisWeekend'), value: toISODate(addDays(today, (6 - today.getDay() + 7) % 7 || 7)) },
+  ];
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+        <span className="font-semibold text-sm">{t('whenWearing')}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {presets.map((p) => (
+          <Button
+            key={p.label}
+            type="button"
+            size="sm"
+            variant={value === p.value ? 'default' : 'outline'}
+            onClick={() => onChange(p.value)}
+          >
+            {p.label}
+          </Button>
+        ))}
+        <input
+          type="date"
+          value={value}
+          min={minDate}
+          max={maxDate}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -466,6 +526,8 @@ export default function SuggestPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [outfit, setOutfit] = useState<Outfit | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [targetDate, setTargetDate] = useState<string>('');
 
   useEffect(() => {
     if (prefs?.default_occasion && !occasionInitialized && !selectedOccasion) {
@@ -497,6 +559,10 @@ export default function SuggestPage() {
           precipitation_chance: weatherOverride.condition === 'rainy' ? 80 : weatherOverride.condition === 'cloudy' ? 30 : 10,
           condition: weatherOverride.condition,
         };
+      }
+
+      if (targetDate) {
+        request.target_date = targetDate;
       }
 
       const result = await api.post<Outfit>('/outfits/suggest', request);
@@ -565,7 +631,19 @@ export default function SuggestPage() {
         <p className="text-muted-foreground">
           {t('subtitle')}
         </p>
+        <div className="flex justify-center pt-1">
+          <Button variant="outline" size="sm" onClick={() => setManualOpen(true)} className="gap-2">
+            <Pencil className="h-3.5 w-3.5" />
+            {t('manualOutfit')}
+          </Button>
+        </div>
       </div>
+
+      <ManualOutfitDialog
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+        onCreated={(o) => setOutfit(o)}
+      />
 
       {error && (
         <Alert variant="destructive">
@@ -590,6 +668,9 @@ export default function SuggestPage() {
                   onSelect={setSelectedOccasion}
                 />
               </div>
+
+              {/* Target date picker */}
+              <TargetDatePicker value={targetDate} onChange={setTargetDate} />
 
               {/* Weather override (collapsible) */}
               <WeatherOverrideSection

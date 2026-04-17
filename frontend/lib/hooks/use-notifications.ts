@@ -11,13 +11,21 @@ function useSetTokenIfAvailable() {
   }
 }
 
+export type NotificationChannelType =
+  | 'ntfy'
+  | 'mattermost'
+  | 'email'
+  | 'bark'
+  | 'expo_push'
+  | 'webhook';
+
 export interface NotificationSettings {
   id: string;
   user_id: string;
-  channel: 'ntfy' | 'mattermost' | 'email' | 'bark';
+  channel: NotificationChannelType;
   enabled: boolean;
   priority: number;
-  config: Record<string, string>;
+  config: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -64,10 +72,10 @@ export function useCreateNotificationSetting() {
 
   return useMutation({
     mutationFn: async (data: {
-      channel: 'ntfy' | 'mattermost' | 'email' | 'bark';
+      channel: NotificationChannelType;
       enabled: boolean;
       priority: number;
-      config: Record<string, string>;
+      config: Record<string, unknown>;
     }) => {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
@@ -90,7 +98,7 @@ export function useUpdateNotificationSetting() {
       data,
     }: {
       id: string;
-      data: Partial<{ enabled: boolean; priority: number; config: Record<string, string> }>;
+      data: Partial<{ enabled: boolean; priority: number; config: Record<string, unknown> }>;
     }) => {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);

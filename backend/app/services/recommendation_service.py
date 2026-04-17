@@ -621,8 +621,12 @@ class RecommendationService:
         if not time_of_day:
             time_of_day = get_time_of_day(user)
 
-        # Determine cache eligibility before auto-merge
-        use_cache = not exclude_items and not include_items and not single_outfit
+        # Determine cache eligibility before auto-merge.
+        # Future-date suggestions must not read/write the today-only cache.
+        is_future = scheduled_date is not None and scheduled_date > date.today()
+        use_cache = (
+            not exclude_items and not include_items and not single_outfit and not is_future
+        )
 
         # Auto-exclude today's rejected items for this occasion
         rejected_ids = await self._get_today_rejected_item_ids(user, occasion)
@@ -637,9 +641,16 @@ class RecommendationService:
             if user.location_lat is None or user.location_lon is None:
                 raise ApiUserError("error.user_location_not_set")
             try:
-                weather = await self.weather_service.get_current_weather(
-                    float(user.location_lat), float(user.location_lon)
-                )
+                if scheduled_date is not None and scheduled_date > date.today():
+                    weather = await self.weather_service.get_weather_for_date(
+                        float(user.location_lat),
+                        float(user.location_lon),
+                        scheduled_date,
+                    )
+                else:
+                    weather = await self.weather_service.get_current_weather(
+                        float(user.location_lat), float(user.location_lon)
+                    )
             except ApiUserError:
                 raise
             except WeatherServiceError as e:

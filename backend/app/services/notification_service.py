@@ -18,6 +18,7 @@ from app.schemas.notification import (
     ExpoPushConfig,
     MattermostConfig,
     NtfyConfig,
+    WebhookConfig,
 )
 from app.services.notification_providers import (
     BarkMessage,
@@ -31,6 +32,8 @@ from app.services.notification_providers import (
     MattermostProvider,
     NtfyNotification,
     NtfyProvider,
+    WebhookMessage,
+    WebhookProvider,
 )
 from app.utils.api_errors import ApiUserError
 from app.utils.i18n import translate, translate_validation_message
@@ -186,6 +189,10 @@ class NotificationService:
             elif setting.channel == "bark":
                 success, message = await BarkProvider(
                     BarkConfig(**setting.config)
+                ).test_connection()
+            elif setting.channel == "webhook":
+                success, message = await WebhookProvider(
+                    WebhookConfig(**setting.config)
                 ).test_connection()
             else:
                 return False, _dispatch_msg(
@@ -372,6 +379,11 @@ class NotificationDispatcher:
             elif channel_config.channel == "bark":
                 provider = BarkProvider(BarkConfig(**channel_config.config))
                 message = self._build_bark_message(outfit, user, for_tomorrow)
+                result = await provider.send(message)
+
+            elif channel_config.channel == "webhook":
+                provider = WebhookProvider(WebhookConfig(**channel_config.config))
+                message = self._build_webhook_message(outfit, user, for_tomorrow)
                 result = await provider.send(message)
 
             else:
@@ -686,6 +698,48 @@ class NotificationDispatcher:
             title=title,
             body=body,
             data={"outfit_id": str(outfit.id), "screen": "history"},
+        )
+
+    def _build_webhook_message(
+        self, outfit: Outfit, _user: User, for_tomorrow: bool = False
+    ) -> WebhookMessage:
+        weather = outfit.weather_data or {}
+        temp = weather.get("temperature")
+        condition = weather.get("condition")
+        day_label = _day_word(for_tomorrow)
+        occ = outfit.occasion.title() if outfit.occasion else ""
+
+        if temp is not None:
+            title = _msg(
+                "notification.ntfy.title_weather", day=day_label, occasion=occ, temp=temp
+            )
+        else:
+            title = _msg("notification.ntfy.title_no_temp", day=day_label, occasion=occ)
+
+        highlights: list[str] = []
+        if outfit.ai_raw_response and isinstance(outfit.ai_raw_response, dict):
+            raw = outfit.ai_raw_response.get("highlights") or []
+            if isinstance(raw, list):
+                highlights = [str(h) for h in raw[:3]]
+
+        body = outfit.reasoning or _msg("notification.outfit.ready")
+
+        return WebhookMessage(
+            title=title,
+            body=body,
+            url=f"{self.app_url}/dashboard/history",
+            occasion=outfit.occasion,
+            day=day_label,
+            temperature=temp,
+            condition=str(condition) if condition is not None else None,
+            highlights=highlights,
+            tip=outfit.style_notes or None,
+            extra={
+                "outfit_id": str(outfit.id),
+                "scheduled_for": outfit.scheduled_for.isoformat()
+                if outfit.scheduled_for
+                else None,
+            },
         )
 
     def _build_bark_message(

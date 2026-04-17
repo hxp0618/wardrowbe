@@ -73,28 +73,54 @@ async def update_item_status_to_error(ctx: dict, item_id: str, error_msg: str) -
         logger.error(f"Failed to update item {item_id} status to error: {e}")
 
 
-async def tag_item_image(ctx: dict, item_id: str, image_path: str) -> dict[str, Any]:
+async def tag_item_image(
+    ctx: dict,
+    item_id: str,
+    image_path: str,
+    extra_image_paths: list[str] | None = None,
+) -> dict[str, Any]:
     """
-    Analyze an item's image and update it with AI-generated tags.
+    Analyze an item's image(s) and update it with AI-generated tags.
 
     Args:
         ctx: arq context
         item_id: UUID of the item to tag
-        image_path: Path to the image file
+        image_path: Path to the primary image file
+        extra_image_paths: Optional additional image paths of the SAME item
+            (e.g. front/back/tag); when provided the vision model is given all
+            images at once to produce a single unified set of tags.
 
     Returns:
         Dict with status and tags
     """
-    logger.info("Starting AI tagging item_id=%s image_path=%s", item_id, image_path)
+    logger.info(
+        "Starting AI tagging item_id=%s image_path=%s extra_count=%s",
+        item_id,
+        image_path,
+        len(extra_image_paths or []),
+    )
 
     try:
-        # Verify image exists
+        # Verify primary image exists
         path = Path(image_path)
         if not path.exists():
             error_msg = f"Image not found: {image_path}"
             logger.error(error_msg)
             await update_item_status_to_error(ctx, item_id, error_msg)
             return {"status": "error", "error": "Image not found"}
+
+        # Build list of image paths to analyze (primary first, then valid extras)
+        image_paths: list[Path] = [path]
+        for extra in extra_image_paths or []:
+            extra_path = Path(extra)
+            if extra_path.exists():
+                image_paths.append(extra_path)
+            else:
+                logger.warning(
+                    "Skipping missing additional image for tagging item_id=%s path=%s",
+                    item_id,
+                    extra,
+                )
 
         # Get user's AI endpoints from preferences
         ai_endpoints = None
@@ -125,12 +151,12 @@ async def tag_item_image(ctx: dict, item_id: str, image_path: str) -> dict[str, 
         # Analyze with AI (uses custom endpoints if available)
         ai_service = AIService(endpoints=ai_endpoints)
         logger.info(
-            "Invoking AI service for item_id=%s image_path=%s custom_endpoint_count=%s",
+            "Invoking AI service for item_id=%s image_count=%s custom_endpoint_count=%s",
             item_id,
-            image_path,
+            len(image_paths),
             len(ai_endpoints or []),
         )
-        tags = await ai_service.analyze_image(path)
+        tags = await ai_service.analyze_images(image_paths)
 
         logger.info(
             "AI analysis complete item_id=%s type=%s color=%s confidence=%s",

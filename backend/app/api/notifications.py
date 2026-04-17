@@ -27,6 +27,7 @@ from app.schemas.notification import (
     ScheduleResponse,
     ScheduleUpdate,
     TestNotificationResponse,
+    WebhookConfig,
 )
 from app.services.notification_service import NotificationService
 from app.utils.api_errors import ApiUserError
@@ -148,6 +149,8 @@ async def create_notification_setting(
             ExpoPushConfig(**data.config)
         elif data.channel == "bark":
             BarkConfig(**data.config)
+        elif data.channel == "webhook":
+            WebhookConfig(**data.config)
     except ValidationError as e:
         raise HTTPException(
             status_code=400,
@@ -220,6 +223,8 @@ async def update_notification_setting(
                 ExpoPushConfig(**data.config)
             elif existing.channel == "bark":
                 BarkConfig(**data.config)
+            elif existing.channel == "webhook":
+                WebhookConfig(**data.config)
         except ValidationError as e:
             raise HTTPException(
                 status_code=400,

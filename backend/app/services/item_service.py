@@ -19,7 +19,10 @@ class ItemService:
         result = await self.db.execute(
             select(ClothingItem)
             .where(and_(ClothingItem.id == item_id, ClothingItem.user_id == user_id))
-            .options(selectinload(ClothingItem.additional_images))
+            .options(
+                selectinload(ClothingItem.additional_images),
+                selectinload(ClothingItem.folders),
+            )
         )
         return result.scalar_one_or_none()
 
@@ -34,8 +37,19 @@ class ItemService:
         query = (
             select(ClothingItem)
             .where(ClothingItem.user_id == user_id)
-            .options(selectinload(ClothingItem.additional_images))
+            .options(
+                selectinload(ClothingItem.additional_images),
+                selectinload(ClothingItem.folders),
+            )
         )
+
+        # Filter by folder membership (M2M)
+        if filters.folder_id is not None:
+            from app.models.folder import item_folders
+
+            query = query.join(
+                item_folders, item_folders.c.item_id == ClothingItem.id
+            ).where(item_folders.c.folder_id == filters.folder_id)
 
         # Apply filters
         if filters.type:
@@ -173,6 +187,7 @@ class ItemService:
             purchase_date=item_data.purchase_date,
             purchase_price=item_data.purchase_price,
             favorite=item_data.favorite,
+            quantity=max(1, item_data.quantity or 1),
         )
 
         self.db.add(item)

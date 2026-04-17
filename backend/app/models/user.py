@@ -13,6 +13,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.family import Family
+    from app.models.folder import Folder
     from app.models.item import ClothingItem
     from app.models.learning import UserLearningProfile
     from app.models.notification import NotificationSettings
@@ -73,4 +74,7 @@ class User(Base):
     )
     learning_profile: Mapped[Optional["UserLearningProfile"]] = relationship(
         "UserLearningProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    folders: Mapped[list["Folder"]] = relationship(
+        "Folder", back_populates="user", cascade="all, delete-orphan"
     )
