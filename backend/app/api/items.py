@@ -820,27 +820,57 @@ async def trigger_ai_analysis(
         )
 
     try:
+        logger.info(
+            "Received AI re-analysis request item_id=%s user_id=%s current_status=%s",
+            item.id,
+            current_user.id,
+            item.status,
+        )
         # Set item status to processing so UI shows feedback
         from app.models.item import ItemStatus
 
         item.status = ItemStatus.processing
         await db.commit()
+        logger.info(
+            "Marked item as processing for AI re-analysis item_id=%s user_id=%s image_path=%s",
+            item.id,
+            current_user.id,
+            item.image_path,
+        )
 
         redis = await create_pool(get_redis_settings())
         try:
             full_image_path = f"{settings.storage_path}/{item.image_path}"
+            logger.info(
+                "Queueing AI re-analysis item_id=%s user_id=%s image_path=%s queue=%s",
+                item.id,
+                current_user.id,
+                full_image_path,
+                "arq:tagging",
+            )
             job = await redis.enqueue_job(
                 "tag_item_image",
                 str(item.id),
                 full_image_path,
                 _queue_name="arq:tagging",
             )
-            logger.info(f"Queued AI re-analysis job for item {item.id}")
+            logger.info(
+                "Queued AI re-analysis job item_id=%s user_id=%s job_id=%s queue=%s",
+                item.id,
+                current_user.id,
+                job.job_id,
+                "arq:tagging",
+            )
             return {"status": "queued", "job_id": job.job_id}
         finally:
             await redis.aclose()
     except Exception as e:
-        logger.error(f"Failed to queue AI analysis job: {e}")
+        logger.exception(
+            "Failed to queue AI analysis job item_id=%s user_id=%s error=%s",
+            item.id,
+            current_user.id,
+            str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=translate_request(http_request, "error.queue_ai_analysis_failed"),

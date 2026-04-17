@@ -60,9 +60,13 @@ async def update_item_status_to_error(ctx: dict, item_id: str, error_msg: str) -
             result = await db.execute(select(ClothingItem).where(ClothingItem.id == UUID(item_id)))
             item = result.scalar_one_or_none()
             if item:
+                logger.info("Setting item status to error item_id=%s error=%s", item_id, error_msg)
                 item.status = ItemStatus.error
                 item.ai_raw_response = {"error": error_msg}
                 await db.commit()
+                logger.info("Item status updated to error item_id=%s", item_id)
+            else:
+                logger.error("Failed to set item status to error because item was not found item_id=%s", item_id)
         finally:
             await db.close()
     except Exception as e:
@@ -81,7 +85,7 @@ async def tag_item_image(ctx: dict, item_id: str, image_path: str) -> dict[str, 
     Returns:
         Dict with status and tags
     """
-    logger.info(f"Starting AI tagging for item {item_id}")
+    logger.info("Starting AI tagging item_id=%s image_path=%s", item_id, image_path)
 
     try:
         # Verify image exists
@@ -100,6 +104,7 @@ async def tag_item_image(ctx: dict, item_id: str, image_path: str) -> dict[str, 
             result = await db.execute(select(ClothingItem).where(ClothingItem.id == UUID(item_id)))
             item = result.scalar_one_or_none()
             if item:
+                logger.info("Loaded item for AI tagging item_id=%s user_id=%s", item_id, item.user_id)
                 # Get user's preferences for AI endpoints
                 from app.models.preference import UserPreference
 
@@ -109,18 +114,30 @@ async def tag_item_image(ctx: dict, item_id: str, image_path: str) -> dict[str, 
                 prefs = pref_result.scalar_one_or_none()
                 if prefs and prefs.ai_endpoints:
                     ai_endpoints = prefs.ai_endpoints
-                    logger.info(
-                        f"Using {len(ai_endpoints)} custom AI endpoints for user {item.user_id}"
-                    )
+                    logger.info("Using %s custom AI endpoints for user_id=%s", len(ai_endpoints), item.user_id)
+                else:
+                    logger.info("No custom AI endpoints configured for user_id=%s; using default endpoint", item.user_id)
+            else:
+                logger.error("Item not found before AI tagging item_id=%s", item_id)
         finally:
             await db.close()
 
         # Analyze with AI (uses custom endpoints if available)
         ai_service = AIService(endpoints=ai_endpoints)
+        logger.info(
+            "Invoking AI service for item_id=%s image_path=%s custom_endpoint_count=%s",
+            item_id,
+            image_path,
+            len(ai_endpoints or []),
+        )
         tags = await ai_service.analyze_image(path)
 
         logger.info(
-            f"AI analysis complete for item {item_id}: type={tags.type}, color={tags.primary_color}"
+            "AI analysis complete item_id=%s type=%s color=%s confidence=%s",
+            item_id,
+            tags.type,
+            tags.primary_color,
+            tags.confidence,
         )
 
         # Update item in database
@@ -171,7 +188,7 @@ async def tag_item_image(ctx: dict, item_id: str, image_path: str) -> dict[str, 
                         setattr(item, field, value)
 
             await db.commit()
-            logger.info(f"Updated item {item_id} with AI tags (status=ready)")
+            logger.info("Updated item with AI tags item_id=%s status=%s", item_id, ItemStatus.ready)
 
             return {
                 "status": "success",

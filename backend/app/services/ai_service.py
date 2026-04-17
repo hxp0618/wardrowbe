@@ -5,6 +5,7 @@ import logging
 import math
 import re
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from PIL import Image, ImageOps
@@ -14,6 +15,24 @@ from app.config import get_settings
 from app.utils.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_endpoint_url(url: str) -> str:
+    """Strip credentials from endpoint URLs before logging."""
+    if not url:
+        return "<unset>"
+
+    parts = urlsplit(url)
+    hostname = parts.hostname or ""
+    if parts.port:
+        hostname = f"{hostname}:{parts.port}"
+
+    return urlunsplit((parts.scheme, hostname, parts.path, parts.query, parts.fragment))
+
+
+def _supports_logprobs_error(response_text: str) -> bool:
+    normalized = response_text.lower()
+    return "top_logprobs" in normalized or "logprobs" in normalized
 
 
 class TextGenerationResult(BaseModel):
@@ -294,6 +313,21 @@ class AIService:
         self.vision_model = self._endpoints[0].vision_model
         self.text_model = self._endpoints[0].text_model
 
+        logger.info(
+            "AI service configured endpoints=%s timeout=%ss max_retries=%s",
+            [
+                {
+                    "name": endpoint.name,
+                    "url": _safe_endpoint_url(endpoint.url),
+                    "vision_model": endpoint.vision_model,
+                    "text_model": endpoint.text_model,
+                }
+                for endpoint in self._endpoints
+            ],
+            self.timeout,
+            self.settings.ai_max_retries,
+        )
+
     def _get_headers(self) -> dict:
         """Get headers for AI API requests, including auth if configured."""
         headers = {"Content-Type": "application/json"}
@@ -440,60 +474,145 @@ class AIService:
         request_logprobs: bool = False,
     ) -> tuple[str | None, Exception | None, list | None]:
         last_error = None
+        max_retries = self.settings.ai_max_retries
 
         for endpoint in self._endpoints:
-            logger.info(f"Trying AI endpoint for {task_name}: {endpoint.name}")
             model = endpoint.vision_model if use_vision_model else endpoint.text_model
+            endpoint_url = _safe_endpoint_url(endpoint.url)
 
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-                for attempt in range(self.settings.ai_max_retries):
+                for attempt in range(max_retries):
+                    attempt_number = attempt + 1
+                    include_logprobs = request_logprobs
                     try:
+                        logger.info(
+                            "AI request start task=%s endpoint=%s url=%s model=%s attempt=%s/%s logprobs=%s",
+                            task_name,
+                            endpoint.name,
+                            endpoint_url,
+                            model,
+                            attempt_number,
+                            max_retries,
+                            include_logprobs,
+                        )
                         request_body = {
                             "model": model,
                             "messages": messages,
                             "stream": False,
                             "max_tokens": self.settings.ai_max_tokens,
                         }
-                        if request_logprobs:
+                        if include_logprobs:
                             request_body["logprobs"] = True
                             request_body["top_logprobs"] = 3
 
-                        response = await client.post(
-                            f"{endpoint.url}/chat/completions",
-                            headers=self._get_headers(),
-                            json=request_body,
-                        )
-                        response.raise_for_status()
+                        try:
+                            response = await client.post(
+                                f"{endpoint.url}/chat/completions",
+                                headers=self._get_headers(),
+                                json=request_body,
+                            )
+                            response.raise_for_status()
+                        except httpx.HTTPStatusError as e:
+                            response_text = e.response.text[:300] if e.response is not None else ""
+                            if (
+                                include_logprobs
+                                and e.response is not None
+                                and e.response.status_code == 400
+                                and _supports_logprobs_error(response_text)
+                            ):
+                                logger.warning(
+                                    "AI request retrying without logprobs task=%s endpoint=%s url=%s model=%s attempt=%s/%s response_preview=%s",
+                                    task_name,
+                                    endpoint.name,
+                                    endpoint_url,
+                                    model,
+                                    attempt_number,
+                                    max_retries,
+                                    response_text,
+                                )
+                                include_logprobs = False
+                                request_body.pop("logprobs", None)
+                                request_body.pop("top_logprobs", None)
+                                response = await client.post(
+                                    f"{endpoint.url}/chat/completions",
+                                    headers=self._get_headers(),
+                                    json=request_body,
+                                )
+                                response.raise_for_status()
+                            else:
+                                raise
 
                         data = response.json()
                         choice = data["choices"][0]
                         content = choice["message"]["content"]
                         logprobs_content = None
-                        if request_logprobs:
+                        if include_logprobs:
                             lp = choice.get("logprobs")
                             if lp:
                                 logprobs_content = lp.get("content")
 
                         used_model = data.get("model", model)
                         logger.info(
-                            f"AI {task_name} successful via {endpoint.name} (model: {used_model})"
+                            "AI request success task=%s endpoint=%s url=%s model=%s used_model=%s attempt=%s/%s",
+                            task_name,
+                            endpoint.name,
+                            endpoint_url,
+                            model,
+                            used_model,
+                            attempt_number,
+                            max_retries,
                         )
                         return content, None, logprobs_content
 
                     except httpx.HTTPStatusError as e:
                         last_error = e
-                        logger.warning(f"HTTP error from {endpoint.name}: {e}")
-                        if attempt < self.settings.ai_max_retries - 1:
+                        response_text = e.response.text[:300] if e.response is not None else ""
+                        logger.warning(
+                            "AI request HTTP error task=%s endpoint=%s url=%s model=%s attempt=%s/%s status=%s error=%s response_preview=%s",
+                            task_name,
+                            endpoint.name,
+                            endpoint_url,
+                            model,
+                            attempt_number,
+                            max_retries,
+                            e.response.status_code if e.response is not None else "unknown",
+                            str(e),
+                            response_text,
+                        )
+                        if attempt < max_retries - 1:
                             continue
                     except httpx.RequestError as e:
                         last_error = e
-                        logger.warning(f"Request error from {endpoint.name}: {e}")
-                        if attempt < self.settings.ai_max_retries - 1:
+                        logger.warning(
+                            "AI request transport error task=%s endpoint=%s url=%s model=%s attempt=%s/%s error_type=%s error=%s",
+                            task_name,
+                            endpoint.name,
+                            endpoint_url,
+                            model,
+                            attempt_number,
+                            max_retries,
+                            type(e).__name__,
+                            str(e),
+                        )
+                        if attempt < max_retries - 1:
                             continue
 
+        if last_error is not None:
+            logger.error(
+                "AI request exhausted endpoints task=%s endpoint_count=%s last_error_type=%s last_error=%s",
+                task_name,
+                len(self._endpoints),
+                type(last_error).__name__,
+                str(last_error),
+            )
         return None, last_error, None
 
     async def analyze_image(self, image_path: str | Path) -> ClothingTags:
+        logger.info(
+            "Starting AI image analysis image_path=%s endpoint_count=%s",
+            image_path,
+            len(self._endpoints),
+        )
         image_base64 = self._preprocess_image(image_path)
 
         # System/user separation for injection protection
@@ -537,6 +656,12 @@ class AIService:
                 tags.logprobs_confidence = logprobs_confidence
         if err:
             last_error = err
+            logger.warning(
+                "AI tags pass failed image_path=%s error_type=%s error=%s",
+                image_path,
+                type(err).__name__,
+                str(err),
+            )
 
         # Second pass: human-readable description
         content, err, _ = await self._call_with_fallback(messages_desc, "description")
@@ -545,8 +670,21 @@ class AIService:
             if description.startswith('"') and description.endswith('"'):
                 description = description[1:-1]
             tags.description = description
+        elif err:
+            logger.warning(
+                "AI description pass failed image_path=%s error_type=%s error=%s",
+                image_path,
+                type(err).__name__,
+                str(err),
+            )
 
         if tags.type == "unknown" and not tags.description and last_error:
+            logger.error(
+                "AI image analysis failed image_path=%s last_error_type=%s last_error=%s",
+                image_path,
+                type(last_error).__name__,
+                str(last_error),
+            )
             raise last_error
 
         return tags

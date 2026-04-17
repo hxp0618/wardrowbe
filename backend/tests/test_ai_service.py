@@ -1,4 +1,9 @@
-from app.services.ai_service import AIService, ClothingTags
+import logging
+
+import httpx
+import pytest
+
+from app.services.ai_service import AIEndpointConfig, AIService, ClothingTags
 
 
 class TestTagParsing:
@@ -166,3 +171,114 @@ class TestClothingTags:
         assert tags.primary_color == "navy"
         assert len(tags.colors) == 2
         assert tags.confidence == 0.92
+
+
+@pytest.mark.asyncio
+async def test_call_with_fallback_logs_endpoint_context_on_transport_error(monkeypatch, caplog):
+    service = AIService()
+    service._endpoints = [
+        AIEndpointConfig(
+            url="http://ai.internal:11434/v1",
+            vision_model="llava:7b",
+            text_model="gemma3:latest",
+            name="primary",
+        )
+    ]
+    service.settings.ai_max_retries = 2
+    service.timeout = 5
+
+    class FailingAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, headers, json):
+            request = httpx.Request("POST", url)
+            raise httpx.ConnectError("All connection attempts failed", request=request)
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: FailingAsyncClient())
+
+    with caplog.at_level(logging.INFO, logger="app.services.ai_service"):
+        content, error, logprobs = await service._call_with_fallback(
+            messages=[{"role": "user", "content": "hello"}],
+            task_name="tags",
+            request_logprobs=True,
+        )
+
+    assert content is None
+    assert logprobs is None
+    assert isinstance(error, httpx.ConnectError)
+    assert "AI request start task=tags endpoint=primary url=http://ai.internal:11434/v1" in caplog.text
+    assert "model=llava:7b attempt=1/2 logprobs=True" in caplog.text
+    assert "AI request transport error task=tags endpoint=primary url=http://ai.internal:11434/v1" in caplog.text
+    assert "attempt=2/2" in caplog.text
+    assert "AI request exhausted endpoints task=tags endpoint_count=1 last_error_type=ConnectError" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_call_with_fallback_retries_without_logprobs_when_provider_rejects_them(
+    monkeypatch, caplog
+):
+    service = AIService()
+    service._endpoints = [
+        AIEndpointConfig(
+            url="https://api.example.com/v1",
+            vision_model="gpt-5.2",
+            text_model="gpt-5.2",
+            name="primary",
+        )
+    ]
+    service.settings.ai_max_retries = 1
+    service.timeout = 5
+    posted_bodies = []
+
+    class FallbackAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, headers, json):
+            posted_bodies.append(dict(json))
+            request = httpx.Request("POST", url)
+            if len(posted_bodies) == 1:
+                return httpx.Response(
+                    400,
+                    json={
+                        "error": {
+                            "message": "The 'top_logprobs' parameter is only allowed when 'logprobs' is enabled."
+                        }
+                    },
+                    request=request,
+                )
+
+            return httpx.Response(
+                200,
+                json={
+                    "model": "gpt-5.2",
+                    "choices": [{"message": {"content": '{"type":"shirt","primary_color":"blue"}'}}],
+                },
+                request=request,
+            )
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: FallbackAsyncClient())
+
+    with caplog.at_level(logging.INFO, logger="app.services.ai_service"):
+        content, error, logprobs = await service._call_with_fallback(
+            messages=[{"role": "user", "content": "hello"}],
+            task_name="tags",
+            request_logprobs=True,
+        )
+
+    assert content == '{"type":"shirt","primary_color":"blue"}'
+    assert error is None
+    assert logprobs is None
+    assert len(posted_bodies) == 2
+    assert posted_bodies[0]["logprobs"] is True
+    assert posted_bodies[0]["top_logprobs"] == 3
+    assert "logprobs" not in posted_bodies[1]
+    assert "top_logprobs" not in posted_bodies[1]
+    assert "AI request retrying without logprobs task=tags endpoint=primary" in caplog.text
