@@ -1,44 +1,33 @@
-OUTPUT ONLY JSON. NO TEXT. NO DESCRIPTIONS. NO EXPLANATIONS.
+只输出 JSON。不要输出解释，不要输出额外文字。
 
-Analyze the MAIN clothing item in this image. Use ONLY these values:
+分析图片中的主衣物，并严格使用下面这套中文词汇：
 
-TYPE (required, pick one):
-shirt, t-shirt, top, pants, jeans, shorts, dress, jumpsuit, skirt, jacket, coat, sweater, hoodie, blazer, vest, cardigan, polo, blouse, tank-top, shoes, sneakers, boots, sandals, socks, tie, hat, scarf, belt, bag, accessories
+TYPE（必填，只能选一个）：
+衬衫, T恤, 上衣, 长裤, 牛仔裤, 短裤, 连衣裙, 连体裤, 半身裙, 夹克, 大衣, 毛衣, 连帽衫, 西装外套, 马甲, 开衫, Polo衫, 女式衬衫, 背心, 鞋子, 运动鞋, 靴子, 凉鞋, 袜子, 领带, 帽子, 围巾, 腰带, 包, 配饰
 
-SUBTYPE (optional): A more specific name within the type. Examples:
-- shirt → henley, button-down, oxford, flannel, hawaiian, camp-collar
-- pants → chinos, joggers, cargo, trousers, leggings, sweatpants
-- dress → sundress, slip-dress, maxi, midi, wrap, shirt-dress, a-line
-- jacket → denim-jacket, bomber, parka, windbreaker, trucker, anorak
-- shoes → loafers, oxfords, mules, flats, heels, platforms
-- sneakers → low-top, high-top, chunky, slip-on
-- boots → ankle, chelsea, combat, knee-high, rain
-- skirt → mini, midi, maxi, pleated, wrap, pencil
-- sweater → pullover, crewneck, turtleneck, v-neck
-- socks → ankle, crew, knee-high, no-show, dress, athletic
-- tie → necktie, bow-tie, bolo
-Use null if the type is specific enough (e.g. jeans, hoodie, blazer).
+SUBTYPE（可选）：
+填写更具体的中文名称；如果类型已经足够具体，则输出 null。
 
-PRIMARY_COLOR (required, pick one):
-black, white, gray, navy, blue, light-blue, red, burgundy, pink, green, olive, yellow, orange, purple, brown, tan, beige, cream, gold, silver
+PRIMARY_COLOR（必填，只能选一个）：
+黑色, 白色, 灰色, 藏青, 蓝色, 浅蓝, 红色, 酒红, 粉色, 绿色, 橄榄绿, 黄色, 橙色, 紫色, 棕色, 棕褐, 米色, 奶油色, 金色, 银色
 
-PATTERN (required, pick one):
-solid, striped, plaid, checkered, floral, graphic, geometric, polka-dot, camouflage, animal-print
+PATTERN（必填，只能选一个）：
+纯色, 条纹, 格纹, 棋盘格, 花卉, 图案, 几何, 波点, 迷彩, 动物纹
 
-MATERIAL (optional, pick one or null):
-cotton, denim, leather, wool, polyester, silk, linen, knit, fleece, suede, velvet, nylon, canvas
+MATERIAL（可选，只能选一个或 null）：
+棉, 牛仔布, 皮革, 羊毛, 涤纶, 丝绸, 亚麻, 针织, 抓绒, 麂皮, 天鹅绒, 尼龙, 帆布
 
-FORMALITY (required, pick one):
-very-casual, casual, smart-casual, business-casual, formal
+FORMALITY（必填，只能选一个）：
+很休闲, 休闲, 轻商务, 商务休闲, 正式
 
-STYLE (pick 1-2 that best describe):
-casual, classic, sporty, minimalist, bohemian, preppy, streetwear, elegant, athletic, vintage, modern, rugged
+STYLE（选 1-2 个最贴切的）：
+休闲, 经典, 运动, 极简, 波西米亚, 学院, 街头, 优雅, 机能, 复古, 现代, 硬朗
 
-SEASON (pick all that apply):
-spring, summer, fall, winter, all-season
+SEASON（选择所有适用项）：
+春季, 夏季, 秋季, 冬季, 四季
 
-FIT (optional, pick one or null):
-slim, regular, relaxed, oversized, tailored, cropped
+FIT（可选，只能选一个或 null）：
+修身, 合身, 宽松, 廓形, 利落, 短款
 
-Output this exact JSON structure (a single object, NOT wrapped in an array):
-{{"type":"TYPE","subtype":null,"primary_color":"COLOR","colors":["COLOR1"],"pattern":"PATTERN","material":null,"formality":"FORMALITY","style":["STYLE1"],"season":["SEASON1","SEASON2"],"fit":null}}
+输出格式必须是单个 JSON 对象，不要包数组：
+{{"type":"类型","subtype":null,"primary_color":"颜色","colors":["颜色1"],"pattern":"图案","material":null,"formality":"正式度","style":["风格1"],"season":["季节1","季节2"],"fit":null}}

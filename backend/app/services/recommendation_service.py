@@ -623,7 +623,8 @@ class RecommendationService:
 
         # Determine cache eligibility before auto-merge.
         # Future-date suggestions must not read/write the today-only cache.
-        is_future = scheduled_date is not None and scheduled_date > date.today()
+        user_today = get_user_today(user)
+        is_future = scheduled_date is not None and scheduled_date > user_today
         use_cache = (
             not exclude_items and not include_items and not single_outfit and not is_future
         )
@@ -641,11 +642,19 @@ class RecommendationService:
             if user.location_lat is None or user.location_lon is None:
                 raise ApiUserError("error.user_location_not_set")
             try:
-                if scheduled_date is not None and scheduled_date > date.today():
-                    weather = await self.weather_service.get_weather_for_date(
+                if scheduled_date is not None and scheduled_date > user_today:
+                    days_ahead = (scheduled_date - user_today).days + 1
+                    forecasts = await self.weather_service.get_daily_forecast(
                         float(user.location_lat),
                         float(user.location_lon),
-                        scheduled_date,
+                        days=days_ahead,
+                    )
+                    weather = (
+                        forecasts[-1].to_weather_data()
+                        if forecasts
+                        else await self.weather_service.get_current_weather(
+                            float(user.location_lat), float(user.location_lon)
+                        )
                     )
                 else:
                     weather = await self.weather_service.get_current_weather(
@@ -734,7 +743,6 @@ class RecommendationService:
             )
 
         # Score items (replaces old filter approach)
-        user_today = get_user_today(user)
         lat = float(user.location_lat) if user.location_lat is not None else None
         current_season = get_season(user_today.month, lat)
         scored = score_items(

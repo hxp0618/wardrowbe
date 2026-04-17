@@ -17,7 +17,7 @@ import { FamilyRatingForm, FamilyRatingsDisplay } from '@/components/family-rati
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
-import { getClothingColorLabel, getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
+import { getClothingColorLabel, getClothingSubtypeLabel, getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
 
 interface OutfitPreviewDialogProps {
   outfit: Outfit;
@@ -33,6 +33,8 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
   const tt = useTranslations('taxonomy');
   const typeLabel = (ty: string) =>
     getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
+  const subtypeLabel = (subtype?: string) =>
+    subtype ? getClothingSubtypeLabel(subtype, (k) => tt(k as Parameters<typeof tt>[0])) : '';
   const colorLabel = (c: string) =>
     getClothingColorLabel(c, (k) => tt(k as Parameters<typeof tt>[0]));
   const occasionLabel = (o: string) =>
@@ -154,9 +156,9 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
                 <Badge variant="secondary" className="capitalize">
                   {typeLabel(currentItem.type)}
                 </Badge>
-                {currentItem.subtype && (
+                {subtypeLabel(currentItem.subtype) && (
                   <Badge variant="outline" className="capitalize">
-                    {currentItem.subtype}
+                    {subtypeLabel(currentItem.subtype)}
                   </Badge>
                 )}
                 {currentItem.primary_color && (

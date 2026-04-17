@@ -139,6 +139,66 @@ class TestTagParsing:
         tags = service._parse_tags_from_response(response)
         assert tags.formality is None
 
+    def test_parse_chinese_localized_json(self):
+        """Test parsing Chinese AI output into localized and canonical values."""
+        service = AIService()
+        response = """
+        {
+            "type": "衬衫",
+            "subtype": "牛津纺",
+            "primary_color": "蓝色",
+            "colors": ["蓝色", "白色"],
+            "pattern": "条纹",
+            "material": "棉",
+            "formality": "休闲",
+            "style": ["经典", "极简"],
+            "season": ["春季", "秋季"],
+            "fit": "合身"
+        }
+        """
+        tags = service._parse_tags_from_response(response)
+        assert tags.type == "shirt"
+        assert tags.subtype == "oxford"
+        assert tags.primary_color == "blue"
+        assert tags.colors == ["blue", "white"]
+        assert tags.pattern == "striped"
+        assert tags.material == "cotton"
+        assert tags.formality == "casual"
+        assert tags.style == ["classic", "minimalist"]
+        assert tags.season == ["spring", "fall"]
+        assert tags.fit == "regular"
+        assert tags.localized_tags["primary_color"] == "蓝色"
+        assert tags.localized_tags["subtype"] == "牛津纺"
+        assert tags.localized_tags["colors"] == ["蓝色", "白色"]
+        assert tags.localized_tags["pattern"] == "条纹"
+        assert tags.localized_tags["material"] == "棉"
+        assert tags.localized_tags["formality"] == "休闲"
+        assert tags.localized_tags["style"] == ["经典", "极简"]
+        assert tags.localized_tags["season"] == ["春季", "秋季"]
+        assert tags.localized_tags["fit"] == "合身"
+
+    def test_localizes_english_subtype_to_chinese(self):
+        """Test common English subtype values are localized for display/storage."""
+        service = AIService()
+        response = """
+        {
+            "type": "夹克",
+            "subtype": "track-jacket",
+            "primary_color": "藏青",
+            "colors": ["藏青"],
+            "pattern": "纯色",
+            "material": "涤纶",
+            "formality": "休闲",
+            "style": ["运动"],
+            "season": ["春季", "秋季"],
+            "fit": "合身"
+        }
+        """
+        tags = service._parse_tags_from_response(response)
+        assert tags.type == "jacket"
+        assert tags.subtype == "track-jacket"
+        assert tags.localized_tags["subtype"] == "运动夹克"
+
 
 class TestClothingTags:
     """Tests for ClothingTags model."""

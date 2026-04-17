@@ -33,7 +33,7 @@ import { useItems, useItem, useItemTypes, useReanalyzeItem, useBulkDeleteItems, 
 import { useFolders, useAddItemsToFolder } from '@/lib/hooks/use-folders';
 import { useUserProfile } from '@/lib/hooks/use-user';
 import { CLOTHING_TYPES, CLOTHING_COLORS, Item } from '@/lib/types';
-import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
+import { getClothingColorLabel, getClothingSubtypeLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import { toast } from 'sonner';
 import { getDaysSinceDateInTimezone, getWornAgoColorClass } from '@/lib/utils';
 
@@ -67,6 +67,9 @@ function ItemCard({
   const tc = useTranslations('common');
   const tt = useTranslations('taxonomy');
   const typeLabel = getClothingTypeLabel(item.type, (k) => tt(k as Parameters<typeof tt>[0]));
+  const subtypeLabel = item.subtype
+    ? getClothingSubtypeLabel(item.subtype, (k) => tt(k as Parameters<typeof tt>[0]))
+    : '';
   const wornAgoLabel = item.last_worn_at
     ? (() => {
         const days = getDaysSinceDateInTimezone(item.last_worn_at, userTimezone);
@@ -164,7 +167,7 @@ function ItemCard({
             </p>
             <p className="text-xs text-muted-foreground capitalize">
               {typeLabel}
-              {item.subtype && ` • ${item.subtype}`}
+              {subtypeLabel && ` • ${subtypeLabel}`}
               {item.tags?.logprobs_confidence != null &&
                 ` · ${t('confident', { percent: Math.round(item.tags.logprobs_confidence * 100) })}`}
             </p>

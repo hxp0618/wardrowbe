@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Layers } from 'lucide-react';
+import { Sparkles, Layers, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +17,7 @@ import { useItemTypes } from '@/lib/hooks/use-items';
 import { PairingCard } from '@/components/pairing-card';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { OutfitPreviewDialog } from '@/components/outfit-preview-dialog';
+import { ManualOutfitDialog } from '@/components/manual-outfit-dialog';
 import { Pairing } from '@/lib/types';
 import { Outfit } from '@/lib/hooks/use-outfits';
 import { useTranslations } from 'next-intl';
@@ -75,6 +76,7 @@ export default function PairingsPage() {
   const [sourceType, setSourceType] = useState<string | undefined>(undefined);
   const [feedbackOutfit, setFeedbackOutfit] = useState<Outfit | null>(null);
   const [previewOutfit, setPreviewOutfit] = useState<Outfit | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
   const { data, isLoading, isError } = usePairings(page, 20, sourceType);
   const { data: itemTypes } = useItemTypes();
@@ -105,7 +107,17 @@ export default function PairingsPage() {
             {t('subtitle')}
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={() => setManualOpen(true)} className="gap-2">
+          <Pencil className="h-4 w-4" />
+          {t('manualOutfit')}
+        </Button>
       </div>
+
+      <ManualOutfitDialog
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+        onCreated={(outfit) => setPreviewOutfit(outfit)}
+      />
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-center">

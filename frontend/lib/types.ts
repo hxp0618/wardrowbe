@@ -278,19 +278,19 @@ export interface FamilyRating {
 export interface OutfitItem {
   id: string;
   type: string;
-  subtype?: string;
-  name?: string;
-  primary_color?: string;
+  subtype: string | null;
+  name: string | null;
+  primary_color: string | null;
   colors: string[];
   image_path: string;
-  thumbnail_path?: string;
+  thumbnail_path: string | null;
   image_url?: string;
   thumbnail_url?: string;
-  layer_type?: string;
+  layer_type: string | null;
   position: number;
 }
 
-export interface WeatherData {
+export interface WeatherData extends Record<string, unknown> {
   temperature: number;
   feels_like: number;
   humidity: number;
@@ -299,9 +299,19 @@ export interface WeatherData {
 }
 
 export interface FeedbackSummary {
-  rating?: number;
-  comment?: string;
-  worn_at?: string;
+  rating: number | null;
+  comment: string | null;
+  worn_at: string | null;
+  actually_worn: boolean | null;
+  wore_instead_items: WoreInsteadItem[] | null;
+}
+
+export interface WoreInsteadItem {
+  id: string;
+  type: string;
+  name: string | null;
+  thumbnail_path: string | null;
+  thumbnail_url?: string;
 }
 
 export type OutfitSource = 'scheduled' | 'on_demand' | 'manual' | 'pairing';
@@ -312,15 +322,15 @@ export interface Outfit {
   scheduled_for: string;
   status: 'pending' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
   source: OutfitSource;
-  reasoning?: string;
-  style_notes?: string;
-  highlights?: string[];
-  weather?: WeatherData;
+  reasoning: string | null;
+  style_notes: string | null;
+  highlights: string[] | null;
+  weather: WeatherData | null;
   items: OutfitItem[];
-  feedback?: FeedbackSummary;
-  family_ratings?: FamilyRating[];
-  family_rating_average?: number;
-  family_rating_count?: number;
+  feedback: FeedbackSummary | null;
+  family_ratings: FamilyRating[] | null;
+  family_rating_average: number | null;
+  family_rating_count: number | null;
   created_at: string;
 }
 
@@ -339,11 +349,11 @@ export interface SuggestRequest {
 }
 
 export interface ManualOutfitRequest {
+  item_ids: string[];
   occasion: string;
   scheduled_for?: string;
-  items: Array<{ item_id: string; layer_type?: string }>;
-  style_notes?: string;
-  reasoning?: string;
+  name?: string;
+  notes?: string;
   use_for_learning?: boolean;
 }
 

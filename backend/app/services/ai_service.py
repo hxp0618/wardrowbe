@@ -9,7 +9,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from PIL import Image, ImageOps
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.utils.prompts import load_prompt
@@ -59,6 +59,7 @@ class ClothingTags(BaseModel):
     confidence: float = 0.0
     logprobs_confidence: float | None = None
     description: str | None = None
+    localized_tags: dict[str, object] = Field(default_factory=dict)
     raw_response: str | None = None
 
 
@@ -165,6 +166,186 @@ VALID_STYLES = {
 }
 VALID_SEASONS = {"spring", "summer", "fall", "winter", "all-season"}
 
+LOCALIZED_TYPE_MAP = {
+    "衬衫": "shirt",
+    "t恤": "t-shirt",
+    "上衣": "top",
+    "长裤": "pants",
+    "牛仔裤": "jeans",
+    "短裤": "shorts",
+    "连衣裙": "dress",
+    "连体裤": "jumpsuit",
+    "半身裙": "skirt",
+    "夹克": "jacket",
+    "大衣": "coat",
+    "毛衣": "sweater",
+    "连帽衫": "hoodie",
+    "西装外套": "blazer",
+    "马甲": "vest",
+    "开衫": "cardigan",
+    "polo衫": "polo",
+    "女式衬衫": "blouse",
+    "背心": "tank-top",
+    "鞋子": "shoes",
+    "运动鞋": "sneakers",
+    "靴子": "boots",
+    "凉鞋": "sandals",
+    "袜子": "socks",
+    "领带": "tie",
+    "帽子": "hat",
+    "围巾": "scarf",
+    "腰带": "belt",
+    "包": "bag",
+    "配饰": "accessories",
+}
+
+LOCALIZED_COLOR_MAP = {
+    "黑色": "black",
+    "白色": "white",
+    "灰色": "gray",
+    "藏青": "navy",
+    "蓝色": "blue",
+    "浅蓝": "light-blue",
+    "红色": "red",
+    "酒红": "burgundy",
+    "粉色": "pink",
+    "绿色": "green",
+    "橄榄绿": "olive",
+    "黄色": "yellow",
+    "橙色": "orange",
+    "紫色": "purple",
+    "棕色": "brown",
+    "棕褐": "tan",
+    "米色": "beige",
+    "奶油色": "cream",
+    "金色": "gold",
+    "银色": "silver",
+}
+
+LOCALIZED_PATTERN_MAP = {
+    "纯色": "solid",
+    "条纹": "striped",
+    "格纹": "plaid",
+    "棋盘格": "checkered",
+    "花卉": "floral",
+    "图案": "graphic",
+    "几何": "geometric",
+    "波点": "polka-dot",
+    "迷彩": "camouflage",
+    "动物纹": "animal-print",
+}
+
+LOCALIZED_MATERIAL_MAP = {
+    "棉": "cotton",
+    "牛仔布": "denim",
+    "皮革": "leather",
+    "羊毛": "wool",
+    "涤纶": "polyester",
+    "丝绸": "silk",
+    "亚麻": "linen",
+    "针织": "knit",
+    "抓绒": "fleece",
+    "麂皮": "suede",
+    "天鹅绒": "velvet",
+    "尼龙": "nylon",
+    "帆布": "canvas",
+}
+
+LOCALIZED_FORMALITY_MAP = {
+    "很休闲": "very-casual",
+    "休闲": "casual",
+    "轻商务": "smart-casual",
+    "商务休闲": "business-casual",
+    "正式": "formal",
+}
+
+LOCALIZED_STYLE_MAP = {
+    "休闲": "casual",
+    "经典": "classic",
+    "运动": "sporty",
+    "极简": "minimalist",
+    "波西米亚": "bohemian",
+    "学院": "preppy",
+    "街头": "streetwear",
+    "优雅": "elegant",
+    "机能": "athletic",
+    "复古": "vintage",
+    "现代": "modern",
+    "硬朗": "rugged",
+}
+
+LOCALIZED_SEASON_MAP = {
+    "春季": "spring",
+    "夏季": "summer",
+    "秋季": "fall",
+    "冬季": "winter",
+    "四季": "all-season",
+}
+
+LOCALIZED_FIT_MAP = {
+    "修身": "slim",
+    "合身": "regular",
+    "宽松": "relaxed",
+    "廓形": "oversized",
+    "利落": "tailored",
+    "短款": "cropped",
+}
+
+LOCALIZED_SUBTYPE_MAP = {
+    "henley": "亨利领",
+    "button-down": "扣领衬衫",
+    "oxford": "牛津纺",
+    "flannel": "法兰绒",
+    "hawaiian": "夏威夷衬衫",
+    "camp-collar": "古巴领",
+    "track-jacket": "运动夹克",
+    "denim-jacket": "牛仔夹克",
+    "bomber": "飞行员夹克",
+    "parka": "派克大衣",
+    "windbreaker": "防风夹克",
+    "trucker": "工装夹克",
+    "anorak": "套头防风外套",
+    "chinos": "斜纹裤",
+    "joggers": "束脚裤",
+    "cargo": "工装裤",
+    "trousers": "西裤",
+    "leggings": "紧身裤",
+    "sweatpants": "卫裤",
+    "sundress": "夏日连衣裙",
+    "slip-dress": "吊带裙",
+    "maxi": "长款",
+    "midi": "中长款",
+    "wrap": "裹身式",
+    "shirt-dress": "衬衫裙",
+    "a-line": "A字款",
+    "loafers": "乐福鞋",
+    "oxfords": "牛津鞋",
+    "mules": "穆勒鞋",
+    "flats": "平底鞋",
+    "heels": "高跟鞋",
+    "platforms": "厚底鞋",
+    "low-top": "低帮",
+    "high-top": "高帮",
+    "chunky": "厚底",
+    "slip-on": "一脚蹬",
+    "ankle": "短款",
+    "chelsea": "切尔西靴",
+    "combat": "工装靴",
+    "knee-high": "高筒",
+    "rain": "雨靴",
+    "mini": "短款",
+    "pleated": "百褶",
+    "pencil": "铅笔裙",
+    "pullover": "套头",
+    "crewneck": "圆领",
+    "turtleneck": "高领",
+    "v-neck": "V领",
+    "necktie": "领带",
+    "bow-tie": "领结",
+    "bolo": "波洛领带",
+}
+CANONICAL_SUBTYPE_MAP = {localized: canonical for canonical, localized in LOCALIZED_SUBTYPE_MAP.items()}
+
 
 def compute_tag_completeness(tags: "ClothingTags") -> float:
     score = 0.0
@@ -185,6 +366,54 @@ def compute_tag_completeness(tags: "ClothingTags") -> float:
     if tags.colors:
         score += 0.05
     return round(score, 2)
+
+
+def _clean_string(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _clean_string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    cleaned: list[str] = []
+    for entry in value:
+        item = _clean_string(entry)
+        if item:
+            cleaned.append(item)
+    return cleaned
+
+
+def _dedupe_list(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
+
+
+def _localize_subtype(value: str | None) -> str | None:
+    cleaned = _clean_string(value)
+    if not cleaned:
+        return None
+    if re.search(r"[\u4e00-\u9fff]", cleaned):
+        return cleaned
+    normalized = re.sub(r"[\s_]+", "-", cleaned.lower())
+    return LOCALIZED_SUBTYPE_MAP.get(normalized, cleaned)
+
+
+def _canonicalize_subtype(value: str | None) -> str | None:
+    cleaned = _clean_string(value)
+    if not cleaned:
+        return None
+    if re.search(r"[\u4e00-\u9fff]", cleaned):
+        return CANONICAL_SUBTYPE_MAP.get(cleaned, cleaned)
+    return re.sub(r"[\s_]+", "-", cleaned.lower())
 
 
 _CONFIDENCE_FIELDS = {"type", "primary_color", "pattern", "material", "formality"}
@@ -417,21 +646,40 @@ class AIService:
             "charcoal": "gray",
         }
 
-        def validate_value(value: str | None, valid_set: set) -> str | None:
+        def validate_value(
+            value: str | None,
+            valid_set: set[str],
+            localized_map: dict[str, str] | None = None,
+        ) -> str | None:
             if value is None:
                 return None
-            value_lower = value.lower().strip()
+            value_clean = value.strip()
+            value_lower = value_clean.lower()
             if value_lower in valid_set:
                 return value_lower
+            if localized_map and value_clean in localized_map:
+                return localized_map[value_clean]
             alias = COLOR_ALIASES.get(value_lower)
             if alias and alias in valid_set:
                 return alias
             return None
 
-        def validate_list(values: list, valid_set: set) -> list:
+        def validate_list(
+            values: list,
+            valid_set: set[str],
+            localized_map: dict[str, str] | None = None,
+        ) -> list[str]:
             if not values:
                 return []
-            return [v.lower().strip() for v in values if v and v.lower().strip() in valid_set]
+            normalized: list[str] = []
+            for value in values:
+                cleaned = _clean_string(value)
+                if not cleaned:
+                    continue
+                candidate = validate_value(cleaned, valid_set, localized_map=localized_map)
+                if candidate:
+                    normalized.append(candidate)
+            return _dedupe_list(normalized)
 
         data = extract_json(response_text)
         if not data:
@@ -443,22 +691,58 @@ class AIService:
 
         tags = ClothingTags()
         tags.raw_response = response_text
+        localized_subtype = _localize_subtype(data.get("subtype"))
+        canonical_subtype = _canonicalize_subtype(data.get("subtype"))
+        tags.localized_tags = {
+            "subtype": localized_subtype,
+            "primary_color": _clean_string(data.get("primary_color")),
+            "colors": _clean_string_list(data.get("colors", [])),
+            "pattern": _clean_string(data.get("pattern")),
+            "material": _clean_string(data.get("material")),
+            "style": _clean_string_list(data.get("style", [])),
+            "season": _clean_string_list(data.get("season", [])),
+            "formality": _clean_string(data.get("formality")),
+            "fit": _clean_string(data.get("fit")),
+            "occasion": _clean_string_list(data.get("occasion", [])),
+            "brand": _clean_string(data.get("brand")),
+            "condition": _clean_string(data.get("condition")),
+            "features": _clean_string_list(data.get("features", [])),
+        }
+        tags.localized_tags = {
+            key: value
+            for key, value in tags.localized_tags.items()
+            if value not in (None, [], "")
+        }
 
-        item_type = validate_value(data.get("type"), VALID_TYPES)
+        item_type = validate_value(data.get("type"), VALID_TYPES, localized_map=LOCALIZED_TYPE_MAP)
         if item_type:
             tags.type = item_type
         else:
             tags.type = "unknown"
 
-        tags.subtype = data.get("subtype") if data.get("subtype") else None
-        tags.primary_color = validate_value(data.get("primary_color"), VALID_COLORS)
-        tags.colors = validate_list(data.get("colors", []), VALID_COLORS)
-        tags.pattern = validate_value(data.get("pattern"), VALID_PATTERNS)
-        tags.material = validate_value(data.get("material"), VALID_MATERIALS)
-        tags.formality = validate_value(data.get("formality"), VALID_FORMALITY)
-        tags.style = validate_list(data.get("style", []), VALID_STYLES)
-        tags.season = validate_list(data.get("season", []), VALID_SEASONS)
-        tags.fit = validate_value(data.get("fit"), VALID_FIT)
+        tags.subtype = canonical_subtype
+        tags.primary_color = validate_value(
+            data.get("primary_color"), VALID_COLORS, localized_map=LOCALIZED_COLOR_MAP
+        )
+        tags.colors = validate_list(
+            data.get("colors", []), VALID_COLORS, localized_map=LOCALIZED_COLOR_MAP
+        )
+        tags.pattern = validate_value(
+            data.get("pattern"), VALID_PATTERNS, localized_map=LOCALIZED_PATTERN_MAP
+        )
+        tags.material = validate_value(
+            data.get("material"), VALID_MATERIALS, localized_map=LOCALIZED_MATERIAL_MAP
+        )
+        tags.formality = validate_value(
+            data.get("formality"), VALID_FORMALITY, localized_map=LOCALIZED_FORMALITY_MAP
+        )
+        tags.style = validate_list(
+            data.get("style", []), VALID_STYLES, localized_map=LOCALIZED_STYLE_MAP
+        )
+        tags.season = validate_list(
+            data.get("season", []), VALID_SEASONS, localized_map=LOCALIZED_SEASON_MAP
+        )
+        tags.fit = validate_value(data.get("fit"), VALID_FIT, localized_map=LOCALIZED_FIT_MAP)
         tags.confidence = compute_tag_completeness(tags)
 
         logger.info(

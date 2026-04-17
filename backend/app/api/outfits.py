@@ -183,6 +183,22 @@ class ManualOutfitRequest(BaseModel):
     )
 
 
+class ManualOutfitCreate(BaseModel):
+    item_ids: list[UUID] = Field(
+        min_length=1,
+        max_length=10,
+        description="Ordered item IDs for a manually curated outfit.",
+    )
+    occasion: str = Field(default="casual", max_length=50)
+    scheduled_for: date | None = Field(
+        None,
+        description="Target date. Defaults to user's today.",
+    )
+    name: str | None = Field(None, max_length=100)
+    notes: str | None = Field(None, max_length=1000)
+    use_for_learning: bool = Field(default=True)
+
+
 class OutfitListResponse(BaseModel):
     outfits: list[OutfitResponse]
     total: int
@@ -479,6 +495,130 @@ async def suggest_outfit(
     return outfit_to_response(outfit, wore_instead_map)
 
 
+async def _create_manual_outfit_record(
+    *,
+    item_ids: list[UUID],
+    layer_types: list[str | None] | None,
+    occasion: str,
+    scheduled: date,
+    reasoning: str | None,
+    style_notes: str | None,
+    use_for_learning: bool,
+    http_request: Request,
+    db: AsyncSession,
+    current_user: User,
+) -> OutfitResponse:
+    if len(set(item_ids)) != len(item_ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=translate_request(http_request, "error.duplicate_items"),
+        )
+
+    items_result = await db.execute(
+        select(ClothingItem).where(
+            and_(
+                ClothingItem.id.in_(item_ids),
+                ClothingItem.user_id == current_user.id,
+                ClothingItem.is_archived.is_(False),
+            )
+        )
+    )
+    found_items = {item.id: item for item in items_result.scalars().all()}
+    if len(found_items) != len(item_ids):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=translate_request(http_request, "error.item_not_found"),
+        )
+
+    outfit = Outfit(
+        user_id=current_user.id,
+        occasion=occasion,
+        scheduled_for=scheduled,
+        source=OutfitSource.manual,
+        status=OutfitStatus.accepted,
+        responded_at=datetime.utcnow(),
+        reasoning=reasoning,
+        style_notes=style_notes,
+    )
+    db.add(outfit)
+    await db.flush()
+
+    for position, item_id in enumerate(item_ids):
+        db.add(
+            OutfitItem(
+                outfit_id=outfit.id,
+                item_id=item_id,
+                position=position,
+                layer_type=layer_types[position] if layer_types else None,
+            )
+        )
+
+    if use_for_learning:
+        db.add(
+            UserFeedback(
+                outfit_id=outfit.id,
+                accepted=True,
+                rating=5,
+            )
+        )
+
+    await db.commit()
+
+    reload_query = (
+        select(Outfit)
+        .where(Outfit.id == outfit.id)
+        .options(
+            selectinload(Outfit.items).selectinload(OutfitItem.item),
+            selectinload(Outfit.feedback),
+            selectinload(Outfit.family_ratings).selectinload(FamilyOutfitRating.user),
+        )
+    )
+    outfit = (await db.execute(reload_query)).scalar_one()
+
+    if use_for_learning:
+        try:
+            await LearningService(db).process_feedback(outfit.id, current_user.id)
+        except Exception as e:
+            logger.warning(
+                "Manual outfit learning processing failed for outfit %s: %s", outfit.id, e
+            )
+
+    return outfit_to_response(outfit)
+
+
+@router.post("", response_model=OutfitResponse, status_code=status.HTTP_201_CREATED)
+async def create_manual_outfit_from_plan(
+    request: ManualOutfitCreate,
+    http_request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> OutfitResponse:
+    occasion = (request.occasion or "casual").strip().lower() or "casual"
+    if occasion not in VALID_OCCASIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=translate_request(
+                http_request,
+                "error.invalid_occasion",
+                occasions=", ".join(sorted(VALID_OCCASIONS)),
+            ),
+        )
+
+    scheduled = request.scheduled_for or get_user_today(current_user)
+    return await _create_manual_outfit_record(
+        item_ids=request.item_ids,
+        layer_types=None,
+        occasion=occasion,
+        scheduled=scheduled,
+        reasoning=request.name,
+        style_notes=request.notes,
+        use_for_learning=request.use_for_learning,
+        http_request=http_request,
+        db=db,
+        current_user=current_user,
+    )
+
+
 @router.post("/manual", response_model=OutfitResponse, status_code=status.HTTP_201_CREATED)
 async def create_manual_outfit(
     request: ManualOutfitRequest,
@@ -502,85 +642,19 @@ async def create_manual_outfit(
             ),
         )
 
-    item_ids = [oi.item_id for oi in request.items]
-    if len(set(item_ids)) != len(item_ids):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=translate_request(http_request, "error.duplicate_items"),
-        )
-
-    items_result = await db.execute(
-        select(ClothingItem).where(
-            and_(
-                ClothingItem.id.in_(item_ids),
-                ClothingItem.user_id == current_user.id,
-                ClothingItem.is_archived.is_(False),
-            )
-        )
-    )
-    found_items = {item.id: item for item in items_result.scalars().all()}
-    if len(found_items) != len(item_ids):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=translate_request(http_request, "error.item_not_found"),
-        )
-
     scheduled = request.scheduled_for or get_user_today(current_user)
-
-    outfit = Outfit(
-        user_id=current_user.id,
+    return await _create_manual_outfit_record(
+        item_ids=[oi.item_id for oi in request.items],
+        layer_types=[oi.layer_type for oi in request.items],
         occasion=occasion,
-        scheduled_for=scheduled,
-        source=OutfitSource.manual,
-        status=OutfitStatus.accepted,
-        responded_at=datetime.utcnow(),
+        scheduled=scheduled,
         reasoning=request.reasoning,
         style_notes=request.style_notes,
+        use_for_learning=request.use_for_learning,
+        http_request=http_request,
+        db=db,
+        current_user=current_user,
     )
-    db.add(outfit)
-    await db.flush()
-
-    for position, oi in enumerate(request.items):
-        db.add(
-            OutfitItem(
-                outfit_id=outfit.id,
-                item_id=oi.item_id,
-                position=position,
-                layer_type=oi.layer_type,
-            )
-        )
-
-    if request.use_for_learning:
-        db.add(
-            UserFeedback(
-                outfit_id=outfit.id,
-                accepted=True,
-                rating=5,
-            )
-        )
-
-    await db.commit()
-
-    reload_query = (
-        select(Outfit)
-        .where(Outfit.id == outfit.id)
-        .options(
-            selectinload(Outfit.items).selectinload(OutfitItem.item),
-            selectinload(Outfit.feedback),
-            selectinload(Outfit.family_ratings).selectinload(FamilyOutfitRating.user),
-        )
-    )
-    outfit = (await db.execute(reload_query)).scalar_one()
-
-    if request.use_for_learning:
-        try:
-            await LearningService(db).process_feedback(outfit.id, current_user.id)
-        except Exception as e:
-            logger.warning(
-                "Manual outfit learning processing failed for outfit %s: %s", outfit.id, e
-            )
-
-    return outfit_to_response(outfit)
 
 
 @router.get("", response_model=OutfitListResponse)

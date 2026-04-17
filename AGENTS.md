@@ -6,6 +6,14 @@
 
 Wardrowbe is a self-hosted AI-powered wardrobe management app (Next.js 14 frontend + FastAPI backend + arq worker + PostgreSQL + Redis). See `README.md` for full architecture.
 
+### Current feature surface
+
+- Clothing items support up to 5 photos plus a `quantity` field for identical pieces.
+- Wardrobe organization includes folder grouping in addition to filters.
+- Users can create manual outfits from the Suggest and Pairings flows and optionally use them for AI learning.
+- Outfit suggestions accept a target date up to 15 days ahead and use forecast weather when available.
+- Generic Webhook notifications are available with presets for `generic`, `telegram`, `discord`, `slack`, `feishu`, and `wechat_work`.
+
 ### Starting the dev environment
 
 ```bash
@@ -25,7 +33,7 @@ curl http://localhost:8000/api/v1/health
 
 ### Running lint
 
-- **Backend:** `ruff check backend/app/ && ruff format --check backend/app/`
+- **Backend:** `ruff check backend/app/ && ruff format --check backend/app/` (requires `ruff` on the host; the current backend container image does not include it)
 - **Frontend:** `cd frontend && npm run lint`
 
 ### Running tests

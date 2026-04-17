@@ -418,7 +418,8 @@ class WebhookProvider:
     def __init__(self, config: WebhookConfig):
         self.url = config.url
         self.method = config.method or "POST"
-        self.format = config.format or "json"
+        self.preset = config.preset or "generic"
+        self.content_type = config.content_type or "application/json"
         self.headers = dict(config.headers or {})
         self.template = config.template
         self.chat_id = config.chat_id
@@ -460,10 +461,10 @@ class WebhookProvider:
             return rendered
 
     def _build_payload(self, message: WebhookMessage) -> Any:
-        fmt = self.format
+        fmt = self.preset
         summary = self._text_summary(message)
 
-        if fmt == "json":
+        if fmt == "generic":
             rendered = self._render_template(message)
             if rendered is not None:
                 return rendered
@@ -528,7 +529,7 @@ class WebhookProvider:
                 "text": {"content": "\n\n".join(text_lines)},
             }
 
-        if fmt == "wecom":
+        if fmt in {"wecom", "wechat_work"}:
             text_lines = [message.title, summary]
             if message.url:
                 text_lines.append(message.url)
@@ -541,7 +542,7 @@ class WebhookProvider:
 
     async def send(self, message: WebhookMessage) -> dict:
         payload = self._build_payload(message)
-        headers = {"Content-Type": "application/json", "User-Agent": "Wardrowbe/1.0"}
+        headers = {"Content-Type": self.content_type, "User-Agent": "Wardrowbe/1.0"}
         headers.update(self.headers)
 
         try:
@@ -549,7 +550,9 @@ class WebhookProvider:
                 timeout=30.0, follow_redirects=True, verify=self.verify_tls
             ) as client:
                 request_kwargs: dict[str, Any] = {"headers": headers}
-                if isinstance(payload, (dict, list)):
+                if self.content_type == "application/x-www-form-urlencoded" and isinstance(payload, dict):
+                    request_kwargs["data"] = payload
+                elif isinstance(payload, (dict, list)):
                     request_kwargs["json"] = payload
                 else:
                     request_kwargs["content"] = str(payload)

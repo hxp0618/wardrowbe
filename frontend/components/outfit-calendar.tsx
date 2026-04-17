@@ -47,7 +47,7 @@ export function OutfitCalendar({
   const td = useTranslations('dayNames');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || zhCN;
-  const currentMonth = new Date(year, month - 1, 1);
+  const currentMonth = useMemo(() => new Date(year, month - 1, 1), [month, year]);
 
   const outfitsByDate = useMemo(() => {
     const map = new Map<string, Set<OutfitSource>>();

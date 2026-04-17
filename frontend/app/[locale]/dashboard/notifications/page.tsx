@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Smartphone,
   Webhook,
+  Minus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -64,6 +66,11 @@ import {
 } from '@/lib/hooks/use-notifications';
 import { useUserProfile } from '@/lib/hooks/use-user';
 import { OCCASIONS } from '@/lib/types';
+import {
+  WebhookHeaderPair,
+  normalizeWebhookPreset,
+  pairsToHeaders,
+} from '@/lib/webhook-utils';
 import { useTranslations } from 'next-intl';
 
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
@@ -86,18 +93,32 @@ const CHANNEL_LABEL_KEYS: Record<string, string> = {
   webhook: 'channelLabels.webhook',
 };
 
-const WEBHOOK_FORMATS = [
-  'json',
+const WEBHOOK_PRESETS = [
+  'generic',
+  'telegram',
   'discord',
   'slack',
-  'telegram',
-  'lark',
   'feishu',
-  'dingtalk',
-  'wecom',
-  'teams',
+  'wechat_work',
 ] as const;
-type WebhookFormat = (typeof WEBHOOK_FORMATS)[number];
+type WebhookPreset = (typeof WEBHOOK_PRESETS)[number];
+
+const WEBHOOK_METHODS = ['POST', 'PUT'] as const;
+type WebhookMethod = (typeof WEBHOOK_METHODS)[number];
+
+const WEBHOOK_CONTENT_TYPES = [
+  'application/json',
+  'application/x-www-form-urlencoded',
+] as const;
+type WebhookContentType = (typeof WEBHOOK_CONTENT_TYPES)[number];
+
+function createEmptyHeaderPair(): WebhookHeaderPair {
+  return {
+    id: `header-${Date.now()}-${Math.random()}`,
+    key: '',
+    value: '',
+  };
+}
 
 function ChannelCard({
   setting,
@@ -113,6 +134,17 @@ function ChannelCard({
   testing: boolean;
 }) {
   const t = useTranslations('notifications');
+  const webhookPreset =
+    setting.channel === 'webhook'
+      ? normalizeWebhookPreset(
+          typeof setting.config.preset === 'string' ? setting.config.preset : undefined,
+          typeof setting.config.format === 'string' ? setting.config.format : undefined,
+        )
+      : null;
+  const webhookPresetLabel = webhookPreset
+    ? t(`addChannelDialog.webhookPresetLabels.${webhookPreset}` as Parameters<typeof t>[0])
+    : t('channelLabels.webhook');
+
   return (
     <Card>
       <CardContent className="pt-6">
@@ -133,7 +165,7 @@ function ChannelCard({
                     : t('channels.barkDeviceConfigured'))}
                 {setting.channel === 'email' && String(setting.config.address ?? '')}
                 {setting.channel === 'webhook' &&
-                  `${String(setting.config.format ?? 'json')} → ${String(setting.config.url ?? '').slice(0, 60)}${
+                  `${webhookPresetLabel} → ${String(setting.config.url ?? '').slice(0, 60)}${
                     String(setting.config.url ?? '').length > 60 ? '…' : ''
                   }`}
               </p>
@@ -195,7 +227,7 @@ function AddChannelDialog({
   const [open, setOpen] = useState(false);
   const [channel, setChannel] = useState<ChannelType>('ntfy');
   const [config, setConfig] = useState<Record<string, string>>({});
-  const [webhookHeadersInput, setWebhookHeadersInput] = useState<string>('');
+  const [webhookHeaders, setWebhookHeaders] = useState<WebhookHeaderPair[]>([createEmptyHeaderPair()]);
   const [webhookTemplateInput, setWebhookTemplateInput] = useState<string>('');
   const [ntfyDefaults, setNtfyDefaults] = useState<{ server: string; token: string } | null>(null);
   const [barkDefaults, setBarkDefaults] = useState<{ server: string } | null>(null);
@@ -237,8 +269,14 @@ function AddChannelDialog({
         group: 'Wardrowbe',
       });
     } else if (channel === 'webhook') {
-      setConfig({ url: '', method: 'POST', format: 'json' });
-      setWebhookHeadersInput('');
+      setConfig({
+        url: '',
+        method: 'POST',
+        preset: 'generic',
+        content_type: 'application/json',
+        chat_id: '',
+      });
+      setWebhookHeaders([createEmptyHeaderPair()]);
       setWebhookTemplateInput('');
     } else {
       setConfig({});
@@ -271,31 +309,30 @@ function AddChannelDialog({
         toast.error(t('validation.webhookUrlRequired'));
         return;
       }
-      if (config.format === 'telegram' && !config.chat_id?.trim()) {
+      const preset = normalizeWebhookPreset(config.preset, config.format) as WebhookPreset;
+      if (preset === 'telegram' && !config.chat_id?.trim()) {
         toast.error(t('validation.webhookChatIdRequired'));
         return;
       }
-      if (webhookHeadersInput.trim()) {
-        try {
-          const parsed = JSON.parse(webhookHeadersInput);
-          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-            throw new Error('not an object');
-          }
-          finalConfig.headers = parsed;
-        } catch {
-          toast.error(t('validation.webhookHeadersInvalid'));
-          return;
-        }
-      } else {
-        delete finalConfig.headers;
-      }
+      const headers = pairsToHeaders(webhookHeaders);
       if (webhookTemplateInput.trim()) {
         finalConfig.template = webhookTemplateInput.trim();
       } else {
         delete finalConfig.template;
       }
-      if (!finalConfig.method) finalConfig.method = 'POST';
-      if (!finalConfig.format) finalConfig.format = 'json';
+      finalConfig.method = (config.method as WebhookMethod) || 'POST';
+      finalConfig.content_type =
+        (config.content_type as WebhookContentType) || 'application/json';
+      finalConfig.preset = preset;
+      delete finalConfig.format;
+      if (headers) {
+        finalConfig.headers = headers;
+      } else {
+        delete finalConfig.headers;
+      }
+      if (preset !== 'telegram') {
+        delete finalConfig.chat_id;
+      }
     }
 
     try {
@@ -307,7 +344,7 @@ function AddChannelDialog({
       });
       setOpen(false);
       setConfig({});
-      setWebhookHeadersInput('');
+      setWebhookHeaders([createEmptyHeaderPair()]);
       setWebhookTemplateInput('');
       setChannel('ntfy');
       onSuccess?.();
@@ -319,9 +356,28 @@ function AddChannelDialog({
   const closeAndReset = () => {
     setOpen(false);
     setConfig({});
-    setWebhookHeadersInput('');
+    setWebhookHeaders([createEmptyHeaderPair()]);
     setWebhookTemplateInput('');
     setChannel('ntfy');
+  };
+
+  const webhookPreset = normalizeWebhookPreset(config.preset, config.format) as WebhookPreset;
+
+  const updateWebhookHeader = (id: string, field: 'key' | 'value', value: string) => {
+    setWebhookHeaders((prev) =>
+      prev.map((pair) => (pair.id === id ? { ...pair, [field]: value } : pair)),
+    );
+  };
+
+  const addWebhookHeader = () => {
+    setWebhookHeaders((prev) => [...prev, createEmptyHeaderPair()]);
+  };
+
+  const removeWebhookHeader = (id: string) => {
+    setWebhookHeaders((prev) => {
+      const next = prev.filter((pair) => pair.id !== id);
+      return next.length > 0 ? next : [createEmptyHeaderPair()];
+    });
   };
 
   return (
@@ -348,7 +404,7 @@ function AddChannelDialog({
                 onValueChange={(v: ChannelType) => {
                   setChannel(v);
                   setConfig({});
-                  setWebhookHeadersInput('');
+                  setWebhookHeaders([createEmptyHeaderPair()]);
                   setWebhookTemplateInput('');
                 }}
               >
@@ -488,29 +544,29 @@ function AddChannelDialog({
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>{t('addChannelDialog.webhookFormat')}</Label>
+                  <Label>{t('addChannelDialog.webhookPreset')}</Label>
                   <Select
-                    value={(config.format as WebhookFormat) || 'json'}
-                    onValueChange={(v: WebhookFormat) =>
-                      setConfig({ ...config, format: v })
+                    value={webhookPreset}
+                    onValueChange={(v: WebhookPreset) =>
+                      setConfig({ ...config, preset: v })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {WEBHOOK_FORMATS.map((fmt) => (
-                        <SelectItem key={fmt} value={fmt}>
-                          {t(`addChannelDialog.webhookFormatLabels.${fmt}` as Parameters<typeof t>[0])}
+                      {WEBHOOK_PRESETS.map((preset) => (
+                        <SelectItem key={preset} value={preset}>
+                          {t(`addChannelDialog.webhookPresetLabels.${preset}` as Parameters<typeof t>[0])}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {t('addChannelDialog.webhookFormatHint')}
+                    {t('addChannelDialog.webhookPresetHint')}
                   </p>
                 </div>
-                {config.format === 'telegram' && (
+                {webhookPreset === 'telegram' && (
                   <div className="space-y-2">
                     <Label htmlFor="webhook-chat-id">
                       {t('addChannelDialog.webhookChatId')} *
@@ -530,51 +586,93 @@ function AddChannelDialog({
                 <div className="space-y-2">
                   <Label>{t('addChannelDialog.webhookMethod')}</Label>
                   <Select
-                    value={(config.method as string) || 'POST'}
-                    onValueChange={(v: string) => setConfig({ ...config, method: v })}
+                    value={(config.method as WebhookMethod) || 'POST'}
+                    onValueChange={(v: WebhookMethod) => setConfig({ ...config, method: v })}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="POST">POST</SelectItem>
-                      <SelectItem value="PUT">PUT</SelectItem>
-                      <SelectItem value="PATCH">PATCH</SelectItem>
+                      {WEBHOOK_METHODS.map((method) => (
+                        <SelectItem key={method} value={method}>
+                          {method}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="webhook-headers">
-                    {t('addChannelDialog.webhookHeaders')}
-                  </Label>
-                  <textarea
-                    id="webhook-headers"
-                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-                    value={webhookHeadersInput}
-                    onChange={(e) => setWebhookHeadersInput(e.target.value)}
-                    placeholder='{"Authorization": "Bearer xxx"}'
-                  />
+                  <Label>{t('addChannelDialog.webhookContentType')}</Label>
+                  <Select
+                    value={(config.content_type as WebhookContentType) || 'application/json'}
+                    onValueChange={(v: WebhookContentType) => setConfig({ ...config, content_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WEBHOOK_CONTENT_TYPES.map((contentType) => (
+                        <SelectItem key={contentType} value={contentType}>
+                          {contentType}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t('addChannelDialog.webhookContentTypeHint')}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>{t('addChannelDialog.webhookHeaders')}</Label>
+                    <Button type="button" size="sm" variant="outline" onClick={addWebhookHeader}>
+                      <Plus className="mr-2 h-3.5 w-3.5" />
+                      {t('addChannelDialog.addHeader')}
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {webhookHeaders.map((pair) => (
+                      <div key={pair.id} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                        <Input
+                          value={pair.key}
+                          onChange={(e) => updateWebhookHeader(pair.id, 'key', e.target.value)}
+                          placeholder={t('addChannelDialog.webhookHeaderKey')}
+                        />
+                        <Input
+                          value={pair.value}
+                          onChange={(e) => updateWebhookHeader(pair.id, 'value', e.target.value)}
+                          placeholder={t('addChannelDialog.webhookHeaderValue')}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeWebhookHeader(pair.id)}
+                          aria-label={t('addChannelDialog.removeHeader')}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {t('addChannelDialog.webhookHeadersHint')}
                   </p>
                 </div>
-                {config.format === 'json' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="webhook-template">
-                      {t('addChannelDialog.webhookTemplate')}
-                    </Label>
-                    <textarea
-                      id="webhook-template"
-                      className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-                      value={webhookTemplateInput}
-                      onChange={(e) => setWebhookTemplateInput(e.target.value)}
-                      placeholder='{"msg": "{title}", "text": "{summary}"}'
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t('addChannelDialog.webhookTemplateHint')}
-                    </p>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="webhook-template">
+                    {t('addChannelDialog.webhookTemplate')}
+                  </Label>
+                  <Textarea
+                    id="webhook-template"
+                    value={webhookTemplateInput}
+                    onChange={(e) => setWebhookTemplateInput(e.target.value)}
+                    placeholder={t('addChannelDialog.webhookTemplateExample')}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t('addChannelDialog.webhookTemplateHint')}
+                  </p>
+                </div>
               </>
             )}
           </div>

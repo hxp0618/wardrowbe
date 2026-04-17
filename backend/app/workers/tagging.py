@@ -14,19 +14,29 @@ logger = logging.getLogger(__name__)
 
 def tags_to_item_fields(tags: ClothingTags, raw_response: str | None = None) -> dict[str, Any]:
     """Convert ClothingTags to item database fields."""
+    localized = tags.localized_tags or {}
+
+    def localized_value(key: str, fallback: Any) -> Any:
+        value = localized.get(key)
+        if value in (None, [], "", {}):
+            return fallback
+        return value
+
     # Build the tags JSONB object for frontend display
     tags_jsonb = {
-        "colors": tags.colors or [],
-        "pattern": tags.pattern,
-        "material": tags.material,
-        "style": tags.style or [],
-        "season": tags.season or [],
-        "formality": tags.formality,
-        "fit": tags.fit,
-        "occasion": tags.occasion or [],
-        "brand": tags.brand,
-        "condition": tags.condition,
-        "features": tags.features or [],
+        "subtype": localized_value("subtype", tags.subtype),
+        "primary_color": localized_value("primary_color", tags.primary_color),
+        "colors": localized_value("colors", tags.colors or []),
+        "pattern": localized_value("pattern", tags.pattern),
+        "material": localized_value("material", tags.material),
+        "style": localized_value("style", tags.style or []),
+        "season": localized_value("season", tags.season or []),
+        "formality": localized_value("formality", tags.formality),
+        "fit": localized_value("fit", tags.fit),
+        "occasion": localized_value("occasion", tags.occasion or []),
+        "brand": localized_value("brand", tags.brand),
+        "condition": localized_value("condition", tags.condition),
+        "features": localized_value("features", tags.features or []),
     }
     if tags.logprobs_confidence is not None:
         tags_jsonb["logprobs_confidence"] = tags.logprobs_confidence

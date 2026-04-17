@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, Plus, Trash2, Save, X } from 'lucide-react';
+import { GripVertical, Loader2, Plus, Trash2, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -22,8 +22,10 @@ import {
   useCreateFolder,
   useDeleteFolder,
   useFolders,
+  useReorderFolders,
   useUpdateFolder,
 } from '@/lib/hooks/use-folders';
+import { reorderFoldersLocally } from '@/lib/folder-utils';
 import { Folder } from '@/lib/types';
 
 interface FolderManageDialogProps {
@@ -38,11 +40,18 @@ export function FolderManageDialog({ open, onOpenChange }: FolderManageDialogPro
   const createFolder = useCreateFolder();
   const updateFolder = useUpdateFolder();
   const deleteFolder = useDeleteFolder();
+  const reorderFolders = useReorderFolders();
 
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('');
   const [newColor, setNewColor] = useState('');
   const [editing, setEditing] = useState<Record<string, { name: string; icon: string; color: string }>>({});
+  const [orderedFolders, setOrderedFolders] = useState<Folder[]>([]);
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOrderedFolders(folders);
+  }, [folders]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -99,6 +108,20 @@ export function FolderManageDialog({ open, onOpenChange }: FolderManageDialogPro
       ...prev,
       [folder.id]: { name: folder.name, icon: folder.icon ?? '', color: folder.color ?? '' },
     }));
+  };
+
+  const handleReorder = async (targetId: string) => {
+    if (!draggedFolderId || draggedFolderId === targetId) return;
+    const nextOrder = reorderFoldersLocally(orderedFolders, draggedFolderId, targetId);
+    setOrderedFolders(nextOrder);
+    setDraggedFolderId(null);
+    try {
+      await reorderFolders.mutateAsync(nextOrder.map((folder) => folder.id));
+      toast.success(t('reorderSuccess'));
+    } catch {
+      setOrderedFolders(folders);
+      toast.error(t('reorderFailed'));
+    }
   };
 
   return (
@@ -171,13 +194,25 @@ export function FolderManageDialog({ open, onOpenChange }: FolderManageDialogPro
                     {t('emptyList')}
                   </p>
                 ) : (
-                  folders.map((folder) => {
+                  orderedFolders.map((folder) => {
                     const edit = editing[folder.id];
                     return (
                       <div
                         key={folder.id}
                         className="flex items-center gap-2 rounded-md border p-2"
+                        draggable={!edit}
+                        onDragStart={() => setDraggedFolderId(folder.id)}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={() => handleReorder(folder.id)}
+                        onDragEnd={() => setDraggedFolderId(null)}
                       >
+                        <button
+                          type="button"
+                          className="cursor-grab text-muted-foreground hover:text-foreground"
+                          aria-label={t('reorder')}
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </button>
                         {edit ? (
                           <div className="grid grid-cols-6 gap-1 flex-1 items-center">
                             <Input

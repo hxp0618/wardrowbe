@@ -4,7 +4,6 @@ from fastapi import APIRouter
 
 from app.api.analytics import router as analytics_router
 from app.api.auth import router as auth_router
-from app.api.backup import router as backup_router
 from app.api.families import router as families_router
 from app.api.folders import router as folders_router
 from app.api.health import router as health_router
@@ -35,4 +34,3 @@ api_router.include_router(pairings_router)
 api_router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(analytics_router)
 api_router.include_router(learning_router)
-api_router.include_router(backup_router)

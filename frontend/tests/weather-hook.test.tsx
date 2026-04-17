@@ -27,7 +27,7 @@ vi.mock('@/lib/hooks/use-auth', () => ({
   useAuth: () => authState,
 }))
 
-import { useWeather } from '@/lib/hooks/use-weather'
+import { useWeather, useWeatherForecast } from '@/lib/hooks/use-weather'
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -100,6 +100,68 @@ describe('useWeather', () => {
 
     await waitFor(() => {
       expect(result.current.data?.temperature).toBe(22)
+    })
+  })
+})
+
+describe('useWeatherForecast', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    sessionState.data = { accessToken: 'token' }
+    sessionState.status = 'authenticated'
+    authState.user = null
+    authState.isAuthenticated = true
+    authState.isLoading = false
+    authState.error = null
+    authState.session = { accessToken: 'token' }
+  })
+
+  it('does not fetch forecast before the user has a saved location', async () => {
+    renderHook(() => useWeatherForecast(4), {
+      wrapper: createWrapper(),
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 25))
+
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('fetches forecast once coordinates are available', async () => {
+    authState.user = {
+      id: 'user-1',
+      location_lat: 31.2304,
+      location_lon: 121.4737,
+    }
+
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        latitude: 31.2304,
+        longitude: 121.4737,
+        forecast: [
+          {
+            date: '2026-04-20',
+            temp_min: 18,
+            temp_max: 26,
+            precipitation_chance: 20,
+            condition: 'cloudy',
+            condition_code: 3,
+          },
+        ],
+      }),
+    } as Response)
+
+    const { result } = renderHook(() => useWeatherForecast(4), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(result.current.data?.forecast[0].date).toBe('2026-04-20')
     })
   })
 })

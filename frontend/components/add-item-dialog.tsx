@@ -1,9 +1,18 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, Loader2, CheckCircle2, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import {
+  Upload,
+  X,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Image as ImageIcon,
+  GripVertical,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -37,6 +46,7 @@ import {
 } from '@/components/ui/select';
 import { useCreateItem, useBulkCreateItems, BulkUploadResponse } from '@/lib/hooks/use-items';
 import { CLOTHING_TYPES, CLOTHING_COLORS } from '@/lib/types';
+import { reorderByIds } from '@/lib/reorder-utils';
 import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 
 interface AddItemDialogProps {
@@ -63,6 +73,7 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
   const [primaryColor, setPrimaryColor] = useState('');
   const [notes, setNotes] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [draggedSingleFileId, setDraggedSingleFileId] = useState<string | null>(null);
   const MAX_IMAGES_PER_ITEM = 5;
 
   // Bulk upload state
@@ -79,9 +90,10 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
 
   // Cleanup blob URLs on unmount to prevent memory leaks
   useEffect(() => {
+    const blobUrls = blobUrlsRef.current;
     return () => {
-      blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      blobUrlsRef.current.clear();
+      blobUrls.forEach((url) => URL.revokeObjectURL(url));
+      blobUrls.clear();
     };
   }, []);
 
@@ -257,6 +269,15 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
     });
   };
 
+  const handleSingleFileReorder = (targetId: string) => {
+    if (!draggedSingleFileId || draggedSingleFileId === targetId) {
+      return;
+    }
+
+    setSingleFiles((prev) => reorderByIds(prev, draggedSingleFileId, targetId));
+    setDraggedSingleFileId(null);
+  };
+
   const removeBulkFile = (id: string) => {
     setBulkFiles((prev) => {
       const fileToRemove = prev.find((f) => f.id === id);
@@ -332,12 +353,30 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {singleFiles.map((f, idx) => (
-                      <div key={f.id} className="relative group">
-                        <img
+                      <div
+                        key={f.id}
+                        className="relative group aspect-square"
+                        draggable
+                        onDragStart={() => setDraggedSingleFileId(f.id)}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={() => handleSingleFileReorder(f.id)}
+                        onDragEnd={() => setDraggedSingleFileId(null)}
+                      >
+                        <Image
                           src={f.preview}
                           alt={f.file.name}
-                          className={`w-full aspect-square object-cover rounded-md border ${idx === 0 ? 'ring-2 ring-primary' : ''}`}
+                          fill
+                          unoptimized
+                          sizes="(min-width: 640px) 20vw, 33vw"
+                          className={`object-cover rounded-md border ${idx === 0 ? 'ring-2 ring-primary' : ''}`}
                         />
+                        <span
+                          className="absolute left-1 bottom-1 inline-flex h-5 w-5 items-center justify-center rounded bg-background/85 text-muted-foreground"
+                          aria-label={t('reorderPhotos')}
+                          title={t('reorderPhotos')}
+                        >
+                          <GripVertical className="h-3 w-3" />
+                        </span>
                         {idx === 0 ? (
                           <span className="absolute top-1 left-1 text-[10px] bg-primary text-primary-foreground rounded px-1 py-0.5">
                             {t('mainPhoto')}
@@ -532,11 +571,14 @@ export function AddItemDialog({ open, onOpenChange }: AddItemDialogProps) {
                     <ScrollArea className="h-[200px] rounded-md border p-2">
                       <div className="grid grid-cols-4 gap-2">
                         {bulkFiles.map((f) => (
-                          <div key={f.id} className="relative group">
-                            <img
+                          <div key={f.id} className="relative group aspect-square">
+                            <Image
                               src={f.preview}
                               alt={f.file.name}
-                              className="w-full aspect-square object-cover rounded-md"
+                              fill
+                              unoptimized
+                              sizes="(min-width: 640px) 10rem, 25vw"
+                              className="object-cover rounded-md"
                             />
                             <Button
                               type="button"

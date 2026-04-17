@@ -43,8 +43,13 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { api, ApiError, setAccessToken } from '@/lib/api';
+import {
+  getForecastDaysForTargetDate,
+  isFutureISODate,
+  toLocalISODate,
+} from '@/lib/date-utils';
 import { OCCASIONS, Outfit, SuggestRequest } from '@/lib/types';
-import { useWeather, Weather } from '@/lib/hooks/use-weather';
+import { ForecastDay, useWeather, useWeatherForecast, Weather } from '@/lib/hooks/use-weather';
 import { usePreferences } from '@/lib/hooks/use-preferences';
 import { cn } from '@/lib/utils';
 import {
@@ -189,10 +194,6 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
-function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 function TargetDatePicker({
   value,
   onChange,
@@ -202,13 +203,13 @@ function TargetDatePicker({
 }) {
   const t = useTranslations('suggest');
   const today = new Date();
-  const minDate = toISODate(today);
-  const maxDate = toISODate(addDays(today, 15));
+  const minDate = toLocalISODate(today);
+  const maxDate = toLocalISODate(addDays(today, 15));
   const presets = [
-    { label: t('dateToday'), value: '' },
-    { label: t('dateTomorrow'), value: toISODate(addDays(today, 1)) },
-    { label: t('dateIn3Days'), value: toISODate(addDays(today, 3)) },
-    { label: t('dateThisWeekend'), value: toISODate(addDays(today, (6 - today.getDay() + 7) % 7 || 7)) },
+    { label: t('dateToday'), value: minDate },
+    { label: t('dateTomorrow'), value: toLocalISODate(addDays(today, 1)) },
+    { label: t('dateIn3Days'), value: toLocalISODate(addDays(today, 3)) },
+    { label: t('dateThisWeekend'), value: toLocalISODate(addDays(today, (6 - today.getDay() + 7) % 7 || 7)) },
   ];
   return (
     <div className="space-y-2">
@@ -238,6 +239,86 @@ function TargetDatePicker({
         />
       </div>
     </div>
+  );
+}
+
+function ForecastCard({
+  forecast,
+  isLoading,
+  temperatureUnit,
+}: {
+  forecast?: ForecastDay;
+  isLoading: boolean;
+  temperatureUnit: TempUnit;
+}) {
+  const t = useTranslations('suggest');
+  const locale = useLocale();
+  const conditionLabel = (c: string) =>
+    getWeatherConditionLabel(c, (k) => t(k as Parameters<typeof t>[0]));
+  const formattedDate = forecast
+    ? new Date(`${forecast.date}T00:00:00`).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short',
+      })
+    : '';
+
+  if (isLoading) {
+    return (
+      <Card className="border-muted">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-16 w-16 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!forecast) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">{t('forecastUnavailable')}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center text-foreground">
+              {getWeatherIcon(forecast.condition, true)}
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{t('forecastForDate', { date: formattedDate })}</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold tracking-tight">
+                  {formatTemp(forecast.temp_max, temperatureUnit)}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  / {formatTemp(forecast.temp_min, temperatureUnit)}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground capitalize">{conditionLabel(forecast.condition)}</p>
+            </div>
+          </div>
+          <div className="text-right text-sm text-muted-foreground space-y-1">
+            <div className="flex items-center gap-1.5 justify-end">
+              <Droplets className="h-3.5 w-3.5" />
+              <span>{t('chanceOfRain', { chance: forecast.precipitation_chance })}</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -527,7 +608,14 @@ export default function SuggestPage() {
   const [outfit, setOutfit] = useState<Outfit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
-  const [targetDate, setTargetDate] = useState<string>('');
+  const todayIso = toLocalISODate(new Date());
+  const [targetDate, setTargetDate] = useState<string>(todayIso);
+  const futureTargetDate = isFutureISODate(targetDate);
+  const forecastDays = Math.min(16, getForecastDaysForTargetDate(targetDate));
+  const { data: forecastData, isLoading: forecastLoading } = useWeatherForecast(forecastDays);
+  const targetForecast = futureTargetDate
+    ? forecastData?.forecast.find((entry) => entry.date === targetDate) ?? forecastData?.forecast.at(-1)
+    : undefined;
 
   useEffect(() => {
     if (prefs?.default_occasion && !occasionInitialized && !selectedOccasion) {
@@ -621,6 +709,7 @@ export default function SuggestPage() {
     setOutfit(null);
     setSelectedOccasion(null);
     setError(null);
+    setTargetDate(todayIso);
   };
 
   return (
@@ -655,7 +744,15 @@ export default function SuggestPage() {
       {!outfit ? (
         <div className="space-y-6">
           {/* Weather context */}
-          <WeatherCard weather={weather} isLoading={weatherLoading} temperatureUnit={temperatureUnit} />
+          {futureTargetDate ? (
+            <ForecastCard
+              forecast={targetForecast}
+              isLoading={forecastLoading}
+              temperatureUnit={temperatureUnit}
+            />
+          ) : (
+            <WeatherCard weather={weather} isLoading={weatherLoading} temperatureUnit={temperatureUnit} />
+          )}
 
           {/* Main selection card */}
           <Card>

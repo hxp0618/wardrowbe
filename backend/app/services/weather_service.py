@@ -56,6 +56,22 @@ class DailyForecast:
     condition: str
     condition_code: int
 
+    def to_weather_data(self) -> WeatherData:
+        avg_temp = (self.temp_min + self.temp_max) / 2
+        return WeatherData(
+            temperature=round(avg_temp, 1),
+            feels_like=round(self.temp_max, 1),
+            humidity=50,
+            precipitation_chance=self.precipitation_chance,
+            precipitation_mm=0,
+            wind_speed=0,
+            condition=self.condition,
+            condition_code=self.condition_code,
+            is_day=True,
+            uv_index=0,
+            timestamp=datetime.utcnow(),
+        )
+
 
 # WMO Weather interpretation codes
 # https://open-meteo.com/en/docs
@@ -313,23 +329,7 @@ class WeatherService:
         tomorrow = forecasts[1]  # Index 0 is today, 1 is tomorrow
 
         # Use average of min/max for the representative temperature
-        avg_temp = (tomorrow.temp_min + tomorrow.temp_max) / 2
-        # Use the max temp for feels_like (daytime outfit)
-        feels_like = tomorrow.temp_max
-
-        return WeatherData(
-            temperature=round(avg_temp, 1),
-            feels_like=round(feels_like, 1),
-            humidity=50,  # Not available in daily forecast, use typical value
-            precipitation_chance=tomorrow.precipitation_chance,
-            precipitation_mm=0,  # Not available for forecast
-            wind_speed=0,  # Not available in daily forecast
-            condition=tomorrow.condition,
-            condition_code=tomorrow.condition_code,
-            is_day=True,  # Assume daytime for outfit recommendations
-            uv_index=0,  # Not available in daily forecast
-            timestamp=datetime.utcnow(),
-        )
+        return tomorrow.to_weather_data()
 
     async def get_weather_for_date(
         self, latitude: float, longitude: float, target_date: date
@@ -359,21 +359,7 @@ class WeatherService:
             logger.warning("No forecast for %s, falling back to current weather", target_date)
             return await self.get_current_weather(latitude, longitude)
 
-        avg_temp = (match.temp_min + match.temp_max) / 2
-        feels_like = match.temp_max
-        return WeatherData(
-            temperature=round(avg_temp, 1),
-            feels_like=round(feels_like, 1),
-            humidity=50,
-            precipitation_chance=match.precipitation_chance,
-            precipitation_mm=0,
-            wind_speed=0,
-            condition=match.condition,
-            condition_code=match.condition_code,
-            is_day=True,
-            uv_index=0,
-            timestamp=datetime.utcnow(),
-        )
+        return match.to_weather_data()
 
     async def check_health(self) -> dict:
         """Check if the weather service is available."""

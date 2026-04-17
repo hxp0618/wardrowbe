@@ -54,6 +54,18 @@ settings = get_settings()
 router = APIRouter(prefix="/items", tags=["Items"])
 
 
+def _full_storage_path(relative_path: str) -> str:
+    return f"{settings.storage_path}/{relative_path}"
+
+
+def _additional_storage_paths(item) -> list[str]:
+    return [
+        _full_storage_path(image.image_path)
+        for image in (item.additional_images or [])
+        if image.image_path
+    ]
+
+
 @router.get("", response_model=ItemListResponse)
 async def list_items(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -259,10 +271,8 @@ async def create_item(
     try:
         redis = await create_pool(get_redis_settings())
         try:
-            full_image_path = f"{settings.storage_path}/{image_paths['image_path']}"
-            extra_full_paths = [
-                f"{settings.storage_path}/{p}" for p in additional_paths
-            ]
+            full_image_path = _full_storage_path(image_paths["image_path"])
+            extra_full_paths = [_full_storage_path(p) for p in additional_paths]
             await redis.enqueue_job(
                 "tag_item_image",
                 str(item.id),
@@ -374,7 +384,7 @@ async def bulk_create_items(
                 # Queue AI tagging job
                 if redis:
                     try:
-                        full_image_path = f"{settings.storage_path}/{image_paths['image_path']}"
+                        full_image_path = _full_storage_path(image_paths["image_path"])
                         await redis.enqueue_job(
                             "tag_item_image",
                             str(item.id),
@@ -542,11 +552,13 @@ async def bulk_analyze_items(
     try:
         for item in items_to_process:
             try:
-                full_image_path = f"{settings.storage_path}/{item.image_path}"
+                full_image_path = _full_storage_path(item.image_path)
+                extra_full_paths = _additional_storage_paths(item)
                 await redis.enqueue_job(
                     "tag_item_image",
                     str(item.id),
                     full_image_path,
+                    extra_full_paths,
                     _queue_name="arq:tagging",
                 )
                 logger.info(f"Queued AI re-analysis for item {item.id}")
@@ -921,7 +933,8 @@ async def trigger_ai_analysis(
 
         redis = await create_pool(get_redis_settings())
         try:
-            full_image_path = f"{settings.storage_path}/{item.image_path}"
+            full_image_path = _full_storage_path(item.image_path)
+            extra_full_paths = _additional_storage_paths(item)
             logger.info(
                 "Queueing AI re-analysis item_id=%s user_id=%s image_path=%s queue=%s",
                 item.id,
@@ -933,6 +946,7 @@ async def trigger_ai_analysis(
                 "tag_item_image",
                 str(item.id),
                 full_image_path,
+                extra_full_paths,
                 _queue_name="arq:tagging",
             )
             logger.info(

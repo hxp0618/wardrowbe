@@ -43,12 +43,11 @@ Self-hosted wardrobe management with AI-powered outfit recommendations. Take pho
 
 - **Photo-based wardrobe** - Upload photos, AI extracts clothing details automatically
 - **Smart recommendations** - Outfits matched to weather, occasion, and your preferences
-- **Scheduled notifications** - Daily outfit suggestions via ntfy/Mattermost/email/Bark/Expo push plus a generic Webhook channel with presets for Discord, Slack, Telegram, Lark/Feishu, DingTalk, WeCom, and Teams
+- **Scheduled notifications** - Daily outfit suggestions via ntfy/Mattermost/email/Bark/Expo push plus a generic Webhook channel with presets for Discord, Slack, Telegram, Feishu, and WeCom
 - **Wardrobe folders** - Group clothing items into custom folders (with icons and colors) for quick filtering
 - **Multiple photos per item** - Attach up to 5 photos to a single clothing item and let AI analyse them together
 - **Manual outfits** - Build outfits by hand and optionally feed them back into the AI learning loop
 - **Future-dated suggestions** - Ask for an outfit for any day in the next 15 days using the forecast
-- **Backup & restore** - One-click ZIP export/import of wardrobe, outfits, preferences, and notification settings
 - **Quantity per item** - Track how many identical pieces you own for a single wardrobe entry
 - **Family support** - Manage wardrobes for household members
 - **Wear tracking** - History, ratings, and outfit feedback
@@ -362,13 +361,9 @@ http://localhost:8080/api/auth/callback/oidc
 - **Bark (iOS)**: HTTP push via https://github.com/Finb/Bark
 - **Expo Push**: React Native client push notifications
 - **Email**: SMTP-based (set `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD` in `.env`)
-- **Generic Webhook**: Configurable URL + HTTP method + headers + optional JSON template. Built-in payload presets for Discord, Slack, Telegram Bot API, Lark/Feishu, DingTalk, WeCom (企业微信), and Microsoft Teams so most IM platforms work out of the box.
+- **Generic Webhook**: Configurable URL + HTTP method + content type + headers + optional template. Built-in presets for Generic, Discord, Slack, Telegram Bot API, Feishu, and WeCom (企业微信).
 
 Webhook targets pointing at `localhost`, loopback, link-local, or RFC1918 private ranges are rejected by default to reduce SSRF risk. For trusted self-hosted integrations on a private network, set `ALLOW_PRIVATE_WEBHOOK=true`.
-
-### Backup & Restore
-
-Go to **Settings → Backup & Restore** to download a ZIP containing items, folders, outfits, preferences, notification settings (without secrets), and every image file. Re-import the same ZIP on any instance to copy everything across — entries are added with fresh IDs so the existing account is never overwritten.
 
 ### Weather
 

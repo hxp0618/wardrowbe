@@ -59,7 +59,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from 'sonner';
 import { useUpdateItem, useDeleteItem, useReanalyzeItem, useRotateImage, useRemoveBackground, useLogWash, useWashHistory, useItemWearStats, useItemWearHistory, useAddItemImage, useDeleteItemImage, useSetPrimaryImage } from '@/lib/hooks/use-items';
 import { Item, CLOTHING_TYPES, CLOTHING_COLORS } from '@/lib/types';
-import { getClothingColorLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
+import { getClothingColorLabel, getClothingSubtypeLabel, getClothingTypeLabel } from '@/lib/taxonomy-i18n';
 import { ColorEyedropper } from '@/components/color-eyedropper';
 import { GeneratePairingsDialog } from '@/components/generate-pairings-dialog';
 import { useFeatures } from '@/lib/hooks/use-features';
@@ -109,23 +109,42 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
   const tc = useTranslations('common');
   const tt = useTranslations('taxonomy');
   const locale = useLocale();
+  const itemId = item?.id ?? null;
+  const itemName = item?.name ?? '';
+  const itemType = item?.type ?? '';
+  const itemSubtype = item?.subtype ?? '';
+  const itemBrand = item?.brand ?? '';
+  const itemPrimaryColor = item?.primary_color ?? '';
+  const itemNotes = item?.notes ?? '';
+  const itemFavorite = item?.favorite ?? false;
+  const itemWashInterval = item?.wash_interval ?? undefined;
 
   useEffect(() => {
-    if (item) {
-      setEditForm({
-        name: item.name || '',
-        type: item.type,
-        subtype: item.subtype || '',
-        brand: item.brand || '',
-        primary_color: item.primary_color || '',
-        notes: item.notes || '',
-        favorite: item.favorite,
-        wash_interval: item.wash_interval ?? undefined,
-      });
-      setIsEditing(false);
-      setActiveImageIndex(0);
-    }
-  }, [item?.id]);
+    if (!itemId) return;
+
+    setEditForm({
+      name: itemName,
+      type: itemType,
+      subtype: itemSubtype,
+      brand: itemBrand,
+      primary_color: itemPrimaryColor,
+      notes: itemNotes,
+      favorite: itemFavorite,
+      wash_interval: itemWashInterval,
+    });
+    setIsEditing(false);
+    setActiveImageIndex(0);
+  }, [
+    itemBrand,
+    itemFavorite,
+    itemId,
+    itemName,
+    itemNotes,
+    itemPrimaryColor,
+    itemSubtype,
+    itemType,
+    itemWashInterval,
+  ]);
 
   if (!item) return null;
 
@@ -224,6 +243,9 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
   const imageUrl = item.image_url || item.image_path;
   const colorInfo = CLOTHING_COLORS.find((c) => c.value === item.primary_color);
   const typeLabel = getClothingTypeLabel(item.type, (k) => tt(k as Parameters<typeof tt>[0]));
+  const subtypeLabel = item.subtype
+    ? getClothingSubtypeLabel(item.subtype, (k) => tt(k as Parameters<typeof tt>[0]))
+    : '';
   const typeLabelFor = (type: string) =>
     getClothingTypeLabel(type, (k) => tt(k as Parameters<typeof tt>[0]));
 
@@ -582,8 +604,8 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
                     <div className="flex items-center gap-2 text-sm">
                       <Shirt className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{typeLabel}</span>
-                      {item.subtype && (
-                        <span className="text-muted-foreground">• {item.subtype}</span>
+                      {subtypeLabel && (
+                        <span className="text-muted-foreground">• {subtypeLabel}</span>
                       )}
                     </div>
                     {item.brand && (

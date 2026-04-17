@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
-import { X, Home, Shirt, Sparkles, Layers, History, BarChart3, Brain, Settings, Users, Bell, HeartHandshake, Archive } from 'lucide-react';
+import { X, Home, Shirt, Sparkles, Layers, History, BarChart3, Brain, Settings, Users, Bell, HeartHandshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
@@ -20,7 +21,6 @@ const navigation = [
 const secondaryNavigation = [
   { nameKey: 'family' as const, href: '/dashboard/family', icon: Users },
   { nameKey: 'notifications' as const, href: '/dashboard/notifications', icon: Bell },
-  { nameKey: 'backup' as const, href: '/dashboard/settings/backup', icon: Archive },
   { nameKey: 'settings' as const, href: '/dashboard/settings', icon: Settings },
 ];
 
@@ -76,7 +76,14 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
         <div className="flex h-full flex-col gap-y-5 overflow-y-auto px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center">
             <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
-              <img src="/logo.svg" alt={tc('appName')} className="h-8 w-8" />
+              <Image
+                src="/logo.svg"
+                alt={tc('appName')}
+                width={32}
+                height={32}
+                priority
+                className="h-8 w-8"
+              />
               <span className="text-xl font-bold">{tc('appName')}</span>
             </Link>
           </div>

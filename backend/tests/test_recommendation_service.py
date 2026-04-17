@@ -1,5 +1,6 @@
 from datetime import UTC, date, datetime
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -11,6 +12,7 @@ from app.services.recommendation_service import (
     RecommendationService,
     get_time_of_day,
 )
+from app.services.weather_service import DailyForecast, WeatherData
 
 
 def _make_user(timezone: str = "UTC") -> User:
@@ -242,6 +244,107 @@ class TestMultiOutfitParse:
         result = service._parse_multi_outfit_response(content)
         assert len(result) >= 1
         assert "items" in result[0]
+
+
+class TestFutureDateRecommendation:
+    @pytest.mark.asyncio
+    async def test_uses_user_local_today_for_future_detection(self, db_session, monkeypatch):
+        user = _make_user("Pacific/Kiritimati")
+        user.location_lat = 1.23
+        user.location_lon = 4.56
+
+        item1 = _make_item(id=uuid4(), user_id=user.id, type="shirt")
+        item2 = _make_item(id=uuid4(), user_id=user.id, type="pants")
+        service = RecommendationService(db_session)
+
+        current_weather = WeatherData(
+            temperature=24,
+            feels_like=25,
+            humidity=60,
+            precipitation_chance=10,
+            precipitation_mm=0,
+            wind_speed=8,
+            condition="sunny",
+            condition_code=0,
+            is_day=True,
+            uv_index=5,
+            timestamp=datetime(2026, 4, 17, 8, 0, 0, tzinfo=UTC),
+        )
+
+        forecast_called = False
+
+        async def fake_get_current_weather(lat, lon):
+            return current_weather
+
+        async def fake_get_daily_forecast(lat, lon, days):
+            nonlocal forecast_called
+            forecast_called = True
+            return [
+                DailyForecast(
+                    date="2026-04-18",
+                    temp_min=18,
+                    temp_max=28,
+                    precipitation_chance=20,
+                    condition="cloudy",
+                    condition_code=3,
+                )
+            ]
+
+        monkeypatch.setattr(
+            "app.services.recommendation_service.get_user_today",
+            lambda current_user: date(2026, 4, 18),
+        )
+
+        class FakeDate(date):
+            @classmethod
+            def today(cls):
+                return cls(2026, 4, 17)
+
+        monkeypatch.setattr("app.services.recommendation_service.date", FakeDate)
+        monkeypatch.setattr(service.weather_service, "get_current_weather", fake_get_current_weather)
+        monkeypatch.setattr(service.weather_service, "get_daily_forecast", fake_get_daily_forecast)
+        monkeypatch.setattr(service, "_get_today_rejected_item_ids", AsyncMock(return_value=[]))
+        monkeypatch.setattr(service, "get_candidate_items", AsyncMock(return_value=[item1, item2]))
+        monkeypatch.setattr("app.services.recommendation_service.pop_suggestion", AsyncMock(return_value=None))
+        monkeypatch.setattr(service, "_get_recently_worn_dates", AsyncMock(return_value={}))
+        monkeypatch.setattr(service, "_get_good_item_pairs", AsyncMock(return_value={}))
+        monkeypatch.setattr(service, "_get_learned_preferences", AsyncMock(return_value={}))
+        monkeypatch.setattr(
+            service,
+            "_get_recently_worn_outfit_combinations",
+            AsyncMock(return_value=[]),
+        )
+        monkeypatch.setattr(
+            "app.services.recommendation_service.score_items",
+            lambda **kwargs: [ScoredItem(item=item1), ScoredItem(item=item2)],
+        )
+
+        class FakeAIService:
+            def __init__(self, endpoints=None):
+                self.endpoints = endpoints
+
+            async def generate_text(self, prompt, return_metadata=True):
+                return SimpleNamespace(
+                    content='{"outfits": [{"items": [1, 2]}]}',
+                    model="fake-model",
+                    endpoint="fake-endpoint",
+                )
+
+        monkeypatch.setattr("app.services.recommendation_service.AIService", FakeAIService)
+
+        async def fake_materialize(*args, **kwargs):
+            return args[2]
+
+        monkeypatch.setattr(service, "_materialize_outfit", fake_materialize)
+
+        result = await service.generate_recommendation(
+            user=user,
+            occasion="casual",
+            scheduled_date=date(2026, 4, 18),
+        )
+
+        assert forecast_called is False
+        assert result is current_weather
 
 
 class TestFormatItemsEnriched:

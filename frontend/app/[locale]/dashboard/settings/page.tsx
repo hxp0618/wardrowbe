@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2, Save, RotateCcw, Check, Plus, Trash2, ChevronUp, ChevronDown, Server, MapPin, Navigation, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -215,7 +215,11 @@ export default function SettingsPage() {
     }
     return 'metric';
   });
+  const unitSystemRef = useRef<UnitSystem>(unitSystem);
 
+  useEffect(() => {
+    unitSystemRef.current = unitSystem;
+  }, [unitSystem]);
 
   useEffect(() => {
     if (userProfile) {
@@ -229,7 +233,7 @@ export default function SettingsPage() {
         const numericKeys = ['chest', 'waist', 'hips', 'inseam', 'height', 'weight'];
         for (const [key, value] of Object.entries(userProfile.body_measurements)) {
           if (numericKeys.includes(key) && typeof value === 'number') {
-            const converted = convertMeasurement(value, key, 'metric', unitSystem);
+            const converted = convertMeasurement(value, key, 'metric', unitSystemRef.current);
             initial[key] = String(converted);
           } else {
             initial[key] = String(value);

@@ -26,6 +26,21 @@ export interface Weather {
   timestamp: string;
 }
 
+export interface ForecastDay {
+  date: string;
+  temp_min: number;
+  temp_max: number;
+  precipitation_chance: number;
+  condition: string;
+  condition_code: number;
+}
+
+export interface ForecastResponse {
+  latitude: number;
+  longitude: number;
+  forecast: ForecastDay[];
+}
+
 export function useWeather() {
   const { status } = useSession();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -38,5 +53,20 @@ export function useWeather() {
     enabled: status === 'authenticated' && isAuthenticated && !isLoading && hasLocation,
     staleTime: 1000 * 60 * 15, // 15 minutes - weather doesn't change that fast
     retry: false, // Don't retry if location not set
+  });
+}
+
+export function useWeatherForecast(days: number) {
+  const { status } = useSession();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  useSetTokenIfAvailable();
+  const hasLocation = user?.location_lat != null && user?.location_lon != null;
+
+  return useQuery({
+    queryKey: ['weather-forecast', user?.id ?? null, user?.location_lat ?? null, user?.location_lon ?? null, days],
+    queryFn: () => api.get<ForecastResponse>('/weather/forecast', { params: { days: String(days) } }),
+    enabled: status === 'authenticated' && isAuthenticated && !isLoading && hasLocation && days > 0,
+    staleTime: 1000 * 60 * 30,
+    retry: false,
   });
 }

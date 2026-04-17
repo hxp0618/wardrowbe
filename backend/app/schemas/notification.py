@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from app.config import get_settings
 from app.utils.network import validate_public_url
@@ -106,31 +106,57 @@ class BarkConfig(BaseModel):
         return v
 
 
-WEBHOOK_FORMATS = {
-    "json",
+WEBHOOK_PRESETS = {
+    "generic",
+    "telegram",
     "discord",
     "slack",
-    "telegram",
-    "lark",
     "feishu",
+    "wechat_work",
+    "teams",
+    "lark",
     "dingtalk",
     "wecom",
-    "teams",
+}
+
+LEGACY_WEBHOOK_FORMAT_TO_PRESET = {
+    "json": "generic",
+    "telegram": "telegram",
+    "discord": "discord",
+    "slack": "slack",
+    "feishu": "feishu",
+    "lark": "lark",
+    "dingtalk": "dingtalk",
+    "wecom": "wechat_work",
+    "teams": "teams",
 }
 
 
 class WebhookConfig(BaseModel):
     """Generic outbound webhook that can target custom endpoints or popular IM platforms.
 
-    ``format`` selects the payload shape built by the provider. ``template`` is an
-    optional JSON string (used only when ``format == "json"``) supporting placeholders
-    like ``{title}``, ``{body}``, ``{url}``, ``{occasion}``, ``{day}``, ``{temperature}``,
-    ``{condition}``. ``chat_id`` is required for ``format == "telegram"`` (the webhook
-    URL should be the bot's ``sendMessage`` endpoint).
+    ``preset`` selects the payload shape built by the provider. ``template`` is an
+    optional string supporting placeholders like ``{title}``, ``{body}``, ``{url}``,
+    ``{occasion}``, ``{day}``, ``{temperature}``, ``{condition}``.
     """
 
     url: str
-    method: Literal["POST", "PUT", "PATCH"] = "POST"
+    method: Literal["POST", "PUT"] = "POST"
+    content_type: Literal["application/json", "application/x-www-form-urlencoded"] = (
+        "application/json"
+    )
+    preset: Literal[
+        "generic",
+        "telegram",
+        "discord",
+        "slack",
+        "feishu",
+        "wechat_work",
+        "teams",
+        "lark",
+        "dingtalk",
+        "wecom",
+    ] | None = None
     format: Literal[
         "json",
         "discord",
@@ -141,11 +167,19 @@ class WebhookConfig(BaseModel):
         "dingtalk",
         "wecom",
         "teams",
-    ] = "json"
+    ] | None = None
     headers: dict[str, str] | None = None
     template: str | None = None
     chat_id: str | None = None
     verify_tls: bool = True
+
+    @model_validator(mode="after")
+    def normalize_preset(self) -> "WebhookConfig":
+        if self.preset is None and self.format is not None:
+            self.preset = LEGACY_WEBHOOK_FORMAT_TO_PRESET.get(self.format, "generic")
+        if self.preset is None:
+            self.preset = "generic"
+        return self
 
     @field_validator("url")
     @classmethod
@@ -192,6 +226,12 @@ class WebhookConfig(BaseModel):
         if len(v) > 100:
             raise ValueError("chat_id must be 100 characters or fewer")
         return v
+
+    @model_validator(mode="after")
+    def validate_telegram_requirements(self) -> "WebhookConfig":
+        if self.preset == "telegram" and not self.chat_id:
+            raise ValueError("chat_id is required for telegram preset")
+        return self
 
 
 # Notification settings schemas

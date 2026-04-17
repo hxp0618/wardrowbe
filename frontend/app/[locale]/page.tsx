@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 
@@ -8,7 +9,14 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="text-center">
         <div className="flex justify-center mb-6">
-          <img src="/logo.svg" alt={tc('appName')} className="h-20 w-20" />
+          <Image
+            src="/logo.svg"
+            alt={tc('appName')}
+            width={80}
+            height={80}
+            priority
+            className="h-20 w-20"
+          />
         </div>
         <h1 className="text-4xl font-bold tracking-tight mb-4">
           {t('title')}

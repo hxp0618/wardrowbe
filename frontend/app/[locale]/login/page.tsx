@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import Image from 'next/image';
 import { signIn, getProviders, useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -124,7 +125,7 @@ function LoginContent() {
       .catch(() => {
         setBackendError(t('backendConnectError'));
       });
-  }, []);
+  }, [t]);
 
   // Show sync error from session (e.g. backend returned 503 during login)
   const syncError = session?.syncError;
@@ -188,7 +189,14 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <img src="/logo.svg" alt={t('signInTitle')} className="h-16 w-16" />
+            <Image
+              src="/logo.svg"
+              alt={t('signInTitle')}
+              width={64}
+              height={64}
+              priority
+              className="h-16 w-16"
+            />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">{t('signInTitle')}</h1>
           <p className="mt-2 text-muted-foreground">

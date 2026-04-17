@@ -32,6 +32,7 @@ import {
 
 import { api, ApiError, setAccessToken } from '@/lib/api';
 import { useItems } from '@/lib/hooks/use-items';
+import { toLocalISODate } from '@/lib/date-utils';
 import { Item, ManualOutfitRequest, OCCASIONS, Outfit } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -102,10 +103,9 @@ export function ManualOutfitDialog({ open, onOpenChange, onCreated }: ManualOutf
 
   const [selected, setSelected] = useState<string[]>([]);
   const [occasion, setOccasion] = useState<string>('casual');
-  const [scheduledFor, setScheduledFor] = useState<string>(() =>
-    new Date().toISOString().slice(0, 10),
-  );
-  const [styleNotes, setStyleNotes] = useState('');
+  const [scheduledFor, setScheduledFor] = useState<string>(() => toLocalISODate(new Date()));
+  const [name, setName] = useState('');
+  const [notes, setNotes] = useState('');
   const [useForLearning, setUseForLearning] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -120,7 +120,10 @@ export function ManualOutfitDialog({ open, onOpenChange, onCreated }: ManualOutf
     onOpenChange(false);
     setTimeout(() => {
       setSelected([]);
-      setStyleNotes('');
+      setScheduledFor(toLocalISODate(new Date()));
+      setName('');
+      setNotes('');
+      setUseForLearning(true);
     }, 200);
   };
 
@@ -133,19 +136,23 @@ export function ManualOutfitDialog({ open, onOpenChange, onCreated }: ManualOutf
     setSubmitting(true);
     try {
       const payload: ManualOutfitRequest = {
+        item_ids: selected,
         occasion,
         scheduled_for: scheduledFor || undefined,
-        items: selected.map((id) => ({ item_id: id })),
-        style_notes: styleNotes.trim() || undefined,
+        name: name.trim() || undefined,
+        notes: notes.trim() || undefined,
         use_for_learning: useForLearning,
       };
-      const outfit = await api.post<Outfit>('/outfits/manual', payload);
+      const outfit = await api.post<Outfit>('/outfits', payload);
       toast.success(t('createSuccess'));
       queryClient.invalidateQueries({ queryKey: ['outfits'] });
       onCreated?.(outfit);
       onOpenChange(false);
       setSelected([]);
-      setStyleNotes('');
+      setScheduledFor(toLocalISODate(new Date()));
+      setName('');
+      setNotes('');
+      setUseForLearning(true);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : t('createFailed');
       toast.error(msg);
@@ -257,12 +264,23 @@ export function ManualOutfitDialog({ open, onOpenChange, onCreated }: ManualOutf
             </div>
 
             <div className="space-y-1">
+              <Label htmlFor="manual-name">{t('name')}</Label>
+              <Input
+                id="manual-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('namePlaceholder')}
+                maxLength={100}
+              />
+            </div>
+
+            <div className="space-y-1">
               <Label htmlFor="manual-notes">{t('notes')}</Label>
               <Textarea
                 id="manual-notes"
                 placeholder={t('notesPlaceholder')}
-                value={styleNotes}
-                onChange={(e) => setStyleNotes(e.target.value)}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 maxLength={1000}
               />
