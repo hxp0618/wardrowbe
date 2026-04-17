@@ -4,13 +4,14 @@ import { useEffect } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
-import { X, Home, Shirt, Sparkles, Layers, History, BarChart3, Brain, Settings, Users, Bell, HeartHandshake } from 'lucide-react';
+import { X, Home, Shirt, Sparkles, Layers, LayoutGrid, History, BarChart3, Brain, Settings, Users, Bell, HeartHandshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { nameKey: 'dashboard' as const, href: '/dashboard', icon: Home },
   { nameKey: 'wardrobe' as const, href: '/dashboard/wardrobe', icon: Shirt },
   { nameKey: 'suggestOutfit' as const, href: '/dashboard/suggest', icon: Sparkles },
+  { nameKey: 'outfits' as const, href: '/dashboard/outfits', icon: LayoutGrid },
   { nameKey: 'pairings' as const, href: '/dashboard/pairings', icon: Layers },
   { nameKey: 'history' as const, href: '/dashboard/history', icon: History },
   { nameKey: 'familyFeed' as const, href: '/dashboard/family/feed', icon: HeartHandshake },

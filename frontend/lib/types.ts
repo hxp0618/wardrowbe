@@ -80,6 +80,7 @@ export interface ItemFilter {
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
   folder_id?: string;
+  ids?: string;
 }
 
 export interface FolderRef {

@@ -2,14 +2,14 @@
 
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
-import { Home, Shirt, Sparkles, Layers, Settings } from 'lucide-react';
+import { Home, Shirt, Sparkles, LayoutGrid, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { nameKey: 'home' as const, href: '/dashboard', icon: Home },
   { nameKey: 'wardrobe' as const, href: '/dashboard/wardrobe', icon: Shirt },
   { nameKey: 'suggest' as const, href: '/dashboard/suggest', icon: Sparkles },
-  { nameKey: 'pairings' as const, href: '/dashboard/pairings', icon: Layers },
+  { nameKey: 'outfits' as const, href: '/dashboard/outfits', icon: LayoutGrid },
   { nameKey: 'settings' as const, href: '/dashboard/settings', icon: Settings },
 ];
 
