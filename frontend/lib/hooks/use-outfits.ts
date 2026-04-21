@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { api, setAccessToken } from '@/lib/api';
-import { FamilyRating } from '@/lib/types';
+import type {
+  FeedbackSummary,
+  FamilyRating,
+  Outfit,
+  OutfitItem,
+  OutfitSource,
+  WoreInsteadItem,
+} from '@/lib/types';
 
 // Helper to set token if available (for NextAuth mode)
 function useSetTokenIfAvailable() {
@@ -11,60 +18,7 @@ function useSetTokenIfAvailable() {
   }
 }
 
-export interface OutfitItem {
-  id: string;
-  type: string;
-  subtype: string | null;
-  name: string | null;
-  primary_color: string | null;
-  colors: string[];
-  image_path: string;
-  thumbnail_path: string | null;
-  thumbnail_url?: string;
-  image_url?: string;
-  layer_type: string | null;
-  position: number;
-}
-
-export interface WoreInsteadItem {
-  id: string;
-  type: string;
-  name: string | null;
-  thumbnail_path: string | null;
-  thumbnail_url?: string;
-}
-
-export interface FeedbackSummary {
-  rating: number | null;
-  comment: string | null;
-  worn_at: string | null;
-  actually_worn: boolean | null;
-  wore_instead_items: WoreInsteadItem[] | null;
-}
-
-export type OutfitSource = 'scheduled' | 'on_demand' | 'manual' | 'pairing';
-
-export interface Outfit {
-  id: string;
-  occasion: string;
-  scheduled_for: string | null;
-  status: 'pending' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'skipped' | 'expired';
-  source: OutfitSource;
-  name: string | null;
-  replaces_outfit_id: string | null;
-  cloned_from_outfit_id: string | null;
-  reasoning: string | null;
-  style_notes: string | null;
-  highlights: string[] | null;
-  weather: Record<string, unknown> | null;
-  items: OutfitItem[];
-  feedback: FeedbackSummary | null;
-  family_ratings: FamilyRating[] | null;
-  family_rating_average: number | null;
-  family_rating_count: number | null;
-  is_starter_suggestion?: boolean;
-  created_at: string;
-}
+export type { FeedbackSummary, Outfit, OutfitItem, OutfitSource, WoreInsteadItem };
 
 export interface OutfitListResponse {
   outfits: Outfit[];

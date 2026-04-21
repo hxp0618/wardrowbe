@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@wardrowbe/shared-api": [
+        "./packages/shared-api/src/index.ts"
+      ],
+      "@wardrowbe/shared-domain": [
+        "./packages/shared-domain/src/index.ts"
+      ],
+      "@wardrowbe/shared-i18n": [
+        "./packages/shared-i18n/src/index.ts"
+      ]
+    }
+  }
+}

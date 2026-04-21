@@ -18,8 +18,7 @@ import { PairingCard } from '@/components/pairing-card';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { OutfitPreviewDialog } from '@/components/outfit-preview-dialog';
 import { ManualOutfitDialog } from '@/components/manual-outfit-dialog';
-import { Pairing } from '@/lib/types';
-import { Outfit } from '@/lib/hooks/use-outfits';
+import { type Outfit, type Pairing } from '@/lib/types';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 
@@ -116,7 +115,7 @@ export default function PairingsPage() {
       <ManualOutfitDialog
         open={manualOpen}
         onOpenChange={setManualOpen}
-        onCreated={(outfit) => setPreviewOutfit(outfit)}
+        onCreated={setPreviewOutfit}
       />
 
       {/* Filters */}
@@ -153,8 +152,8 @@ export default function PairingsPage() {
               <PairingCard
                 key={pairing.id}
                 pairing={pairing}
-                onFeedback={() => setFeedbackOutfit(pairing as unknown as Outfit)}
-                onPreview={() => setPreviewOutfit(pairing as unknown as Outfit)}
+                onFeedback={() => setFeedbackOutfit(pairing)}
+                onPreview={() => setPreviewOutfit(pairing)}
               />
             ))}
           </div>

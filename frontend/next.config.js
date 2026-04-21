@@ -5,6 +5,11 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  transpilePackages: [
+    '@wardrowbe/shared-api',
+    '@wardrowbe/shared-domain',
+    '@wardrowbe/shared-i18n',
+  ],
   images: {
     unoptimized: true,
     localPatterns: [

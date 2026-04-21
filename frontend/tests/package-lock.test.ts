@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import lockfile from '../package-lock.json'
+import lockfile from '../../package-lock.json'
 
-describe('frontend package lockfile', () => {
+describe('workspace package lockfile', () => {
   it('includes parcel watcher native packages for linux containers', () => {
     const packages = lockfile.packages ?? {}
 

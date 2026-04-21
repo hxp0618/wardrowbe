@@ -320,9 +320,12 @@ export type OutfitSource = 'scheduled' | 'on_demand' | 'manual' | 'pairing';
 export interface Outfit {
   id: string;
   occasion: string;
-  scheduled_for: string;
-  status: 'pending' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
+  scheduled_for: string | null;
+  status: 'pending' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'skipped' | 'expired';
   source: OutfitSource;
+  name: string | null;
+  replaces_outfit_id: string | null;
+  cloned_from_outfit_id: string | null;
   reasoning: string | null;
   style_notes: string | null;
   highlights: string[] | null;
@@ -332,6 +335,7 @@ export interface Outfit {
   family_ratings: FamilyRating[] | null;
   family_rating_average: number | null;
   family_rating_count: number | null;
+  is_starter_suggestion?: boolean;
   created_at: string;
 }
 

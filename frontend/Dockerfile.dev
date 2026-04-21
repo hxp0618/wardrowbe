@@ -1,20 +1,21 @@
 FROM node:20-alpine
 
-WORKDIR /app
+RUN apk add --no-cache libc6-compat
+WORKDIR /workspace
 
-# Copy package files first for better caching
-COPY package.json package-lock.json* ./
+RUN mkdir -p frontend packages/shared-api packages/shared-domain packages/shared-i18n wechat-miniapp
+COPY package.json package-lock.json ./
+COPY frontend/package.json ./frontend/package.json
+COPY packages/shared-api/package.json ./packages/shared-api/package.json
+COPY packages/shared-domain/package.json ./packages/shared-domain/package.json
+COPY packages/shared-i18n/package.json ./packages/shared-i18n/package.json
+COPY wechat-miniapp/package.json ./wechat-miniapp/package.json
 
-# Install dependencies
 RUN npm install
-
-# The rest will be mounted as volume
-# But we need node_modules to persist, so we use a named volume
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Install deps again at startup in case package.json changed
-CMD npm install && npm run dev
+CMD ["sh", "-c", "npm install && npm --workspace frontend run dev -- --hostname 0.0.0.0"]

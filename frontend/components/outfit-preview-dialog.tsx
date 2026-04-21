@@ -33,7 +33,7 @@ export function OutfitPreviewDialog({ outfit, open, onClose, isOwner = true }: O
   const tt = useTranslations('taxonomy');
   const typeLabel = (ty: string) =>
     getClothingTypeLabel(ty, (k) => tt(k as Parameters<typeof tt>[0]));
-  const subtypeLabel = (subtype?: string) =>
+  const subtypeLabel = (subtype: string | null | undefined) =>
     subtype ? getClothingSubtypeLabel(subtype, (k) => tt(k as Parameters<typeof tt>[0])) : '';
   const colorLabel = (c: string) =>
     getClothingColorLabel(c, (k) => tt(k as Parameters<typeof tt>[0]));
