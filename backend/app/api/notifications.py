@@ -120,6 +120,22 @@ async def get_bark_defaults(
 # ============= Notification Settings =============
 
 
+def _normalize_notification_config(channel: str, config: dict) -> dict:
+    if channel == "ntfy":
+        return NtfyConfig(**config).model_dump(exclude_none=True)
+    if channel == "mattermost":
+        return MattermostConfig(**config).model_dump(exclude_none=True)
+    if channel == "email":
+        return EmailConfig(**config).model_dump(exclude_none=True)
+    if channel == "expo_push":
+        return ExpoPushConfig(**config).model_dump(exclude_none=True)
+    if channel == "bark":
+        return BarkConfig(**config).model_dump(exclude_none=True)
+    if channel == "webhook":
+        return WebhookConfig(**config).model_dump(exclude_none=True)
+    return config
+
+
 @router.get("/settings", response_model=list[NotificationSettingsResponse])
 async def list_notification_settings(
     current_user: User = Depends(get_current_user),
@@ -139,18 +155,7 @@ async def create_notification_setting(
 ):
     # Validate channel-specific config
     try:
-        if data.channel == "ntfy":
-            NtfyConfig(**data.config)
-        elif data.channel == "mattermost":
-            MattermostConfig(**data.config)
-        elif data.channel == "email":
-            EmailConfig(**data.config)
-        elif data.channel == "expo_push":
-            ExpoPushConfig(**data.config)
-        elif data.channel == "bark":
-            BarkConfig(**data.config)
-        elif data.channel == "webhook":
-            WebhookConfig(**data.config)
+        normalized_config = _normalize_notification_config(data.channel, data.config)
     except ValidationError as e:
         raise HTTPException(
             status_code=400,
@@ -164,7 +169,7 @@ async def create_notification_setting(
             channel=data.channel,
             enabled=data.enabled,
             priority=data.priority,
-            config=data.config,
+            config=normalized_config,
         )
         await db.commit()
         return setting
@@ -213,30 +218,21 @@ async def update_notification_setting(
 
         # Validate channel-specific config
         try:
-            if existing.channel == "ntfy":
-                NtfyConfig(**data.config)
-            elif existing.channel == "mattermost":
-                MattermostConfig(**data.config)
-            elif existing.channel == "email":
-                EmailConfig(**data.config)
-            elif existing.channel == "expo_push":
-                ExpoPushConfig(**data.config)
-            elif existing.channel == "bark":
-                BarkConfig(**data.config)
-            elif existing.channel == "webhook":
-                WebhookConfig(**data.config)
+            normalized_config = _normalize_notification_config(existing.channel, data.config)
         except ValidationError as e:
             raise HTTPException(
                 status_code=400,
                 detail=translate_validation_message(str(e.errors()[0]["msg"]), request),
             ) from None
+    else:
+        normalized_config = None
 
     setting = await service.update_setting(
         setting_id=setting_id,
         user_id=current_user.id,
         enabled=data.enabled,
         priority=data.priority,
-        config=data.config,
+        config=normalized_config,
     )
     if not setting:
         raise HTTPException(

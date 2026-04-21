@@ -1,5 +1,26 @@
+from unittest.mock import patch
+
 import pytest
+from fastapi import HTTPException, Request
 from httpx import AsyncClient
+
+from app.api.preferences import test_ai_endpoint as run_test_ai_endpoint
+from app.config import get_settings
+
+
+def _make_request() -> Request:
+    return Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/v1/users/me/preferences/test-ai-endpoint",
+            "headers": [],
+            "client": ("127.0.0.1", 12345),
+            "server": ("testserver", 80),
+            "scheme": "http",
+            "query_string": b"",
+        }
+    )
 
 
 class TestPreferencesEndpoints:
@@ -72,18 +93,43 @@ class TestAIEndpointPreferences:
         assert data["ai_endpoints"][0]["name"] == "local-ollama"
 
     @pytest.mark.asyncio
-    async def test_test_ai_endpoint_allows_localhost(
-        self, client: AsyncClient, test_user, auth_headers
+    async def test_test_ai_endpoint_rejects_private_url_by_default(
+        self,
     ):
-        response = await client.post(
-            "/api/v1/users/me/preferences/test-ai-endpoint",
-            json={
-                "url": "http://localhost:11434/v1",
-                "vision_model": "llava",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code != 400
+        with pytest.raises(HTTPException) as exc:
+            await run_test_ai_endpoint(
+                {"url": "http://127.0.0.1:11434/v1", "vision_model": "llava"},
+                _make_request(),
+                current_user=None,
+            )
+
+        assert exc.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_test_ai_endpoint_allows_private_url_when_opted_in(
+        self, monkeypatch
+    ):
+        class _MockResponse:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return {"models": [{"name": "llava"}]}
+
+        monkeypatch.setenv("ALLOW_PRIVATE_AI_ENDPOINTS", "true")
+        get_settings.cache_clear()
+        try:
+            with patch("app.api.preferences.httpx.AsyncClient.get", return_value=_MockResponse()):
+                response = await run_test_ai_endpoint(
+                    {"url": "http://127.0.0.1:11434/v1", "vision_model": "llava"},
+                    _make_request(),
+                    current_user=None,
+                )
+        finally:
+            monkeypatch.delenv("ALLOW_PRIVATE_AI_ENDPOINTS", raising=False)
+            get_settings.cache_clear()
+
+        assert response["status"] == "connected"
 
 
 class TestPreferenceValidation:

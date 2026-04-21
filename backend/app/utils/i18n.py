@@ -378,6 +378,7 @@ _VALIDATION_MSG_TO_KEY: dict[str, str] = {
     "Webhook URL must use HTTPS": "validation.mattermost_https",
     "Invalid Mattermost webhook URL format": "validation.mattermost_webhook_format",
     "Webhook URL must not target localhost or private network addresses": "validation.webhook_private_address",
+    "Outbound URL must not target localhost, private, or otherwise reserved addresses": "validation.webhook_private_address",
     "Invalid email address": "validation.email_invalid",
     "Invalid Expo push token format": "validation.expo_token_invalid",
     "day_of_week must be 0-6 (Monday-Sunday)": "validation.day_of_week_range",
