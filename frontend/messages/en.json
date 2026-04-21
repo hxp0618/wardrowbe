@@ -1269,9 +1269,13 @@
       "roles": {
         "full_body": "Full body",
         "base_top": "Top",
+        "mid_layer": "Layer",
+        "outer_layer": "Outerwear",
         "bottom": "Bottom",
         "layer": "Layer",
         "footwear": "Footwear",
+        "socks": "Socks",
+        "neckwear": "Neckwear",
         "accessory": "Accessory"
       }
     },

@@ -1152,9 +1152,13 @@
       "roles": {
         "full_body": "整身",
         "base_top": "上装",
+        "mid_layer": "叠搭",
+        "outer_layer": "外套",
         "bottom": "下装",
         "layer": "叠搭",
         "footwear": "鞋履",
+        "socks": "袜子",
+        "neckwear": "颈饰",
         "accessory": "配饰"
       }
     },

@@ -1,6 +1,10 @@
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { canonicalItemOrder, ITEM_ROLE } from '@/lib/studio/canonical-order';
+import { CanvasPanel } from '@/components/studio/canvas-panel';
 import {
   studioReducer,
   INITIAL_STUDIO_STATE,
@@ -10,6 +14,11 @@ import {
 import { mergeAiAssist } from '@/lib/studio/ai-assist-merge';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/studio/draft-storage';
 import { computeEditLoadPhase } from '@/lib/studio/edit-load';
+import zhMessages from '@/messages/zh.json';
+
+vi.mock('next/image', () => ({
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => React.createElement('img', props),
+}));
 
 function makeItem(id: string, type: string): StudioItem {
   return { id, type, name: `${type} item`, thumbnail_url: null, image_url: null, primary_color: null };
@@ -283,5 +292,29 @@ describe('computeEditLoadPhase', () => {
         editLoaded: false,
       })
     ).toBe('wornImmutable');
+  });
+});
+
+describe('CanvasPanel', () => {
+  it('renders outer layer labels from zh translations', () => {
+    render(
+      React.createElement(
+        NextIntlClientProvider,
+        { locale: 'zh', messages: zhMessages },
+        React.createElement(CanvasPanel, {
+          items: [
+            {
+              id: '1',
+              type: 'jacket',
+              name: '牛仔夹克',
+              thumbnail_url: '/api/v1/images/item/jacket_thumb.jpg?expires=1776755288&sig=abc123',
+            },
+          ],
+          onRemove: vi.fn(),
+        })
+      )
+    );
+
+    expect(screen.getByText('外套')).toBeInTheDocument();
   });
 });

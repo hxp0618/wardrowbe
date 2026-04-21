@@ -13,13 +13,24 @@ interface CanvasPanelProps {
   onRemove: (itemId: string) => void;
 }
 
+type CanvasRole =
+  | 'full_body'
+  | 'base_top'
+  | 'mid_layer'
+  | 'outer_layer'
+  | 'bottom'
+  | 'footwear'
+  | 'socks'
+  | 'neckwear'
+  | 'accessory';
+
 function roleLabel(
   type: string,
-  t: (key: `roles.${'full_body' | 'base_top' | 'bottom' | 'layer' | 'footwear' | 'accessory'}`) => string,
+  t: (key: `roles.${CanvasRole}`) => string,
 ): string {
   const role = ITEM_ROLE[type];
   if (!role) return type;
-  return t(`roles.${role as 'full_body' | 'base_top' | 'bottom' | 'layer' | 'footwear' | 'accessory'}`)
+  return t(`roles.${role as CanvasRole}`);
 }
 
 export function CanvasPanel({ items, onRemove }: CanvasPanelProps) {

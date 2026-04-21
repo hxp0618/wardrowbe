@@ -7,6 +7,11 @@ const nextConfig = {
   output: 'standalone',
   images: {
     unoptimized: true,
+    localPatterns: [
+      {
+        pathname: '/api/v1/images/**',
+      },
+    ],
   },
   typescript: {
     ignoreBuildErrors: true,
