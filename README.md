@@ -114,7 +114,19 @@ cd wardrowbe
 # Copy environment template
 cp .env.example .env
 
-# IMPORTANT: Edit .env and configure AI settings
+# IMPORTANT: Edit .env before first start
+# Required for the default compose stack:
+#   POSTGRES_PASSWORD=choose-a-strong-password
+#   NEXTAUTH_SECRET=$(openssl rand -hex 32)
+#
+# For local dev credential login, keep:
+#   DEBUG=true
+#   SECRET_KEY=change-me-in-production
+#
+# For production or OIDC-only deployments, use:
+#   SECRET_KEY=$(openssl rand -hex 32)
+#
+# Then configure AI settings as needed.
 # For Ollama (default in .env.example):
 #   AI_BASE_URL=http://host.docker.internal:11434/v1
 #   AI_VISION_MODEL=gemma3:latest
@@ -127,8 +139,8 @@ cp .env.example .env
 #   AI_TEXT_MODEL=gpt-4o
 
 # Optional: Generate secure secrets for production
-# SECRET_KEY=$(openssl rand -hex 32)
 # NEXTAUTH_SECRET=$(openssl rand -hex 32)
+# SECRET_KEY=$(openssl rand -hex 32)
 ```
 
 #### Step 3: Start Services
@@ -261,7 +273,7 @@ AI_TEXT_MODEL=llama3.2-vision:11b  # Same model for both tasks
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 14, TypeScript, TanStack Query, Tailwind CSS, shadcn/ui |
+| Frontend | Next.js 15, TypeScript, TanStack Query, Tailwind CSS, shadcn/ui |
 | Backend | FastAPI, SQLAlchemy (async), Pydantic, Python 3.11+ |
 | Database | PostgreSQL 15 |
 | Cache/Queue | Redis 7 |
@@ -279,6 +291,14 @@ See [docker-compose.prod.yml](docker-compose.prod.yml) for production configurat
 docker compose -f docker-compose.prod.yml up -d
 docker compose exec backend alembic upgrade head
 ```
+
+Security defaults in the shipped compose files:
+
+- PostgreSQL and Redis bind to `127.0.0.1` in the base compose file instead of all interfaces.
+- `POSTGRES_PASSWORD`, `SECRET_KEY`, and `NEXTAUTH_SECRET` must be set explicitly before startup.
+- Production frontend containers no longer disable Node TLS verification globally.
+
+If your OIDC provider uses a private CA, install that CA certificate in the container image or runtime trust store instead of disabling TLS verification globally.
 
 ### Kubernetes
 
@@ -303,7 +323,7 @@ See the [k8s/](k8s/) directory for Kubernetes manifests including:
 | `OIDC_ISSUER_URL` | OIDC provider URL (enables SSO login) | No |
 | `OIDC_CLIENT_ID` | OIDC client ID | If OIDC |
 | `OIDC_CLIENT_SECRET` | OIDC client secret | If OIDC |
-| `OIDC_SKIP_SSL_VERIFY` | Skip TLS verification for OIDC provider (self-signed certs) | No |
+| `OIDC_SKIP_SSL_VERIFY` | Disable backend TLS verification for the OIDC provider (development/troubleshooting only) | No |
 | `LOCAL_DNS` | Custom DNS server for container name resolution (e.g. local OIDC host) | No |
 | `SMTP_HOST` | SMTP server for email notifications | No |
 | `SMTP_PORT` | SMTP port (default: 587) | No |
@@ -340,7 +360,7 @@ If neither is configured, the remove-background button returns a 501 with setup 
 - **Development Mode** (default): Simple email/name login, no setup required
 - **OIDC Mode**: Any OIDC provider (PocketID, Authentik, Keycloak, Auth0, etc.)
 
-To enable OIDC, set `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET` in your `.env`. If your OIDC provider uses a self-signed certificate, set `OIDC_SKIP_SSL_VERIFY=true`. If your OIDC provider runs on a hostname that Docker containers can't resolve (e.g. a local DNS name), set `LOCAL_DNS` to your DNS server IP, or set `OIDC_HOST` and `OIDC_HOST_IP` to inject the hostname directly into the container's `/etc/hosts`.
+To enable OIDC, set `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET` in your `.env`. If your OIDC provider uses a private or self-signed CA, install that CA into the container trust store first. `OIDC_SKIP_SSL_VERIFY=true` should be reserved for temporary troubleshooting. If your OIDC provider runs on a hostname that Docker containers can't resolve (e.g. a local DNS name), set `LOCAL_DNS` to your DNS server IP, or set `OIDC_HOST` and `OIDC_HOST_IP` to inject the hostname directly into the container's `/etc/hosts`.
 
 When registering the app in your OIDC provider, use this as the callback/redirect URI:
 
@@ -364,6 +384,8 @@ http://localhost:8080/api/auth/callback/oidc
 - **Generic Webhook**: Configurable URL + HTTP method + content type + headers + optional template. Built-in presets for Generic, Discord, Slack, Telegram Bot API, Feishu, and WeCom (企业微信).
 
 Webhook targets pointing at `localhost`, loopback, link-local, or RFC1918 private ranges are rejected by default to reduce SSRF risk. For trusted self-hosted integrations on a private network, set `ALLOW_PRIVATE_WEBHOOK=true`.
+
+Do not expose PostgreSQL or Redis directly to the internet. The default compose file keeps them bound to localhost so they remain reachable for local administration without being published externally.
 
 ### Weather
 
@@ -400,6 +422,19 @@ npm test
 # Build
 npm run build
 ```
+
+### Security Audits
+
+```bash
+# Frontend runtime dependency audit
+cd frontend && npm audit --omit=dev --registry=https://registry.npmjs.org
+
+# Backend dependency audit
+python -m pip install pip-audit
+pip-audit -r backend/requirements.txt -r backend/requirements-extras.txt
+```
+
+GitHub Actions also runs these checks in `.github/workflows/security-audit.yml`.
 
 ### API Documentation
 
