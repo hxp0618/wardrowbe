@@ -38,9 +38,13 @@ function createWrapper() {
     },
   })
 
-  return ({ children }: { children: React.ReactNode }) => (
+  const TestQueryClientWrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
+
+  TestQueryClientWrapper.displayName = 'TestQueryClientWrapper'
+
+  return TestQueryClientWrapper
 }
 
 describe('useWeather', () => {

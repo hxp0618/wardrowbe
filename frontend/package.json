@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -31,8 +31,8 @@
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",
     "lucide-react": "^0.316.0",
-    "next": "14.2.35",
-    "next-auth": "^4.24.5",
+    "next": "15.5.15",
+    "next-auth": "^4.24.14",
     "next-intl": "^4.9.1",
     "next-themes": "^0.2.1",
     "react": "18.2.0",
@@ -53,14 +53,16 @@
     "@types/node": "^20.19.0",
     "@types/react": "18.2.52",
     "@types/react-dom": "18.2.18",
-    "@vitejs/plugin-react": "^5.1.2",
+    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.17",
-    "eslint": "8.56.0",
-    "eslint-config-next": "14.2.35",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^15.5.15",
     "jsdom": "^27.4.0",
     "postcss": "^8.4.35",
+    "rollup": "^4.60.2",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "5.3.3",
-    "vitest": "^4.0.17"
+    "vite": "^8.0.9",
+    "vitest": "^4.1.4"
   }
 }
