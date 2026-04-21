@@ -1,56 +1,56 @@
-# Wardrowbe WeChat Mini Program Design
+# Wardrowbe 微信小程序设计说明
 
-## Summary
+## 概要
 
-Build a new WeChat mini program client that fully replicates the current `frontend/` feature surface while keeping business API usage aligned with the existing `/api/v1/**` backend contract. The mini program will be implemented as a separate client application, not a migration of the current Next.js frontend.
+本文档定义一个新的微信小程序客户端，用于完整复刻当前 `frontend/` 的功能面，同时保持业务接口调用与现有后端 `/api/v1/**` 契约一致。该小程序将作为一个独立客户端实现，而不是把当前 Next.js 前端直接迁移为多端运行时。
 
-The mini program must support both production-grade WeChat login and development-mode login. Backend changes are limited to mini-program-specific authentication endpoints and supporting auth configuration. All existing business domains remain backed by the current backend APIs.
+小程序必须同时支持生产可用的微信登录和开发态登录。后端改动范围仅限于小程序专用认证接口及其配套认证配置。所有现有业务域继续复用当前后端 API。
 
-## Goals
+## 目标
 
-- Fully replicate the current `frontend/` feature surface in a WeChat mini program.
-- Keep business API calls aligned with the existing `/api/v1/**` backend interface.
-- Support both `wechat-login` and `dev-login`.
-- Preserve internationalization parity for `zh` and `en`.
-- Reuse as much domain logic, typing, and API behavior as is practical without forcing a large cross-platform rewrite of the existing web frontend.
+- 在微信小程序中完整复刻当前 `frontend/` 的功能面。
+- 保持业务 API 调用与现有 `/api/v1/**` 后端接口一致。
+- 同时支持 `wechat-login` 和 `dev-login`。
+- 保持 `zh` 与 `en` 的国际化能力对齐。
+- 在不强行重构现有 Web 前端的前提下，尽量复用领域逻辑、类型定义和 API 行为。
 
-## Non-Goals
+## 非目标
 
-- Do not convert the existing Next.js frontend into a multi-platform app.
-- Do not create a parallel mini-program-only business API surface.
-- Do not pursue pixel-identical UI parity with the web frontend.
-- Do not perform unrelated frontend or backend architecture refactors.
+- 不把现有 Next.js 前端改造成多平台应用。
+- 不新增一套仅供小程序使用的平行业务 API。
+- 不追求与 Web 前端像素级一致的 UI。
+- 不进行与本任务无关的前后端架构重构。
 
-## Existing Context
+## 现状背景
 
-The current web client in `frontend/` is a Next.js application using:
+当前 `frontend/` 是一个 Next.js 应用，主要依赖：
 
-- `next-auth` for web authentication session handling
-- `next-intl` for localization
-- `@tanstack/react-query` for server state
-- a local `frontend/lib/api.ts` wrapper for `/api/v1/**`
-- business hooks under `frontend/lib/hooks/`
-- page routes under `frontend/app/[locale]/`
+- `next-auth` 处理 Web 端认证会话
+- `next-intl` 处理本地化
+- `@tanstack/react-query` 处理服务端状态
+- `frontend/lib/api.ts` 作为 `/api/v1/**` 的本地 API 封装
+- `frontend/lib/hooks/` 下的业务 hooks
+- `frontend/app/[locale]/` 下的页面路由
 
-The current feature surface includes:
+当前功能面包括：
 
-- login and onboarding
-- dashboard home
-- wardrobe list, filters, folders, bulk actions, item detail, editing, AI reanalysis
-- multi-image item upload and quantity tracking
-- outfit suggestions with future dates and weather
-- pairings
-- manual outfits and outfit history
-- analytics
-- learning insights
-- family management and family feed
-- notification settings with multiple channels and webhook presets
-- settings and user preferences
-- invite flow and error handling
+- 登录与引导
+- Dashboard 首页
+- 衣橱列表、筛选、文件夹、批量操作、单品详情、编辑、AI 重分析
+- 多图上传与数量跟踪
+- 支持未来日期和天气的穿搭推荐
+- 搭配 Pairings
+- 手动穿搭与穿搭历史
+- 数据分析 Analytics
+- Learning 洞察
+- 家庭管理与家庭动态
+- 多通知渠道与 Webhook 预设
+- 设置与用户偏好
+- 邀请流程与错误处理
 
-## Product Scope
+## 产品范围
 
-The mini program must cover all currently user-visible web frontend domains:
+小程序必须覆盖所有当前对用户可见的 Web 前端业务域：
 
 - `login`
 - `onboarding`
@@ -67,408 +67,408 @@ The mini program must cover all currently user-visible web frontend domains:
 - `notifications`
 - `learning`
 - `settings`
-- shared error and loading states
+- 通用错误态与加载态
 
-The implementation may be executed as multiple engineering milestones, but the target release scope is full feature parity with the current web frontend.
+实现可以按多个工程里程碑推进，但目标发布范围必须与当前 Web 前端保持完整功能对齐。
 
-## High-Level Architecture
+## 高层架构
 
-### Client Strategy
+### 客户端策略
 
-Create a new standalone mini program client at `wechat-miniapp/`, implemented with `Taro + React + TypeScript`.
+在仓库根目录新增独立小程序客户端 `wechat-miniapp/`，技术路线采用 `Taro + React + TypeScript`。
 
-This client remains independent from `frontend/`, but shares extracted logic through new shared packages/modules for:
+该客户端与 `frontend/` 保持独立，但通过新的共享模块复用以下能力：
 
-- API client behavior
-- domain types
-- taxonomy and translation data
-- pure business utilities
+- API 客户端行为
+- 领域类型定义
+- taxonomy 与翻译数据
+- 纯业务工具函数
 
-### Shared Runtime Model
+### 共享运行时模型
 
-The shared logic should be structured so that the web frontend and mini program can both consume the same domain and API behavior while keeping platform-specific runtime concerns separate.
+共享逻辑需要设计成 Web 前端和小程序都能消费同一套领域与 API 行为，同时把平台相关运行时细节隔离开。
 
-Recommended shared modules:
+共享模块固定放在仓库根目录 `packages/` 下，建议拆分为：
 
 - `packages/shared-api`
 - `packages/shared-domain`
 - `packages/shared-i18n`
 
-These shared modules should live at the repository root under `packages/` so both `frontend/` and `wechat-miniapp/` can consume them with a single canonical import path strategy. The separation of concerns is fixed:
+职责边界固定如下：
 
-- shared modules own pure logic and API semantics
-- each client owns routing, UI components, storage, and platform APIs
+- 共享模块负责纯逻辑与 API 语义
+- 各客户端各自负责路由、UI 组件、存储与平台 API
 
-## Authentication Design
+## 认证设计
 
-### Rationale
+### 设计理由
 
-The web frontend currently depends on `next-auth`, which is not reusable in the mini program runtime. The mini program should not attempt to emulate `next-auth`. Instead, both web and mini program should converge on the same backend access token model.
+当前 Web 前端依赖 `next-auth`，这套运行时无法直接复用到小程序。小程序不应尝试模拟 `next-auth`，而应与 Web 端在“最终拿到同一种后端 access token”这一结果上保持一致。
 
-### Login Modes
+### 登录模式
 
-The mini program must support both:
+小程序必须同时支持：
 
 - `wechat-login`
 - `dev-login`
 
-### WeChat Login Flow
+### 微信登录流程
 
-1. Mini program calls `wx.login()` and obtains a WeChat `code`.
-2. Mini program sends the `code` to a new backend endpoint.
-3. Backend exchanges the code with WeChat, resolves `openid` and related identity data, creates or links the local user, and returns a backend access token compatible with current `/api/v1/**` authorization.
-4. Mini program stores the backend access token locally and uses it for all subsequent business API calls.
+1. 小程序调用 `wx.login()` 获取微信 `code`。
+2. 小程序将该 `code` 发送到新增后端接口。
+3. 后端向微信换取身份信息，解析 `openid` 等标识，创建或绑定本地用户，并返回可直接访问当前 `/api/v1/**` 的后端 access token。
+4. 小程序本地保存该 access token，并在后续所有业务请求中使用它。
 
-### Dev Login Flow
+### 开发态登录流程
 
-1. Mini program provides a development-only login form similar to the web dev login flow.
-2. Mini program submits email and display name to a new backend development auth endpoint.
-3. Backend validates that dev auth is enabled, creates or syncs the local user, and returns a backend access token.
-4. Mini program stores the token and proceeds identically to the WeChat login flow.
+1. 小程序提供开发专用登录表单，能力上与 Web 端 dev login 对齐。
+2. 小程序将 email 与 display name 提交到新增后端开发登录接口。
+3. 后端校验当前环境允许 dev auth 后，创建或同步本地用户，并返回 access token。
+4. 小程序保存该 token，后续业务流程与微信登录保持一致。
 
-### Backend Auth Endpoints
+### 后端认证接口
 
-Backend additions are limited to auth endpoints and supporting auth config:
+后端新增范围仅限于认证接口和必要的认证配置：
 
 - `POST /api/v1/auth/wechat/code`
 - `POST /api/v1/auth/dev-login`
-- `GET /api/v1/auth/status` extended as needed to advertise supported login modes
+- `GET /api/v1/auth/status`，按需扩展为可声明支持的登录方式
 
-No mini-program-specific business endpoints should be added for wardrobe, outfits, family, settings, analytics, learning, or notifications.
+不为 wardrobe、outfits、family、settings、analytics、learning、notifications 等业务域新增小程序专用业务接口。
 
-### Mini Program Session Model
+### 小程序会话模型
 
-The mini program maintains its own auth store and should:
+小程序维护自己的认证状态存储，并且应当：
 
-- persist access token in WeChat storage
-- restore session state on app launch
-- attach `Authorization: Bearer <token>` to business API calls
-- clear auth state and redirect to login on `401`
-- preserve intended return path during login redirects by storing the guarded destination before redirecting to login and restoring it after successful authentication
+- 使用微信存储持久化 access token
+- 在应用启动时恢复会话状态
+- 为业务请求统一注入 `Authorization: Bearer <token>`
+- 在收到 `401` 后清空认证状态并跳转登录页
+- 在登录跳转前保存被守卫页面目标，登录成功后恢复跳回
 
-The mini program must not rely on browser cookies, `credentials: include`, or `next-auth` session state.
+小程序不得依赖浏览器 cookie、`credentials: include` 或 `next-auth` session。
 
-## Shared API Layer Design
+## 共享 API 层设计
 
-### Current Constraint
+### 当前约束
 
-`frontend/lib/api.ts` currently assumes a browser/web environment with:
+`frontend/lib/api.ts` 当前默认运行在浏览器环境，依赖：
 
 - `fetch`
-- browser online detection
-- module-level token state
-- optional `credentials: include`
+- 浏览器在线状态检测
+- 模块级 token 状态
+- 可选的 `credentials: include`
 
-This is not portable enough for the mini program runtime.
+这些假设不足以支撑小程序运行时。
 
-### Target Shape
+### 目标形态
 
-Extract the API layer into a shared package with three concerns:
+将 API 层抽到共享包，并拆成三类职责：
 
-1. Core request behavior
-   - endpoint path joining
-   - query param encoding
-   - header composition
-   - error parsing
-   - `ApiError` and `NetworkError`
-2. Runtime adapters
-   - web adapter using `fetch`
-   - mini program adapter using `Taro.request` or the underlying WeChat request API
-3. Runtime bindings
+1. 请求核心行为
+   - endpoint 路径拼接
+   - query 参数编码
+   - header 合并
+   - 错误解析
+   - `ApiError` 与 `NetworkError`
+2. 运行时适配器
+   - Web 端 `fetch` 适配器
+   - 小程序 `Taro.request` 或底层微信请求适配器
+3. 运行时绑定
    - access token getter/setter
    - locale getter/setter
-   - base URL resolution
+   - base URL 解析
 
-The call style should remain stable across clients:
+对外调用风格要在两个客户端中保持稳定：
 
 - `api.get('/users/me')`
 - `api.post('/outfits/suggest', payload)`
 - `api.patch('/preferences', payload)`
 - `api.delete('/items/:id')`
 
-### File Upload Support
+### 文件上传支持
 
-File upload should be separated from the JSON request wrapper and exposed as dedicated shared upload helpers with runtime-specific implementations.
+文件上传需要从通用 JSON 请求封装中独立出来，作为共享上传 helper 提供，并由不同运行时各自实现底层适配。
 
-Mini program upload requirements:
+小程序上传能力必须支持：
 
-- support item creation with a primary image
-- support additional item images up to current backend limits
-- support retry and progress/error presentation
-- preserve existing backend upload semantics wherever current multipart endpoints already support them
+- 带主图的单品创建
+- 在当前后端限制范围内上传附加图片
+- 上传失败重试与进度、错误展示
+- 在现有 multipart 接口已可用的前提下，继续复用当前后端上传语义
 
-Business meaning stays the same; only transport and local preview behavior are platform-specific.
+业务含义保持不变，仅在传输方式与本地预览行为上做平台适配。
 
-## Shared Domain Layer
+## 共享领域层
 
-The mini program should share the following categories from the web frontend after extraction:
+从 Web 前端抽取后，小程序应共享以下类型的内容：
 
-- TypeScript domain types currently living in `frontend/lib/types.ts`
-- taxonomy label resolution helpers
-- date utilities
-- temperature conversion and display logic
-- reorder/filter/sort utilities that do not depend on DOM or web runtime
-- API message mapping and common error helpers where platform-agnostic
+- 当前位于 `frontend/lib/types.ts` 的 TypeScript 领域类型
+- taxonomy label 解析逻辑
+- 日期工具函数
+- 温度转换与显示逻辑
+- 不依赖 DOM 或浏览器运行时的重排、筛选、排序工具函数
+- 平台无关的 API 消息映射与通用错误辅助函数
 
-The mini program should not directly reuse web-only hooks that are tightly coupled to:
+小程序不应直接复用与以下运行时强耦合的 Web hooks：
 
 - `next-auth`
 - `next-intl`
-- Next.js navigation
-- browser-only APIs
+- Next.js 导航
+- 浏览器专有 API
 
-Instead, implementation should:
+正确做法是：
 
-- extract service-layer business functions
-- reimplement platform-specific hooks per client using shared services
+- 抽取 service 层业务函数
+- Web 与小程序各自基于共享 service 重写平台相关 hooks
 
-## Internationalization Design
+## 国际化设计
 
-The mini program must support `zh` and `en` with the same effective feature coverage as the web frontend.
+小程序必须支持 `zh` 与 `en`，并保持与 Web 前端相同的有效功能覆盖。
 
-Implementation direction:
+实现方向固定如下：
 
-- extract shared message sources from `frontend/messages/en.json` and `frontend/messages/zh.json`
-- keep the translation keys aligned across web and mini program
-- implement a lightweight mini program i18n runtime instead of reusing `next-intl`
-- keep sending `Accept-Language` on backend requests
+- 从 `frontend/messages/en.json` 与 `frontend/messages/zh.json` 抽取共享消息源
+- 保持 Web 与小程序的翻译 key 对齐
+- 小程序使用轻量级 i18n runtime，而不是复用 `next-intl`
+- 后端请求继续带上 `Accept-Language`
 
-The mini program does not need to replicate the `next-intl` implementation detail, only the resulting language behavior and translation coverage.
+小程序无需复制 `next-intl` 的实现细节，只需要保证结果层面的语言行为和翻译覆盖一致。
 
-## UI and Interaction Design
+## UI 与交互设计
 
-### Core Principle
+### 核心原则
 
-Feature parity is required. Layout parity is not.
+必须保证功能对齐，不要求布局对齐。
 
-The mini program should preserve:
+小程序需要保留：
 
-- page-level information architecture
-- access to the same user operations
-- comparable filters, forms, detail views, and workflows
-- the same user-visible domain entities
+- 页面级信息架构
+- 与 Web 对应的用户操作入口
+- 对等的筛选、表单、详情与业务流程
+- 相同的用户可见领域实体
 
-The mini program should adapt interaction to WeChat norms:
+小程序应按微信习惯适配交互：
 
-- bottom tabs or mobile navigation instead of desktop sidebar
-- single-column mobile layouts instead of multi-column desktop layouts
-- sheets, drawers, and dedicated pages instead of heavy modal usage where necessary
-- no hover-driven interactions
-- long-form forms optimized for mobile touch input
+- 用底部 tab 或移动端导航替代桌面侧边栏
+- 用单列移动布局替代多列桌面布局
+- 视情况用页面、抽屉、底部弹层替代大量 modal
+- 移除所有 hover 驱动交互
+- 表单以触摸输入和移动端滚动场景为优先
 
-### Page Domain Expectations
+### 页面域预期
 
-#### Auth and Onboarding
+#### 认证与引导
 
-- login page with WeChat and dev login
-- onboarding flow covering welcome, family, location, preferences, and first item upload
-- invite handling and error recovery
+- 登录页同时支持微信登录与开发态登录
+- 引导流程覆盖 welcome、family、location、preferences、first item upload
+- 邀请处理与错误回退能力
 
 #### Dashboard
 
-- weather summary
-- pending outfits
-- quick actions
-- notification summary
-- family summary where applicable
+- 天气摘要
+- 待处理 outfits
+- 快捷操作
+- 通知摘要
+- 有家庭时的家庭摘要
 
 #### Wardrobe
 
-- list/grid presentation adapted for mobile
-- filters, search, sorting, folder filtering
-- bulk selection/actions in a mobile-appropriate toolbar
-- item detail and editing
-- favorite state, wash tracking, reanalysis, archive state
-- multi-image viewing
+- 适配移动端的列表或网格展示
+- 筛选、搜索、排序、文件夹过滤
+- 适配移动端的批量工具条
+- 单品详情与编辑
+- 收藏、洗护、重分析、归档状态
+- 多图浏览
 
 #### Suggest
 
-- weather context
-- target date selection
-- occasion selection
-- suggestion generation
-- accept/reject flows
-- manual outfit creation and AI learning usage where supported today
+- 天气上下文
+- 目标日期选择
+- occasion 选择
+- 推荐生成
+- 接受与拒绝
+- 手动创建 outfit 与现有 AI 学习回流能力
 
-#### Pairings and Outfits
+#### Pairings 与 Outfits
 
-- pairing list and filtering
-- preview and feedback
-- manual outfit creation
-- outfit list and relevant filters
+- 搭配列表与筛选
+- 预览与反馈
+- 手动创建 outfit
+- outfit 列表与对应筛选能力
 
 #### History
 
-- calendar-oriented browsing adapted to mobile constraints
-- selected-day outfit detail
-- feedback and preview flows
+- 适配移动端约束的日历浏览
+- 选中日期的 outfit 详情
+- 反馈与预览能力
 
-#### Analytics and Learning
+#### Analytics 与 Learning
 
-- preserve current metrics and insights
-- use mobile-appropriate data visualization
-- exact chart rendering may differ from web as long as information parity is preserved
+- 保留现有指标与洞察
+- 使用适合移动端的数据可视化方式
+- 允许图表渲染形式与 Web 不同，但必须保证信息对齐
 
-#### Family and Family Feed
+#### Family 与 Family Feed
 
-- family creation and joining
-- invite code handling
-- member management, role updates, removal
-- family feed browsing
-- family rating interactions
+- 家庭创建与加入
+- 邀请码处理
+- 成员管理、角色修改、移除
+- 家庭动态浏览
+- 家庭评分交互
 
 #### Notifications
 
-- existing settings coverage
-- supported channel configuration
-- webhook preset handling
-- test-send and enable/disable flows
+- 现有配置项覆盖
+- 各通知渠道配置
+- webhook preset 处理
+- 测试发送与启停切换
 
 #### Settings
 
-- preferences
-- location and timezone
-- measurement units
-- AI endpoints and testing
-- profile-related settings that currently exist in the web frontend
+- 偏好设置
+- 位置与时区
+- 计量单位
+- AI endpoint 配置与测试
+- 当前 Web 前端已有的 profile 相关设置
 
-## State Management Design
+## 状态管理设计
 
-The mini program should use two state layers.
+小程序采用两层状态模型。
 
-### Global State
+### 全局状态
 
 - auth/session
-- active locale
-- current user and family context
-- app-wide transient errors
-- upload task state
+- 当前 locale
+- 当前用户与家庭上下文
+- 全局瞬时错误状态
+- 上传任务状态
 
-### Screen-Level Server State
+### 页面级服务端状态
 
-- list pagination
-- filters and sorting
-- detail fetches
-- mutation states
-- preview or temporary editor state
+- 列表分页
+- 筛选与排序
+- 详情请求
+- mutation 状态
+- 预览与临时编辑态
 
-React Query may continue to be used in the mini program client if the final Taro setup supports it cleanly. Query keys and service boundaries should be shared conceptually, but web hooks and mini program hooks should remain separate implementations.
+如果最终 Taro 工程能稳定支持，React Query 可以继续用于小程序端。query key 与 service 边界需要在概念上对齐，但 Web hooks 与小程序 hooks 必须保持为两套平台实现。
 
-## Engineering Decomposition
+## 工程拆分
 
-Although the product target is full parity, the engineering work must be split into dependent execution tracks. The implementation plan should break work into at least these areas:
+虽然产品目标是首版全量对齐，但工程执行必须拆成有依赖顺序的多个轨道。后续 implementation plan 至少要分为这些部分：
 
-1. mini program app shell and auth
-2. shared API/domain/i18n extraction
-3. wardrobe, suggest, pairings, outfits, dashboard
-4. history, analytics, learning
-5. family and notifications
-6. settings, onboarding, invite, regression hardening
+1. 小程序应用壳与认证
+2. shared API/domain/i18n 抽取
+3. wardrobe、suggest、pairings、outfits、dashboard
+4. history、analytics、learning
+5. family 与 notifications
+6. settings、onboarding、invite、回归加固
 
-This is an execution structure only. It does not change the release scope target.
+这只是执行结构，不改变最终发布范围。
 
-## Repository and Branching Strategy
+## 仓库与分支策略
 
-Create a new development branch named `dev-wechat` for implementation.
+实现必须新建开发分支 `dev-wechat`。
 
-Because the current repository already has unrelated local changes in `backend/app/utils/network.py`, implementation should use an isolated worktree for `dev-wechat` so mini program work does not interfere with unrelated in-progress changes.
+由于当前仓库里已经存在与本任务无关的本地改动 `backend/app/utils/network.py`，实现阶段应当为 `dev-wechat` 使用独立 worktree，避免小程序开发干扰其他进行中的改动。
 
-The design spec itself can be authored from the current branch and then used to drive implementation on `dev-wechat`.
+当前设计 spec 可以继续在现有分支上编写和修订，后续再用于驱动 `dev-wechat` 上的实现工作。
 
-## Testing Strategy
+## 测试策略
 
-The implementation must include four validation layers.
+实现必须至少包含四层验证。
 
-### Shared Layer Tests
+### 共享层测试
 
-- API error parsing and request configuration
-- auth runtime behavior where extracted into pure units
-- utility functions for dates, temperatures, filters, sorting, and taxonomy behavior
+- API 错误解析与请求配置
+- 抽取后的认证运行时纯逻辑
+- 日期、温度、筛选、排序、taxonomy 等工具函数
 
-### Mini Program Client Tests
+### 小程序客户端测试
 
-- auth state transitions
-- page form behavior
-- list filtering and pagination logic
-- upload state transitions
-- key empty/error/loading states
+- 认证状态流转
+- 页面表单行为
+- 列表筛选与分页逻辑
+- 上传状态流转
+- 关键空态、错误态与加载态
 
-### Integration Testing
+### 集成测试
 
-- WeChat login backend flow
-- dev login backend flow
-- authenticated `/api/v1/**` access
-- multi-image upload
-- representative domain operations across wardrobe, suggestions, family, and notifications
+- 微信登录后端链路
+- 开发态登录后端链路
+- 已登录状态下的 `/api/v1/**` 访问
+- 多图上传
+- wardrobe、suggestions、family、notifications 等代表性业务操作
 
-### Manual Regression Matrix
+### 人工回归矩阵
 
-Every current `frontend/app/[locale]/` user-facing page should be checked for:
+对当前 `frontend/app/[locale]/` 下每一个面向用户的页面，都要检查：
 
-- reachable entry point in mini program
-- data loading
-- primary write action support
-- empty/error/loading state behavior
-- `zh` and `en` localization
-- real-device or WeChat developer tool usability
+- 小程序中是否有可达入口
+- 数据是否可加载
+- 核心写操作是否可完成
+- 空态、错误态、加载态是否完整
+- `zh` 与 `en` 是否可用
+- 微信开发者工具与真机上是否可正常使用
 
-## Risks and Mitigations
+## 风险与缓解
 
-### Authentication Risk
+### 认证风险
 
-Risk:
-- WeChat auth and current backend user model may not align cleanly on first pass.
+风险：
+- 微信认证与当前后端用户模型可能无法一次对齐。
 
-Mitigation:
-- isolate mini program auth behind new auth endpoints only
-- keep downstream business auth model identical to existing backend token usage
+缓解：
+- 将小程序认证隔离在新增认证接口后
+- 下游业务认证仍复用现有 backend token 模型
 
-### Upload Risk
+### 上传风险
 
-Risk:
-- multi-image upload and image preview behavior differ materially between web and mini program runtimes
+风险：
+- 多图上传与图片预览在 Web 和小程序运行时差异较大。
 
-Mitigation:
-- build upload as a dedicated adapter layer
-- validate create, update, retry, and reanalysis paths early
+缓解：
+- 将上传实现成独立适配层
+- 尽早验证 create、update、retry、reanalyze 路径
 
-### Scope Risk
+### 范围风险
 
-Risk:
-- full parity across all web domains is too large for a single unstructured implementation pass
+风险：
+- 所有 Web 业务域一次性全量追平，范围非常大，不能以单次无结构实现推进。
 
-Mitigation:
-- enforce sub-plans and milestone-based execution while keeping the final release scope unchanged
+缓解：
+- 严格拆成子计划与里程碑执行，同时保持最终发布范围不变
 
-### Shared Code Risk
+### 共享代码风险
 
-Risk:
-- attempting to reuse web hooks directly will spread runtime-specific assumptions everywhere
+风险：
+- 如果直接复用 Web hooks，会把大量运行时假设扩散到整个项目。
 
-Mitigation:
-- share services, types, and utilities
-- keep client hooks platform-specific
+缓解：
+- 共享 services、types、utilities
+- hooks 按平台分别实现
 
-## Acceptance Criteria
+## 验收标准
 
-The design is considered successfully implemented when:
+当满足以下条件时，可以视为本设计已被正确实现：
 
-- a new WeChat mini program client exists in the repository
-- implementation work is executed on branch `dev-wechat`
-- mini program users can authenticate via WeChat login
-- developers can authenticate via dev login in supported environments
-- mini program business features cover the same page-level feature surface as the current `frontend/`
-- business data access remains aligned with `/api/v1/**`
-- backend additions for this project are limited to mini-program-specific auth support and required auth configuration
-- `zh` and `en` are supported across the mini program
-- the mini program passes shared-layer tests, key client tests, and a page-by-page regression matrix against the existing web frontend
+- 仓库中存在新的微信小程序客户端
+- 实现工作在 `dev-wechat` 分支上推进
+- 小程序用户可以通过微信登录进入系统
+- 开发人员在允许的环境中可以通过 dev login 进入系统
+- 小程序业务功能覆盖与当前 `frontend/` 相同的页面级功能面
+- 业务数据访问继续与 `/api/v1/**` 保持一致
+- 后端新增范围仅限于小程序认证支持与必要认证配置
+- 小程序完整支持 `zh` 与 `en`
+- 小程序通过共享层测试、关键客户端测试，以及对照现有 Web 前端的逐页回归矩阵
 
-## Open Decisions Resolved In This Design
+## 本设计已明确的决策
 
-- Use a standalone mini program client rather than converting the web app to a multi-platform runtime.
-- Use `Taro + React + TypeScript` as the recommended implementation direction.
-- Reuse existing business APIs under `/api/v1/**`.
-- Add only mini-program-specific authentication endpoints on the backend.
-- Support both WeChat login and development login.
-- Target full feature parity in the mini program release scope.
-- Execute implementation through multiple structured sub-plans rather than one monolithic engineering pass.
+- 采用独立小程序客户端，而不是把 Web 应用改成多端运行时
+- 小程序技术路线采用 `Taro + React + TypeScript`
+- 业务 API 继续复用 `/api/v1/**`
+- 后端只新增小程序专用认证接口
+- 同时支持微信登录与开发态登录
+- 发布范围目标是首版全量功能追平
+- 实现必须拆成多个结构化子计划执行，而不是单次大杂烩式开发
