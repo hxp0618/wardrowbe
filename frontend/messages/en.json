@@ -1173,6 +1173,182 @@
       "other": "Other"
     }
   },
+  "outfitsPage": {
+    "title": "Outfits",
+    "subtitle": "Your looks, worn outfits, and AI suggestions",
+    "newOutfit": "New Outfit",
+    "viewToggle": "View toggle",
+    "views": {
+      "list": "List",
+      "calendar": "Calendar"
+    },
+    "filters": {
+      "all": "All",
+      "myLooks": "My Looks",
+      "worn": "Worn",
+      "pairings": "Pairings",
+      "replacements": "Replacements",
+      "ai": "AI"
+    },
+    "searchLookbook": "Search lookbook...",
+    "total": "{count} total",
+    "loadFailed": "Failed to load outfits",
+    "empty": {
+      "all": "No outfits yet. Create your first look in the Studio!",
+      "myLooks": "No saved looks yet. Create one with the Studio editor.",
+      "worn": "No worn outfits recorded.",
+      "pairings": "No pairing outfits generated.",
+      "replacements": "No replacement outfits.",
+      "ai": "No AI-generated outfits."
+    },
+    "loadMore": "Load more",
+    "calendarEmptyDay": "No outfits on this day",
+    "selectedDateCount": "{count, plural, one {# outfit} other {# outfits}}",
+    "monthCount": "{count, plural, one {# outfit this month} other {# outfits this month}}"
+  },
+  "outfitCard": {
+    "outfit": "Outfit",
+    "lookbookTemplate": "Lookbook template",
+    "badge": {
+      "replacement": "Replacement",
+      "worn": "Worn",
+      "studio": "Studio",
+      "pairing": "Pairing",
+      "ai": "AI"
+    }
+  },
+  "outfitStudio": {
+    "title": {
+      "create": "Studio",
+      "edit": "Edit Outfit"
+    },
+    "sections": {
+      "canvas": "Canvas",
+      "details": "Details",
+      "wardrobe": "Wardrobe"
+    },
+    "actions": {
+      "wearToday": "Wear Today",
+      "saveChanges": "Save Changes",
+      "saveToLookbook": "Save to Lookbook"
+    },
+    "validation": {
+      "pickItem": "Pick at least one item",
+      "pickOccasion": "Pick an occasion",
+      "pickItemAndOccasion": "Pick at least one item and an occasion",
+      "nameRequired": "Give your lookbook entry a name before saving"
+    },
+    "toasts": {
+      "updated": "Outfit updated",
+      "saveFailed": "Failed to save outfit",
+      "savedAndMarkedWorn": "Saved and marked worn",
+      "savedToLookbook": "Saved to lookbook"
+    },
+    "draft": {
+      "prompt": "You have an unsaved draft from your last session. Resume it?",
+      "discard": "Start fresh",
+      "resume": "Resume"
+    },
+    "states": {
+      "missingTitle": "Outfit not found",
+      "missingDescription": "This outfit no longer exists. It may have been deleted from another tab or device.",
+      "backToOutfits": "Back to outfits",
+      "authErrorTitle": "You can't edit this outfit",
+      "loadErrorTitle": "Couldn't load this outfit",
+      "authErrorDescription": "Your session may have expired or this outfit belongs to another account.",
+      "loadErrorDescription": "Something went wrong while loading this outfit. Check your connection and try again.",
+      "tryAgain": "Try again",
+      "wornTitle": "This outfit has been worn",
+      "wornDescription": "Worn outfits can't be edited because they're part of your wear history. You can save a copy as a new lookbook entry instead.",
+      "backToOutfit": "Back to outfit",
+      "saveAsNew": "Save as new"
+    },
+    "canvas": {
+      "empty": "Tap items below to start building your outfit",
+      "removeItem": "Remove {name}",
+      "roles": {
+        "full_body": "Full body",
+        "base_top": "Top",
+        "bottom": "Bottom",
+        "layer": "Layer",
+        "footwear": "Footwear",
+        "accessory": "Accessory"
+      }
+    },
+    "details": {
+      "name": "Name",
+      "nameRequiredForLookbook": "(required for lookbook)",
+      "namePlaceholder": "Friday brunch",
+      "occasion": "Occasion",
+      "occasionRequired": "required",
+      "pickOccasionBeforeSaving": "Pick an occasion before saving.",
+      "aiThinking": "AI is thinking...",
+      "aiFinishThis": "Let AI finish this"
+    },
+    "warnings": {
+      "noBottoms": "No bottoms selected.",
+      "noTop": "No top selected.",
+      "multipleBottoms": "Multiple bottoms selected.",
+      "noFootwear": "No footwear selected."
+    },
+    "aiAssist": {
+      "pickInputsFirst": "Pick at least one item and an occasion first",
+      "skippedItem": "Skipped {name}: {reason}",
+      "addedItems": "Added {count, plural, one {# item} other {# items}} from AI",
+      "noNewItems": "AI had no new items to suggest",
+      "failed": "AI assist failed"
+    },
+    "itemPicker": {
+      "empty": "No items found",
+      "noWardrobeItems": "No items in your wardrobe yet. Add items first.",
+      "searchPlaceholder": "Search wardrobe...",
+      "loadingMore": "Loading more...",
+      "noSearchResults": "No items match your search",
+      "showingAll": "Showing all {count} items"
+    },
+    "dialog": {
+      "saveAsNewDescription": "Worn outfits can't be edited because they're part of your wear history. Save your changes as a new lookbook entry instead?",
+      "discardChanges": "Discard changes"
+    }
+  },
+  "cloneToLookbook": {
+    "title": "Save to lookbook",
+    "description": "Give this look a name so you can find it later and wear it again.",
+    "name": "Name",
+    "namePlaceholder": "Friday brunch",
+    "validation": {
+      "nameRequired": "Please enter a name"
+    },
+    "toasts": {
+      "saved": "Saved to lookbook",
+      "saveFailed": "Failed to save to lookbook"
+    },
+    "saving": "Saving..."
+  },
+  "lineageCard": {
+    "replacement": "Replaces {occasion} suggestion{date, select, none {} other { from {date}}}",
+    "fromLookbook": "From your {name} lookbook entry"
+  },
+  "outfitDetail": {
+    "backToOutfits": "Back to Outfits",
+    "lookbookTemplate": "Lookbook template",
+    "itemsCount": "Items ({count})",
+    "actions": {
+      "wearToday": "Wear today",
+      "saveToLookbook": "Save to lookbook",
+      "seeAll": "See all"
+    },
+    "toasts": {
+      "addedToToday": "Added to today",
+      "wearTodayFailed": "Failed to wear today",
+      "deleted": "Outfit deleted",
+      "deleteFailed": "Failed to delete"
+    },
+    "deleteConfirm": "Delete this outfit? This cannot be undone.",
+    "wearCount": "{count, plural, one {Worn # time} other {Worn # times}}",
+    "undated": "Undated",
+    "notWornYet": "This look has not been worn yet. Click \"Wear today\" to log it."
+  },
   "bulkActions": {
     "all": "All",
     "selectAll": "Select all",

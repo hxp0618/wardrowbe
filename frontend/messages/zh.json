@@ -1056,6 +1056,182 @@
       "other": "其他"
     }
   },
+  "outfitsPage": {
+    "title": "穿搭",
+    "subtitle": "你的灵感造型、已穿记录和 AI 推荐",
+    "newOutfit": "新建穿搭",
+    "viewToggle": "视图切换",
+    "views": {
+      "list": "列表",
+      "calendar": "日历"
+    },
+    "filters": {
+      "all": "全部",
+      "myLooks": "我的造型",
+      "worn": "已穿",
+      "pairings": "搭配",
+      "replacements": "替代",
+      "ai": "AI"
+    },
+    "searchLookbook": "搜索灵感库...",
+    "total": "共 {count} 套",
+    "loadFailed": "加载穿搭失败",
+    "empty": {
+      "all": "还没有穿搭。去 Studio 创建你的第一套吧！",
+      "myLooks": "还没有保存的造型。去 Studio 编辑器创建一套吧。",
+      "worn": "还没有已穿记录。",
+      "pairings": "还没有生成的搭配。",
+      "replacements": "还没有替代穿搭。",
+      "ai": "还没有 AI 生成的穿搭。"
+    },
+    "loadMore": "加载更多",
+    "calendarEmptyDay": "这一天没有穿搭",
+    "selectedDateCount": "{count} 套穿搭",
+    "monthCount": "本月共 {count} 套穿搭"
+  },
+  "outfitCard": {
+    "outfit": "穿搭",
+    "lookbookTemplate": "灵感模板",
+    "badge": {
+      "replacement": "替代",
+      "worn": "已穿",
+      "studio": "Studio",
+      "pairing": "搭配",
+      "ai": "AI"
+    }
+  },
+  "outfitStudio": {
+    "title": {
+      "create": "Studio",
+      "edit": "编辑穿搭"
+    },
+    "sections": {
+      "canvas": "画布",
+      "details": "详情",
+      "wardrobe": "衣橱"
+    },
+    "actions": {
+      "wearToday": "今天穿",
+      "saveChanges": "保存修改",
+      "saveToLookbook": "保存到灵感库"
+    },
+    "validation": {
+      "pickItem": "请至少选择一件物品",
+      "pickOccasion": "请选择一个场合",
+      "pickItemAndOccasion": "请至少选择一件物品和一个场合",
+      "nameRequired": "保存到灵感库前请先填写名称"
+    },
+    "toasts": {
+      "updated": "穿搭已更新",
+      "saveFailed": "保存穿搭失败",
+      "savedAndMarkedWorn": "已保存并标记为已穿",
+      "savedToLookbook": "已保存到灵感库"
+    },
+    "draft": {
+      "prompt": "检测到你上次会话中有未保存草稿，要继续吗？",
+      "discard": "重新开始",
+      "resume": "继续编辑"
+    },
+    "states": {
+      "missingTitle": "未找到这套穿搭",
+      "missingDescription": "这套穿搭已不存在，可能已在其他标签页或设备上被删除。",
+      "backToOutfits": "返回穿搭列表",
+      "authErrorTitle": "你不能编辑这套穿搭",
+      "loadErrorTitle": "无法加载这套穿搭",
+      "authErrorDescription": "你的会话可能已过期，或者这套穿搭属于其他账号。",
+      "loadErrorDescription": "加载这套穿搭时出了点问题。请检查网络后重试。",
+      "tryAgain": "重试",
+      "wornTitle": "这套穿搭已被穿过",
+      "wornDescription": "已穿过的穿搭属于你的穿着历史，因此不能直接编辑。你可以另存为新的灵感造型。",
+      "backToOutfit": "返回穿搭详情",
+      "saveAsNew": "另存为新造型"
+    },
+    "canvas": {
+      "empty": "从下方选择物品，开始搭配你的穿搭",
+      "removeItem": "移除 {name}",
+      "roles": {
+        "full_body": "整身",
+        "base_top": "上装",
+        "bottom": "下装",
+        "layer": "叠搭",
+        "footwear": "鞋履",
+        "accessory": "配饰"
+      }
+    },
+    "details": {
+      "name": "名称",
+      "nameRequiredForLookbook": "（保存到灵感库时必填）",
+      "namePlaceholder": "周五早午餐",
+      "occasion": "场合",
+      "occasionRequired": "必填",
+      "pickOccasionBeforeSaving": "保存前请先选择场合。",
+      "aiThinking": "AI 正在思考...",
+      "aiFinishThis": "让 AI 帮我补全"
+    },
+    "warnings": {
+      "noBottoms": "未选择下装。",
+      "noTop": "未选择上装。",
+      "multipleBottoms": "选择了多件下装。",
+      "noFootwear": "未选择鞋履。"
+    },
+    "aiAssist": {
+      "pickInputsFirst": "请先选择至少一件物品和一个场合",
+      "skippedItem": "已跳过 {name}：{reason}",
+      "addedItems": "AI 新增了 {count} 件物品",
+      "noNewItems": "AI 没有建议新的物品",
+      "failed": "AI 补全失败"
+    },
+    "itemPicker": {
+      "empty": "未找到物品",
+      "noWardrobeItems": "你的衣橱里还没有物品，请先添加一些。",
+      "searchPlaceholder": "搜索衣橱...",
+      "loadingMore": "加载更多...",
+      "noSearchResults": "没有匹配搜索的物品",
+      "showingAll": "已显示全部 {count} 件物品"
+    },
+    "dialog": {
+      "saveAsNewDescription": "已穿过的穿搭不能直接编辑，因为它属于你的穿着历史。要把当前修改另存为新的灵感造型吗？",
+      "discardChanges": "放弃更改"
+    }
+  },
+  "cloneToLookbook": {
+    "title": "保存到灵感库",
+    "description": "给这套造型起个名字，方便以后再次找到并穿上它。",
+    "name": "名称",
+    "namePlaceholder": "周五早午餐",
+    "validation": {
+      "nameRequired": "请输入名称"
+    },
+    "toasts": {
+      "saved": "已保存到灵感库",
+      "saveFailed": "保存到灵感库失败"
+    },
+    "saving": "保存中..."
+  },
+  "lineageCard": {
+    "replacement": "替代 {occasion} 推荐{date, select, none {} other {（来自 {date}）}}",
+    "fromLookbook": "来自你的灵感库造型：{name}"
+  },
+  "outfitDetail": {
+    "backToOutfits": "返回穿搭列表",
+    "lookbookTemplate": "灵感模板",
+    "itemsCount": "物品（{count}）",
+    "actions": {
+      "wearToday": "今天穿它",
+      "saveToLookbook": "保存到灵感库",
+      "seeAll": "查看全部"
+    },
+    "toasts": {
+      "addedToToday": "已添加到今天",
+      "wearTodayFailed": "标记今天穿失败",
+      "deleted": "穿搭已删除",
+      "deleteFailed": "删除失败"
+    },
+    "deleteConfirm": "删除这套穿搭？此操作无法撤销。",
+    "wearCount": "共穿过 {count} 次",
+    "undated": "未标注日期",
+    "notWornYet": "这套造型还没有被穿过。点击“今天穿它”即可记录。"
+  },
   "bulkActions": {
     "all": "全部",
     "selectAll": "全选",

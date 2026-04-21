@@ -9,7 +9,9 @@ import {
   Shirt,
   TreePine,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
+import { getOccasionLabel } from '@/lib/taxonomy-i18n';
 import { cn } from '@/lib/utils';
 import { OCCASIONS } from '@/lib/types';
 
@@ -55,6 +57,8 @@ interface OccasionChipsProps {
 }
 
 export function OccasionChips({ selected, onSelect }: OccasionChipsProps) {
+  const tt = useTranslations('taxonomy');
+
   return (
     <div className="flex flex-wrap gap-2">
       {OCCASIONS.map((occasion) => {
@@ -73,7 +77,9 @@ export function OccasionChips({ selected, onSelect }: OccasionChipsProps) {
             )}
           >
             {config?.icon}
-            <span className="text-sm font-medium">{occasion.label}</span>
+            <span className="text-sm font-medium">
+              {getOccasionLabel(occasion.value, (key) => tt(key as Parameters<typeof tt>[0]))}
+            </span>
           </button>
         );
       })}

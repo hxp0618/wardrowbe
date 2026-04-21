@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { enUS, zhCN } from 'date-fns/locale';
 import {
   BookmarkPlus,
   CalendarPlus,
@@ -13,6 +13,7 @@ import {
   Star,
   Trash2,
 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -23,11 +24,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { LineageCard } from '@/components/shared/lineage-card';
 import { CloneToLookbookDialog } from '@/components/shared/clone-to-lookbook-dialog';
 import { Link, useRouter } from '@/i18n/navigation';
+import { getClothingTypeLabel, getOccasionLabel } from '@/lib/taxonomy-i18n';
+import {
+  formatLongOutfitDate,
+  formatOutfitMetaLabel,
+  getOutfitTitle,
+} from '@/lib/outfit-i18n';
 import { useDeleteOutfit, useOutfit, useOutfits } from '@/lib/hooks/use-outfits';
 import { useWearToday } from '@/lib/hooks/use-studio';
 import { getErrorMessage } from '@/lib/api';
 
 export default function OutfitDetailPage() {
+  const t = useTranslations('outfitDetail');
+  const tc = useTranslations('common');
+  const th = useTranslations('outfitHistory');
+  const tcard = useTranslations('outfitCard');
+  const tt = useTranslations('taxonomy');
+  const locale = useLocale();
+  const dateLocale = locale === 'zh' ? zhCN : enUS;
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const outfitId = params?.id;
@@ -60,25 +74,37 @@ export default function OutfitDetailPage() {
   const handleWearToday = async () => {
     try {
       const result = await wearTodayMutation.mutateAsync({});
-      toast.success('Added to today');
+      toast.success(t('toasts.addedToToday'));
       router.push(`/dashboard/outfits/${result.id}`);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to wear today'));
+      toast.error(getErrorMessage(error, t('toasts.wearTodayFailed')));
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this outfit? This cannot be undone.')) return;
+    if (!confirm(t('deleteConfirm'))) return;
     try {
       await deleteMutation.mutateAsync(outfit.id);
-      toast.success('Outfit deleted');
+      toast.success(t('toasts.deleted'));
       router.push('/dashboard/outfits');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to delete'));
+      toast.error(getErrorMessage(error, t('toasts.deleteFailed')));
     }
   };
 
-  const title = outfit.name || `${outfit.occasion} outfit`;
+  const occasionLabel = getOccasionLabel(
+    outfit.occasion,
+    (key) => tt(key as Parameters<typeof tt>[0]),
+  );
+  const sourceLabel = th(`source.${outfit.source}` as Parameters<typeof th>[0]);
+  const title = getOutfitTitle(outfit, {
+    occasionLabel: () => occasionLabel,
+    outfitLabel: tcard('outfit'),
+  });
+  const metaLabel = formatOutfitMetaLabel(outfit, {
+    dateLocale,
+    lookbookTemplateLabel: t('lookbookTemplate'),
+  });
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -86,7 +112,7 @@ export default function OutfitDetailPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link href="/dashboard/outfits">
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Back to Outfits
+            {t('backToOutfits')}
           </Link>
         </Button>
       </div>
@@ -95,18 +121,12 @@ export default function OutfitDetailPage() {
         <h1 className="text-2xl font-bold tracking-tight capitalize">{title}</h1>
         <div className="flex items-center gap-2 mt-2">
           <Badge variant="outline" className="capitalize">
-            {outfit.occasion}
+            {occasionLabel}
           </Badge>
           <Badge variant="outline" className="capitalize">
-            {outfit.source.replace('_', ' ')}
+            {sourceLabel}
           </Badge>
-          <span className="text-sm text-muted-foreground">
-            {outfit.scheduled_for
-              ? formatDistanceToNow(parseISO(outfit.scheduled_for), {
-                  addSuffix: true,
-                })
-              : 'Lookbook template'}
-          </span>
+          <span className="text-sm text-muted-foreground">{metaLabel}</span>
         </div>
       </div>
 
@@ -115,7 +135,7 @@ export default function OutfitDetailPage() {
       <Card>
         <CardContent className="p-4">
           <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-            Items ({outfit.items.length})
+            {t('itemsCount', { count: outfit.items.length })}
           </h2>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
             {outfit.items.map((item) => (
@@ -136,13 +156,13 @@ export default function OutfitDetailPage() {
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <span className="text-xs text-muted-foreground">
-                        {item.type}
+                        {getClothingTypeLabel(item.type, (key) => tt(key as Parameters<typeof tt>[0]))}
                       </span>
                     </div>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {item.name || item.type}
+                  {item.name || getClothingTypeLabel(item.type, (key) => tt(key as Parameters<typeof tt>[0]))}
                 </p>
               </Link>
             ))}
@@ -158,20 +178,20 @@ export default function OutfitDetailPage() {
             ) : (
               <CalendarPlus className="h-4 w-4 mr-2" />
             )}
-            Wear today
+            {t('actions.wearToday')}
           </Button>
         )}
         {!isTemplate && (
           <Button variant="outline" onClick={() => setCloneDialogOpen(true)}>
             <BookmarkPlus className="h-4 w-4 mr-2" />
-            Save to lookbook
+            {t('actions.saveToLookbook')}
           </Button>
         )}
         {!isWorn && (
           <Button variant="outline" asChild>
             <Link href={`/dashboard/outfits/new?edit=${outfit.id}`}>
               <Pencil className="h-4 w-4 mr-2" />
-              Edit
+              {tc('edit')}
             </Link>
           </Button>
         )}
@@ -182,7 +202,7 @@ export default function OutfitDetailPage() {
           disabled={deleteMutation.isPending}
         >
           <Trash2 className="h-4 w-4 mr-2" />
-          Delete
+          {tc('delete')}
         </Button>
       </div>
 
@@ -190,8 +210,7 @@ export default function OutfitDetailPage() {
         <Card>
           <CardContent className="p-4">
             <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-              Worn {wearInstancesData.total} time
-              {wearInstancesData.total === 1 ? '' : 's'}
+              {t('wearCount', { count: wearInstancesData.total })}
             </h2>
             <div className="space-y-2">
               {wearInstancesData.outfits.map((wear) => (
@@ -202,8 +221,8 @@ export default function OutfitDetailPage() {
                 >
                   <span className="text-sm">
                     {wear.scheduled_for
-                      ? format(parseISO(wear.scheduled_for), 'MMM d, yyyy')
-                      : 'Undated'}
+                      ? formatLongOutfitDate(wear.scheduled_for, { dateLocale })
+                      : t('undated')}
                   </span>
                   {wear.feedback?.rating && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -217,7 +236,7 @@ export default function OutfitDetailPage() {
             {wearInstancesData.has_more && (
               <Button variant="link" size="sm" asChild className="mt-2 px-0">
                 <Link href={`/dashboard/outfits?filter=worn&cloned_from=${outfit.id}`}>
-                  See all
+                  {t('actions.seeAll')}
                 </Link>
               </Button>
             )}
@@ -228,7 +247,7 @@ export default function OutfitDetailPage() {
       {isTemplate && wearInstancesData && wearInstancesData.total === 0 && (
         <Alert className="border-muted">
           <AlertDescription className="text-sm text-muted-foreground">
-            This look has not been worn yet. Click &quot;Wear today&quot; to log it.
+            {t('notWornYet')}
           </AlertDescription>
         </Alert>
       )}

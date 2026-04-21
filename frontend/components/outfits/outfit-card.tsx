@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { formatDistanceToNow, parseISO } from 'date-fns';
+import { enUS, zhCN } from 'date-fns/locale';
 import {
   BookmarkCheck,
   Layers,
@@ -9,10 +9,17 @@ import {
   Shirt,
   Sparkles,
 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from '@/i18n/navigation';
+import { getOccasionLabel } from '@/lib/taxonomy-i18n';
+import {
+  formatOutfitMetaLabel,
+  getOutfitBadgeKey,
+  getOutfitTitle,
+} from '@/lib/outfit-i18n';
 import { cn } from '@/lib/utils';
 import type { Outfit } from '@/lib/hooks/use-outfits';
 
@@ -21,75 +28,66 @@ interface OutfitCardProps {
   onClick?: () => void;
 }
 
-function getSourceBadge(outfit: Outfit): {
+function getSourceBadge(
+  badgeKey: ReturnType<typeof getOutfitBadgeKey>,
+  t: (key: `badge.${'replacement' | 'worn' | 'studio' | 'pairing' | 'ai'}`) => string,
+): {
   label: string;
   icon: React.ReactNode;
   className: string;
 } | null {
-  if (outfit.replaces_outfit_id) {
+  if (badgeKey === 'replacement') {
     return {
-      label: 'Replacement',
+      label: t('badge.replacement'),
       icon: <RefreshCw className="h-3 w-3" />,
       className: 'bg-orange-100 text-orange-700 border-orange-200',
     };
   }
-  if (
-    outfit.cloned_from_outfit_id &&
-    outfit.source === 'manual' &&
-    outfit.scheduled_for
-  ) {
+  if (badgeKey === 'worn') {
     return {
-      label: 'Worn',
+      label: t('badge.worn'),
       icon: <BookmarkCheck className="h-3 w-3" />,
       className: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     };
   }
-  if (outfit.source === 'manual') {
+  if (badgeKey === 'studio') {
     return {
-      label: 'Studio',
+      label: t('badge.studio'),
       icon: <Shirt className="h-3 w-3" />,
       className: 'bg-purple-100 text-purple-700 border-purple-200',
     };
   }
-  if (outfit.source === 'pairing') {
+  if (badgeKey === 'pairing') {
     return {
-      label: 'Pairing',
+      label: t('badge.pairing'),
       icon: <Layers className="h-3 w-3" />,
       className: 'bg-amber-100 text-amber-700 border-amber-200',
     };
   }
   return {
-    label: 'AI',
+    label: t('badge.ai'),
     icon: <Sparkles className="h-3 w-3" />,
     className: 'bg-blue-100 text-blue-700 border-blue-200',
   };
 }
 
-function getCardTitle(outfit: Outfit): string {
-  if (outfit.name) return outfit.name;
-  if (outfit.highlights && outfit.highlights.length > 0) {
-    return outfit.highlights[0];
-  }
-  const occasion =
-    outfit.occasion.charAt(0).toUpperCase() + outfit.occasion.slice(1);
-  return `${occasion} outfit`;
-}
-
-function getMetaLabel(outfit: Outfit): string {
-  if (!outfit.scheduled_for) return 'Lookbook template';
-  try {
-    return formatDistanceToNow(parseISO(outfit.scheduled_for), {
-      addSuffix: true,
-    });
-  } catch {
-    return outfit.scheduled_for;
-  }
-}
-
 export function OutfitCard({ outfit, onClick }: OutfitCardProps) {
-  const badge = getSourceBadge(outfit);
+  const t = useTranslations('outfitCard');
+  const tt = useTranslations('taxonomy');
+  const locale = useLocale();
+  const dateLocale = locale === 'zh' ? zhCN : enUS;
+  const badge = getSourceBadge(getOutfitBadgeKey(outfit), t);
   const visibleItems = outfit.items.slice(0, 4);
   const overflow = outfit.items.length - visibleItems.length;
+  const occasionLabel = getOccasionLabel(outfit.occasion, (key) => tt(key as Parameters<typeof tt>[0]));
+  const title = getOutfitTitle(outfit, {
+    occasionLabel: () => occasionLabel,
+    outfitLabel: t('outfit'),
+  });
+  const metaLabel = formatOutfitMetaLabel(outfit, {
+    dateLocale,
+    lookbookTemplateLabel: t('lookbookTemplate'),
+  });
 
   const content = (
     <Card
@@ -147,13 +145,13 @@ export function OutfitCard({ outfit, onClick }: OutfitCardProps) {
         </div>
         <div className="p-3 space-y-1">
           <h3 className="text-sm font-semibold leading-tight truncate">
-            {getCardTitle(outfit)}
+            {title}
           </h3>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <Badge variant="outline" className="capitalize">
-              {outfit.occasion}
+              {occasionLabel}
             </Badge>
-            <span>{getMetaLabel(outfit)}</span>
+            <span>{metaLabel}</span>
           </div>
         </div>
       </CardContent>
