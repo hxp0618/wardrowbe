@@ -3,9 +3,11 @@ import logging
 import os
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urljoin
 
 import httpx
 
+from app.config import get_settings
 from app.schemas.notification import (
     BarkConfig,
     EmailConfig,
@@ -14,6 +16,7 @@ from app.schemas.notification import (
     NtfyConfig,
     WebhookConfig,
 )
+from app.utils.network import validate_outbound_url
 
 logger = logging.getLogger(__name__)
 
@@ -423,7 +426,6 @@ class WebhookProvider:
         self.headers = dict(config.headers or {})
         self.template = config.template
         self.chat_id = config.chat_id
-        self.verify_tls = bool(config.verify_tls)
 
     def _text_summary(self, message: WebhookMessage) -> str:
         parts: list[str] = []
@@ -540,15 +542,37 @@ class WebhookProvider:
 
         return {"title": message.title, "body": summary, "url": message.url}
 
+    async def _send_request(
+        self,
+        client: httpx.AsyncClient,
+        request_kwargs: dict[str, Any],
+    ) -> httpx.Response:
+        current_url = self.url
+        for _ in range(5):
+            response = await client.request(self.method, current_url, **request_kwargs)
+            if not response.is_redirect:
+                return response
+
+            redirect_target = response.headers.get("location")
+            if not redirect_target:
+                return response
+
+            next_url = urljoin(current_url, redirect_target)
+            validate_outbound_url(
+                next_url,
+                allow_private=get_settings().allow_private_webhook,
+            )
+            current_url = next_url
+
+        raise ValueError("Webhook redirect chain exceeded limit")
+
     async def send(self, message: WebhookMessage) -> dict:
         payload = self._build_payload(message)
         headers = {"Content-Type": self.content_type, "User-Agent": "Wardrowbe/1.0"}
         headers.update(self.headers)
 
         try:
-            async with httpx.AsyncClient(
-                timeout=30.0, follow_redirects=True, verify=self.verify_tls
-            ) as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
                 request_kwargs: dict[str, Any] = {"headers": headers}
                 if self.content_type == "application/x-www-form-urlencoded" and isinstance(payload, dict):
                     request_kwargs["data"] = payload
@@ -556,7 +580,7 @@ class WebhookProvider:
                     request_kwargs["json"] = payload
                 else:
                     request_kwargs["content"] = str(payload)
-                response = await client.request(self.method, self.url, **request_kwargs)
+                response = await self._send_request(client, request_kwargs)
 
                 if 200 <= response.status_code < 300:
                     try:

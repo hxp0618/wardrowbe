@@ -7,9 +7,11 @@ from urllib.parse import urlparse
 
 _BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain"}
 _BLOCKED_IPS = {
-    ipaddress.ip_address("169.254.169.254"),  # AWS/GCP/Azure metadata
+    ipaddress.ip_address("169.254.169.254"),  # Common cloud metadata target
 }
-_BLOCK_MESSAGE = "Webhook URL must not target localhost or private network addresses"
+_OUTBOUND_BLOCK_MESSAGE = (
+    "Outbound URL must not target localhost, private, or otherwise reserved addresses"
+)
 
 
 def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
@@ -24,37 +26,59 @@ def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
     )
 
 
-def validate_public_url(url: str, *, allow_private: bool = False) -> str:
-    if allow_private:
-        return url
+def _resolve_host_ips(host: str, port: int) -> list[ipaddress._BaseAddress]:
+    try:
+        resolved = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise ValueError(_OUTBOUND_BLOCK_MESSAGE) from exc
 
-    parsed = urlparse(url)
-    host = parsed.hostname
-    if not host:
-        raise ValueError("Webhook URL is missing a host")
+    candidates: list[ipaddress._BaseAddress] = []
+    for _, _, _, _, sockaddr in resolved:
+        candidates.append(ipaddress.ip_address(sockaddr[0]))
+    return candidates
 
-    if host.lower() in _BLOCKED_HOSTNAMES:
-        raise ValueError(_BLOCK_MESSAGE)
+
+def is_private_hostname_or_ip(host: str, *, port: int | None = None, resolve_dns: bool = True) -> bool:
+    normalized_host = host.strip().lower()
+    if not normalized_host:
+        raise ValueError("Outbound URL is missing a host")
+
+    if normalized_host in _BLOCKED_HOSTNAMES:
+        return True
 
     try:
-        ip = ipaddress.ip_address(host)
+        return _is_blocked_ip(ipaddress.ip_address(normalized_host))
     except ValueError:
-        try:
-            resolved = socket.getaddrinfo(
-                host,
-                parsed.port or (443 if parsed.scheme == "https" else 80),
-                type=socket.SOCK_STREAM,
-            )
-        except socket.gaierror:
-            return url
+        if not resolve_dns:
+            return False
 
-        for _, _, _, _, sockaddr in resolved:
-            candidate = ipaddress.ip_address(sockaddr[0])
-            if _is_blocked_ip(candidate):
-                raise ValueError(_BLOCK_MESSAGE)
-        return url
+    resolved_port = port or 80
+    return any(_is_blocked_ip(candidate) for candidate in _resolve_host_ips(normalized_host, resolved_port))
 
-    if _is_blocked_ip(ip):
-        raise ValueError(_BLOCK_MESSAGE)
+
+def validate_outbound_url(
+    url: str,
+    *,
+    allow_private: bool = False,
+    resolve_dns: bool = True,
+) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("Outbound URL must start with http:// or https://")
+
+    host = parsed.hostname
+    if not host:
+        raise ValueError("Outbound URL is missing a host")
+
+    if not allow_private and is_private_hostname_or_ip(
+        host,
+        port=parsed.port or (443 if parsed.scheme == "https" else 80),
+        resolve_dns=resolve_dns,
+    ):
+        raise ValueError(_OUTBOUND_BLOCK_MESSAGE)
 
     return url
+
+
+def validate_public_url(url: str, *, allow_private: bool = False) -> str:
+    return validate_outbound_url(url, allow_private=allow_private, resolve_dns=True)

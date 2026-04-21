@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.user import User
+from app.config import get_settings
 from app.schemas.preference import PreferenceResponse, PreferenceUpdate
 from app.services.preference_service import PreferenceService
 from app.utils.auth import get_current_user
-from app.utils.i18n import translate_request
+from app.utils.i18n import translate_request, translate_validation_message
+from app.utils.network import validate_outbound_url
 
 router = APIRouter(prefix="/users/me/preferences", tags=["Preferences"])
 
@@ -133,9 +135,20 @@ async def test_ai_endpoint(
         )
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        validated_url = validate_outbound_url(
+            url,
+            allow_private=get_settings().allow_private_ai_endpoints,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=translate_validation_message(str(exc), http_request),
+        ) from None
+
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
             # Try Ollama-style health check
-            health_url = url.replace("/v1", "/api/tags")
+            health_url = validated_url.removesuffix("/v1") + "/api/tags"
             response = await client.get(health_url)
 
             if response.status_code == 200:

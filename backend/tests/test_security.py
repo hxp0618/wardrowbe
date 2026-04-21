@@ -2,10 +2,14 @@ import html as html_mod
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastapi import Request
 from pydantic import ValidationError
 
+from app.config import get_settings
 from app.schemas.notification import NtfyConfig, ScheduleBase, ScheduleUpdate
 from app.utils.i18n import translate
+from app.utils.network import validate_public_url
+from app.utils.rate_limit import _get_client_ip
 
 
 class TestAIEndpointSchemeValidation:
@@ -20,14 +24,68 @@ class TestAIEndpointSchemeValidation:
         assert "HTTP" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_allows_localhost(self, client, auth_headers):
+    async def test_rejects_private_url_by_default(self, client, auth_headers):
         response = await client.post(
             "/api/v1/users/me/preferences/test-ai-endpoint",
             json={"url": "http://127.0.0.1:11434/v1"},
             headers=auth_headers,
         )
-        # Should not be rejected for being private — this is self-hosted OSS
-        assert response.status_code != 400 or "HTTP" not in response.json().get("detail", "")
+        assert response.status_code == 400
+
+
+def _make_request(client_host: str, headers: dict[str, str] | None = None) -> Request:
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [
+            (key.lower().encode("latin-1"), value.encode("latin-1"))
+            for key, value in (headers or {}).items()
+        ],
+        "client": (client_host, 12345),
+        "server": ("testserver", 80),
+        "scheme": "http",
+        "query_string": b"",
+    }
+    return Request(scope)
+
+
+class TestOutboundUrlValidation:
+    def test_validate_public_url_rejects_loopback(self):
+        with pytest.raises(ValueError):
+            validate_public_url("http://127.0.0.1:11434/v1")
+
+    def test_validate_public_url_rejects_metadata_ip(self):
+        with pytest.raises(ValueError):
+            validate_public_url("http://169.254.169.254/latest/meta-data")
+
+    def test_validate_public_url_rejects_unresolvable_hostname(self):
+        with pytest.raises(ValueError):
+            validate_public_url("https://does-not-resolve.invalid/api")
+
+
+class TestTrustedProxyHandling:
+    def test_get_client_ip_ignores_forwarded_for_from_untrusted_client(self):
+        request = _make_request(
+            client_host="203.0.113.10",
+            headers={"x-forwarded-for": "1.2.3.4"},
+        )
+
+        assert _get_client_ip(request) == "203.0.113.10"
+
+    def test_get_client_ip_uses_forwarded_for_from_trusted_proxy(self, monkeypatch):
+        monkeypatch.setenv("TRUSTED_PROXY_IPS", "203.0.113.0/24")
+        get_settings.cache_clear()
+        try:
+            request = _make_request(
+                client_host="203.0.113.10",
+                headers={"x-forwarded-for": "1.2.3.4, 203.0.113.10"},
+            )
+
+            assert _get_client_ip(request) == "1.2.3.4"
+        finally:
+            monkeypatch.delenv("TRUSTED_PROXY_IPS", raising=False)
+            get_settings.cache_clear()
 
 
 class TestOccasionValidation:

@@ -1,8 +1,15 @@
+from unittest.mock import AsyncMock, patch
+
+import httpx
 import pytest
+from pydantic import ValidationError
 from httpx import AsyncClient
 
+from app.api.notifications import _normalize_notification_config
 from app.config import get_settings
 from app.models.notification import NotificationSettings
+from app.schemas.notification import WebhookConfig
+from app.services.notification_providers import WebhookMessage, WebhookProvider
 
 
 class TestNotificationSettings:
@@ -62,56 +69,48 @@ class TestNotificationSettings:
     @pytest.mark.asyncio
     async def test_create_webhook_setting_rejects_private_url(
         self,
-        client: AsyncClient,
-        test_user,
-        auth_headers,
     ):
-        response = await client.post(
-            "/api/v1/notifications/settings",
-            json={
-                "channel": "webhook",
-                "config": {
+        with pytest.raises(ValidationError):
+            _normalize_notification_config(
+                "webhook",
+                {
                     "url": "http://127.0.0.1:8080/hook",
                     "format": "json",
                 },
-                "enabled": True,
-                "priority": 1,
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 400
+            )
 
-    @pytest.mark.asyncio
-    async def test_create_webhook_setting_allows_private_url_when_opted_in(
+    def test_create_webhook_setting_allows_private_url_when_opted_in(
         self,
-        client: AsyncClient,
-        test_user,
-        auth_headers,
         monkeypatch,
     ):
         monkeypatch.setenv("ALLOW_PRIVATE_WEBHOOK", "true")
         get_settings.cache_clear()
         try:
-            response = await client.post(
-                "/api/v1/notifications/settings",
-                json={
-                    "channel": "webhook",
-                    "config": {
-                        "url": "http://127.0.0.1:8080/hook",
-                        "format": "json",
-                    },
-                    "enabled": True,
-                    "priority": 1,
+            config = _normalize_notification_config(
+                "webhook",
+                {
+                    "url": "http://127.0.0.1:8080/hook",
+                    "format": "json",
                 },
-                headers=auth_headers,
             )
         finally:
             monkeypatch.delenv("ALLOW_PRIVATE_WEBHOOK", raising=False)
             get_settings.cache_clear()
 
-        assert response.status_code == 201
-        data = response.json()
-        assert data["channel"] == "webhook"
+        assert config["url"] == "http://127.0.0.1:8080/hook"
+
+    def test_create_webhook_setting_drops_verify_tls_flag(
+        self,
+    ):
+        config = _normalize_notification_config(
+            "webhook",
+            {
+                "url": "https://1.1.1.1/hook",
+                "format": "json",
+                "verify_tls": False,
+            },
+        )
+        assert "verify_tls" not in config
 
     @pytest.mark.asyncio
     async def test_create_email_setting(self, client: AsyncClient, test_user, auth_headers):
@@ -253,3 +252,25 @@ class TestNotificationDefaults:
         data = response.json()
         assert "server" in data
         assert data["server"].startswith("http")
+
+
+class TestWebhookProviderSecurity:
+    @pytest.mark.asyncio
+    async def test_webhook_provider_rejects_private_redirect_target(self):
+        redirect_response = httpx.Response(
+            302,
+            headers={"Location": "http://127.0.0.1:8080/hook"},
+            request=httpx.Request("POST", "https://1.1.1.1/hook"),
+        )
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=redirect_response)
+
+        with patch("app.services.notification_providers.httpx.AsyncClient") as mock_async_client:
+            mock_async_client.return_value.__aenter__.return_value = mock_client
+
+            provider = WebhookProvider(WebhookConfig(url="https://1.1.1.1/hook"))
+            result = await provider.send(WebhookMessage(title="Wardrowbe", body="Test"))
+
+        assert result["success"] is False
+        assert "private" in result["error"].lower()
+        mock_client.request.assert_awaited_once()

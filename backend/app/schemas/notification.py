@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, field_validator, model_validator
 
 from app.config import get_settings
-from app.utils.network import validate_public_url
+from app.utils.network import validate_outbound_url
 
 
 # Channel-specific configurations
@@ -171,7 +171,6 @@ class WebhookConfig(BaseModel):
     headers: dict[str, str] | None = None
     template: str | None = None
     chat_id: str | None = None
-    verify_tls: bool = True
 
     @model_validator(mode="after")
     def normalize_preset(self) -> "WebhookConfig":
@@ -189,7 +188,7 @@ class WebhookConfig(BaseModel):
             raise ValueError("Webhook URL must start with http:// or https://")
         if len(v) > 2000:
             raise ValueError("Webhook URL must be 2000 characters or fewer")
-        return validate_public_url(v, allow_private=get_settings().allow_private_webhook)
+        return validate_outbound_url(v, allow_private=get_settings().allow_private_webhook)
 
     @field_validator("headers")
     @classmethod

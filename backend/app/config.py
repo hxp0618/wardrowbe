@@ -1,8 +1,9 @@
 import logging
 from functools import lru_cache
+from typing import Annotated
 
-from pydantic import Field, PostgresDsn, RedisDsn
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, PostgresDsn, RedisDsn, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,11 @@ class Settings(BaseSettings):
     # Bark (optional default server for UI pre-fill; device_key is per-user in settings)
     bark_server: str | None = None
     allow_private_webhook: bool = False
+    allow_private_ai_endpoints: bool = False
+    trusted_proxy_ips: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    trusted_proxy_headers: Annotated[list[str], NoDecode] = Field(
+        default=["x-forwarded-for"]
+    )
     # Legacy/other providers
     mattermost_webhook_url: str | None = None
     smtp_host: str | None = None
@@ -111,6 +117,13 @@ class Settings(BaseSettings):
         if self.oidc_issuer_url and self.oidc_client_id:
             return "oidc"
         return "unknown"
+
+    @field_validator("trusted_proxy_ips", "trusted_proxy_headers", mode="before")
+    @classmethod
+    def _parse_list_env(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
 
 
 @lru_cache
