@@ -12,8 +12,12 @@ function createWrapper() {
       },
     },
   })
-  return ({ children }: { children: React.ReactNode }) =>
+  const TestQueryClientWrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children)
+
+  TestQueryClientWrapper.displayName = 'TestQueryClientWrapper'
+
+  return TestQueryClientWrapper
 }
 
 describe('API Hooks', () => {
