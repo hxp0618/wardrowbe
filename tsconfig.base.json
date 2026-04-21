@@ -16,6 +16,9 @@
       "@wardrowbe/shared-domain": [
         "./packages/shared-domain/src/index.ts"
       ],
+      "@wardrowbe/shared-domain/*": [
+        "./packages/shared-domain/src/*"
+      ],
       "@wardrowbe/shared-i18n": [
         "./packages/shared-i18n/src/index.ts"
       ]

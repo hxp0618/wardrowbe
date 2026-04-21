@@ -4,7 +4,12 @@
   "version": "0.0.0",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./date-utils": "./src/date-utils.ts",
+    "./folder-utils": "./src/folder-utils.ts",
+    "./reorder-utils": "./src/reorder-utils.ts",
+    "./temperature": "./src/temperature.ts",
+    "./types": "./src/types.ts"
   },
   "types": "./src/index.ts"
 }
