@@ -153,8 +153,6 @@ services:
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
       OIDC_END_SESSION_URL: ${OIDC_END_SESSION_URL:-}
-      # Trust self-signed certs for internal OIDC provider
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
     depends_on:
       - backend
     healthcheck:
