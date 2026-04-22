@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": true,
+    "lib": ["ES2017", "DOM"]
+  },
+  "include": ["src/**/*.ts"]
+}

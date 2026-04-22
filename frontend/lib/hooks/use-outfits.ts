@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { api, setAccessToken } from '@/lib/api';
-import { FamilyRating } from '@/lib/types';
+import { FamilyRating, type WeatherData } from '@/lib/types';
 
 // Helper to set token if available (for NextAuth mode)
 function useSetTokenIfAvailable() {
@@ -56,7 +56,7 @@ export interface Outfit {
   reasoning: string | null;
   style_notes: string | null;
   highlights: string[] | null;
-  weather: Record<string, unknown> | null;
+  weather: WeatherData | null;
   items: OutfitItem[];
   feedback: FeedbackSummary | null;
   family_ratings: FamilyRating[] | null;

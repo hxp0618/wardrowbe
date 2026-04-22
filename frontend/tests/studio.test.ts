@@ -14,7 +14,7 @@ import {
 import { mergeAiAssist } from '@/lib/studio/ai-assist-merge';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/studio/draft-storage';
 import { computeEditLoadPhase } from '@/lib/studio/edit-load';
-import zhMessages from '@/messages/zh.json';
+import { messagesZh as zhMessages } from '@wardrowbe/shared-i18n';
 
 vi.mock('next/image', () => ({
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => React.createElement('img', props),
@@ -298,10 +298,10 @@ describe('computeEditLoadPhase', () => {
 describe('CanvasPanel', () => {
   it('renders outer layer labels from zh translations', () => {
     render(
-      React.createElement(
-        NextIntlClientProvider,
-        { locale: 'zh', messages: zhMessages },
-        React.createElement(CanvasPanel, {
+      React.createElement(NextIntlClientProvider, {
+        locale: 'zh',
+        messages: zhMessages,
+        children: React.createElement(CanvasPanel, {
           items: [
             {
               id: '1',
@@ -311,8 +311,8 @@ describe('CanvasPanel', () => {
             },
           ],
           onRemove: vi.fn(),
-        })
-      )
+        }),
+      })
     );
 
     expect(screen.getByText('外套')).toBeInTheDocument();

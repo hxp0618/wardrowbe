@@ -79,8 +79,8 @@ services:
   # Next.js Frontend
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: wardrobe-frontend
     environment:
       NEXT_PUBLIC_API_URL: http://backend:8000

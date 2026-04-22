@@ -1,7 +1,19 @@
+import path from "path";
+
 import { defineConfig } from "@tarojs/cli";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import devConfig from "./dev";
 import prodConfig from "./prod";
+
+/** Repo root when commands run from wechat-miniapp/ */
+const repoRoot = path.resolve(process.cwd(), "..");
+
+const sharedApiSrc = path.join(repoRoot, "packages/shared-api/src");
+
+const resolveSharedPackages = (chain) => {
+  chain.resolve.alias.set("@wardrowbe/shared-api", sharedApiSrc);
+  chain.resolve.alias.set("@wardrowbe/shared-domain", path.join(repoRoot, "packages/shared-domain/src"));
+};
 
 export default defineConfig(async (merge, { command, mode }) => {
   const baseConfig = {
@@ -28,6 +40,9 @@ export default defineConfig(async (merge, { command, mode }) => {
       enable: false,
     },
     mini: {
+      compile: {
+        include: [(modulePath) => typeof modulePath === "string" && modulePath.includes(`${path.sep}packages${path.sep}shared-api`)],
+      },
       postcss: {
         pxtransform: {
           enable: true,
@@ -43,6 +58,7 @@ export default defineConfig(async (merge, { command, mode }) => {
       },
       webpackChain(chain) {
         chain.resolve.plugin("tsconfig-paths").use(TsconfigPathsPlugin);
+        resolveSharedPackages(chain);
       },
     },
     h5: {
@@ -72,6 +88,7 @@ export default defineConfig(async (merge, { command, mode }) => {
       },
       webpackChain(chain) {
         chain.resolve.plugin("tsconfig-paths").use(TsconfigPathsPlugin);
+        resolveSharedPackages(chain);
       },
     },
     rn: {
