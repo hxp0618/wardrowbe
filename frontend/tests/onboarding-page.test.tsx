@@ -113,8 +113,6 @@ describe('request i18n config', () => {
       getRequestConfig: (factory: unknown) => factory,
     }))
     vi.doMock('@wardrowbe/shared-i18n', () => ({
-      supportedLocales: ['zh', 'en'],
-      defaultLocale: 'zh',
       messages: {
         en: {
           __source: 'shared-en',
@@ -128,65 +126,6 @@ describe('request i18n config', () => {
     const { default: getRequestConfig } = await import('../i18n/request')
     const config = await getRequestConfig({
       requestLocale: Promise.resolve('en'),
-    })
-
-    expect(config).toMatchObject({
-      locale: 'en',
-      messages: {
-        __source: 'shared-en',
-      },
-    })
-  })
-
-  it('falls back to a real shared message locale when metadata drifts', async () => {
-    vi.resetModules()
-    vi.doMock('next-intl/server', () => ({
-      getRequestConfig: (factory: unknown) => factory,
-    }))
-    vi.doMock('@wardrowbe/shared-i18n', () => ({
-      supportedLocales: ['fr'],
-      defaultLocale: 'fr',
-      messages: {
-        en: {
-          __source: 'shared-en',
-        },
-        zh: {
-          __source: 'shared-zh',
-        },
-      },
-    }))
-
-    const { default: getRequestConfig } = await import('../i18n/request')
-    const config = await getRequestConfig({
-      requestLocale: Promise.resolve('fr'),
-    })
-
-    expect(config).toMatchObject({
-      locale: 'zh',
-      messages: {
-        __source: 'shared-zh',
-      },
-    })
-  })
-
-  it('falls back to the first available shared locale when zh is unavailable', async () => {
-    vi.resetModules()
-    vi.doMock('next-intl/server', () => ({
-      getRequestConfig: (factory: unknown) => factory,
-    }))
-    vi.doMock('@wardrowbe/shared-i18n', () => ({
-      supportedLocales: ['fr'],
-      defaultLocale: 'fr',
-      messages: {
-        en: {
-          __source: 'shared-en',
-        },
-      },
-    }))
-
-    const { default: getRequestConfig } = await import('../i18n/request')
-    const config = await getRequestConfig({
-      requestLocale: Promise.resolve('fr'),
     })
 
     expect(config).toMatchObject({

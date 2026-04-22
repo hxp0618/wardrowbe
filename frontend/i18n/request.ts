@@ -1,22 +1,9 @@
 import {getRequestConfig} from 'next-intl/server';
 import {messages, type SupportedLocale} from '@wardrowbe/shared-i18n';
+import {routing} from './routing';
 
 function isSupportedLocale(locale: string): locale is SupportedLocale {
-  return Object.prototype.hasOwnProperty.call(messages, locale);
-}
-
-function getFallbackLocale(): SupportedLocale {
-  if (isSupportedLocale('zh')) {
-    return 'zh';
-  }
-
-  for (const locale of Object.keys(messages)) {
-    if (isSupportedLocale(locale)) {
-      return locale;
-    }
-  }
-
-  throw new Error('No shared i18n locales configured');
+  return routing.locales.includes(locale as SupportedLocale);
 }
 
 export default getRequestConfig(async ({requestLocale}) => {
@@ -24,7 +11,7 @@ export default getRequestConfig(async ({requestLocale}) => {
   const locale: SupportedLocale =
     requestedLocale && isSupportedLocale(requestedLocale)
       ? requestedLocale
-      : getFallbackLocale();
+      : (routing.defaultLocale as SupportedLocale);
 
   return {
     locale,
