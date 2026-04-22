@@ -1,7 +1,9 @@
 import pytest
 from httpx import AsyncClient
 
+from app.api import auth as auth_api
 from app.api.auth import create_access_token
+from app.config import Settings
 from app.utils.auth import decode_token
 
 
@@ -53,6 +55,40 @@ class TestAuthConfig:
         assert data["dev_mode"] is True
         assert data["oidc"]["enabled"] is False
 
+    @pytest.mark.asyncio
+    async def test_auth_config_wechat_mode(self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(auth_api.settings, "debug", False)
+        monkeypatch.setattr(auth_api.settings, "secret_key", "non-default-secret")
+        monkeypatch.setattr(auth_api.settings, "wechat_app_id", "wx-app-id")
+        monkeypatch.setattr(auth_api.settings, "wechat_app_secret", "wx-app-secret")
+        monkeypatch.setattr(auth_api.settings, "oidc_issuer_url", None)
+        monkeypatch.setattr(auth_api.settings, "oidc_client_id", None)
+
+        config_response = await client.get("/api/v1/auth/config")
+        assert config_response.status_code == 200
+        config_data = config_response.json()
+        assert config_data["dev_mode"] is False
+        assert config_data["oidc"]["enabled"] is False
+
+        status_response = await client.get("/api/v1/auth/status")
+        assert status_response.status_code == 200
+        status_data = status_response.json()
+        assert status_data["configured"] is True
+        assert status_data["mode"] == "wechat"
+        assert status_data["error"] is None
+
+    def test_get_auth_mode_wechat_plus_dev(self):
+        settings = Settings.model_construct(
+            debug=True,
+            secret_key="change-me-in-production",
+            wechat_app_id="wx-app-id",
+            wechat_app_secret="wx-app-secret",
+            oidc_issuer_url=None,
+            oidc_client_id=None,
+        )
+
+        assert settings.get_auth_mode() == "wechat+dev"
+
 
 class TestAuthSync:
     """Tests for auth sync endpoint."""
@@ -102,6 +138,72 @@ class TestAuthSync:
             },
         )
         assert response.status_code == 422
+
+
+class TestDevLogin:
+    @pytest.mark.asyncio
+    async def test_dev_login_success(self, client: AsyncClient):
+        response = await client.post(
+            "/api/v1/auth/dev-login",
+            json={
+                "email": "dev-user@example.com",
+                "display_name": "Dev User",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "dev-user@example.com"
+        assert data["display_name"] == "Dev User"
+        assert data["is_new_user"] is True
+        assert data["access_token"]
+
+    @pytest.mark.asyncio
+    async def test_dev_login_disabled_outside_dev_mode(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(auth_api.settings, "debug", False)
+        monkeypatch.setattr(auth_api.settings, "secret_key", "non-default-secret")
+
+        response = await client.post(
+            "/api/v1/auth/dev-login",
+            json={
+                "email": "dev-user@example.com",
+                "display_name": "Dev User",
+            },
+        )
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Dev login is disabled"
+
+
+class TestWechatLogin:
+    @pytest.mark.asyncio
+    async def test_wechat_code_login_success(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def fake_exchange_code(self, code: str) -> dict:
+            assert code == "wechat-code"
+            return {"openid": "openid-123456"}
+
+        monkeypatch.setattr(auth_api.settings, "wechat_app_id", "wx-app-id")
+        monkeypatch.setattr(auth_api.settings, "wechat_app_secret", "wx-app-secret")
+        monkeypatch.setattr(
+            "app.services.wechat_auth_service.WechatAuthService.exchange_code",
+            fake_exchange_code,
+        )
+
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "wechat-code"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "openid-123456@wechat.local"
+        assert data["display_name"] == "微信用户-123456"
+        assert data["is_new_user"] is True
+        assert data["access_token"]
 
 
 class TestProtectedRoutes:

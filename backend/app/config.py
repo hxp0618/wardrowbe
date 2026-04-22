@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     oidc_client_id: str | None = Field(default=None)
     oidc_client_secret: str | None = None
     oidc_mobile_client_id: str | None = None
+    wechat_app_id: str | None = None
+    wechat_app_secret: str | None = None
 
     # AI Service (OpenAI-compatible API - supports Ollama, OpenAI, etc.)
     ai_base_url: str = Field(default="")
@@ -102,18 +104,35 @@ class Settings(BaseSettings):
                 "OIDC is partially configured: both OIDC_ISSUER_URL and OIDC_CLIENT_ID must be set together."
             )
 
+        wechat_app = bool(self.wechat_app_id)
+        wechat_secret = bool(self.wechat_app_secret)
+        if wechat_app != wechat_secret:
+            raise RuntimeError(
+                "WeChat miniapp auth is partially configured: both WECHAT_APP_ID and "
+                "WECHAT_APP_SECRET must be set together."
+            )
+
         oidc_configured = oidc_issuer and oidc_client
+        wechat_configured = wechat_app and wechat_secret
         is_dev = self.debug and self.secret_key == DEFAULT_SECRET_KEY
-        if not oidc_configured and not is_dev:
+        if not oidc_configured and not wechat_configured and not is_dev:
             return (
                 "No authentication method configured. "
-                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or enable DEBUG mode."
+                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, "
+                "WECHAT_APP_ID + WECHAT_APP_SECRET, or enable DEBUG mode."
             )
 
         return None
 
     def get_auth_mode(self) -> str:
-        if self.debug and self.secret_key == DEFAULT_SECRET_KEY:
+        is_dev = self.debug and self.secret_key == DEFAULT_SECRET_KEY
+        wechat_configured = bool(self.wechat_app_id and self.wechat_app_secret)
+
+        if wechat_configured and is_dev:
+            return "wechat+dev"
+        if wechat_configured:
+            return "wechat"
+        if is_dev:
             return "dev"
         if self.oidc_issuer_url and self.oidc_client_id:
             return "oidc"

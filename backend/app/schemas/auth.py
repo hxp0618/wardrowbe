@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TokenPayload(BaseModel):
@@ -19,3 +19,12 @@ class AuthSession(BaseModel):
     family_id: UUID | None = None
     role: str
     is_authenticated: bool = True
+
+
+class WechatCodeLoginRequest(BaseModel):
+    code: str = Field(..., min_length=1)
+
+
+class DevLoginRequest(BaseModel):
+    email: str
+    display_name: str = Field(..., min_length=1, max_length=100)
