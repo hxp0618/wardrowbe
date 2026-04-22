@@ -12,8 +12,15 @@
   },
   "types": "./src/index.ts",
   "files": ["src"],
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@wardrowbe/shared-api": "file:../shared-api",
     "@wardrowbe/shared-domain": "file:../shared-domain"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.4"
   }
 }

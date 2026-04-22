@@ -11,7 +11,8 @@
   },
   "scripts": {
     "build:weapp": "taro build --type weapp",
-    "dev:weapp": "npm run build:weapp -- --watch"
+    "dev:weapp": "npm run build:weapp -- --watch",
+    "test": "vitest run"
   },
   "browserslist": [
     "defaults and fully supports es6-module",
@@ -52,6 +53,7 @@
     "stylelint": "^16.4.0",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "typescript": "^5.4.5",
+    "vitest": "^3.2.4",
     "webpack": "5.91.0"
   }
 }

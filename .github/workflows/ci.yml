@@ -137,6 +137,63 @@ jobs:
           cd frontend
           npx tsc --noEmit
 
+  shared-services-test:
+    name: Shared Services Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: packages/shared-services/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd packages/shared-services
+          npm ci
+          npm test
+
+  wechat-miniapp-test:
+    name: WeChat Mini Program Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: wechat-miniapp/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd wechat-miniapp
+          npm ci
+          npm test
+
+  wechat-miniapp-build:
+    name: WeChat Mini Program Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: wechat-miniapp/package-lock.json
+
+      - name: Install and build
+        run: |
+          cd wechat-miniapp
+          npm ci
+          npm run build:weapp
+
   frontend-test:
     name: Frontend Tests
     runs-on: ubuntu-latest
@@ -210,7 +267,8 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          context: .
+          file: ./frontend/Dockerfile
           push: false
           tags: wardrowbe/frontend:test
           cache-from: type=gha
