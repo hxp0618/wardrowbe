@@ -5,6 +5,7 @@ import { defineConfig } from '@tarojs/cli'
 const appRoot = process.cwd()
 const repoRoot = path.resolve(appRoot, '..')
 const sharedApiRoot = path.resolve(repoRoot, 'packages', 'shared-api', 'src')
+const sharedDomainRoot = path.resolve(repoRoot, 'packages', 'shared-domain', 'src')
 
 export default defineConfig({
   projectName: 'wardrowbe-wechat-miniapp',
@@ -18,11 +19,12 @@ export default defineConfig({
   alias: {
     '@': path.resolve(appRoot, 'src'),
     '@wardrowbe/shared-api': sharedApiRoot,
+    '@wardrowbe/shared-domain': sharedDomainRoot,
   },
   plugins: ['@tarojs/plugin-platform-weapp'],
   mini: {
     compile: {
-      include: [sharedApiRoot],
+      include: [sharedApiRoot, sharedDomainRoot],
     },
   },
 })

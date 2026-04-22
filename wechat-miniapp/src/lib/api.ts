@@ -6,7 +6,7 @@ import { useAuthStore } from '../stores/auth'
 
 const API_BASE_PATH = '/api/v1'
 
-function resolveApiOrigin(): string {
+export function resolveApiOrigin(): string {
   const rawBaseUrl = process.env.TARO_APP_API_BASE_URL ?? ''
   return rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl
 }
