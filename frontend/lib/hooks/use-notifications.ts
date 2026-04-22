@@ -2,6 +2,20 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
+import type { NotificationChannelType } from '@wardrowbe/shared-services';
+import {
+  createNotificationSetting as createNotificationSettingRequest,
+  createSchedule as createScheduleRequest,
+  deleteNotificationSetting as deleteNotificationSettingRequest,
+  deleteSchedule as deleteScheduleRequest,
+  listNotificationHistory as listNotificationHistoryRequest,
+  listNotificationSettings as listNotificationSettingsRequest,
+  listSchedules as listSchedulesRequest,
+  testNotificationSetting as testNotificationSettingRequest,
+  updateNotificationSetting as updateNotificationSettingRequest,
+  updateSchedule as updateScheduleRequest,
+} from '@wardrowbe/shared-services';
+
 import { api, setAccessToken } from '@/lib/api';
 
 function useSetTokenIfAvailable() {
@@ -11,49 +25,12 @@ function useSetTokenIfAvailable() {
   }
 }
 
-export type NotificationChannelType =
-  | 'ntfy'
-  | 'mattermost'
-  | 'email'
-  | 'bark'
-  | 'expo_push'
-  | 'webhook';
-
-export interface NotificationSettings {
-  id: string;
-  user_id: string;
-  channel: NotificationChannelType;
-  enabled: boolean;
-  priority: number;
-  config: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Schedule {
-  id: string;
-  user_id: string;
-  day_of_week: number;
-  notification_time: string;
-  occasion: string;
-  enabled: boolean;
-  notify_day_before: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NotificationHistory {
-  id: string;
-  user_id: string;
-  outfit_id?: string;
-  channel: string;
-  status: string;
-  attempts: number;
-  sent_at?: string;
-  delivered_at?: string;
-  error_message?: string;
-  created_at: string;
-}
+export type {
+  NotificationChannelType,
+  NotificationHistory,
+  NotificationSettings,
+  Schedule,
+} from '@wardrowbe/shared-services';
 
 export function useNotificationSettings() {
   const { status } = useSession();
@@ -61,7 +38,7 @@ export function useNotificationSettings() {
 
   return useQuery({
     queryKey: ['notification-settings'],
-    queryFn: () => api.get<NotificationSettings[]>('/notifications/settings'),
+    queryFn: () => listNotificationSettingsRequest(api),
     enabled: status !== 'loading',
   });
 }
@@ -80,7 +57,7 @@ export function useCreateNotificationSetting() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<NotificationSettings>('/notifications/settings', data);
+      return createNotificationSettingRequest(api, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-settings'] });
@@ -103,7 +80,7 @@ export function useUpdateNotificationSetting() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.patch<NotificationSettings>(`/notifications/settings/${id}`, data);
+      return updateNotificationSettingRequest(api, id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-settings'] });
@@ -120,7 +97,7 @@ export function useDeleteNotificationSetting() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.delete(`/notifications/settings/${id}`);
+      return deleteNotificationSettingRequest(api, id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-settings'] });
@@ -136,9 +113,7 @@ export function useTestNotificationSetting() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<{ success: boolean; message: string }>(
-        `/notifications/settings/${id}/test`
-      );
+      return testNotificationSettingRequest(api, id);
     },
   });
 }
@@ -149,7 +124,7 @@ export function useSchedules() {
 
   return useQuery({
     queryKey: ['schedules'],
-    queryFn: () => api.get<Schedule[]>('/notifications/schedules'),
+    queryFn: () => listSchedulesRequest(api),
     enabled: status !== 'loading',
   });
 }
@@ -169,7 +144,7 @@ export function useCreateSchedule() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<Schedule>('/notifications/schedules', data);
+      return createScheduleRequest(api, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
@@ -187,12 +162,17 @@ export function useUpdateSchedule() {
       data,
     }: {
       id: string;
-      data: Partial<{ notification_time: string; occasion: string; enabled: boolean; notify_day_before: boolean }>;
+      data: Partial<{
+        notification_time: string;
+        occasion: string;
+        enabled: boolean;
+        notify_day_before: boolean;
+      }>;
     }) => {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.patch<Schedule>(`/notifications/schedules/${id}`, data);
+      return updateScheduleRequest(api, id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
@@ -209,7 +189,7 @@ export function useDeleteSchedule() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.delete(`/notifications/schedules/${id}`);
+      return deleteScheduleRequest(api, id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
@@ -223,7 +203,7 @@ export function useNotificationHistory(limit = 20) {
 
   return useQuery({
     queryKey: ['notification-history', limit],
-    queryFn: () => api.get<NotificationHistory[]>(`/notifications/history?limit=${limit}`),
+    queryFn: () => listNotificationHistoryRequest(api, limit),
     enabled: status !== 'loading',
   });
 }

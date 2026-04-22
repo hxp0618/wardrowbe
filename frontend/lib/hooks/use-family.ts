@@ -2,10 +2,22 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
-import { api, setAccessToken } from '@/lib/api';
-import { Family, FamilyCreateResponse, JoinFamilyResponse, FamilyMember } from '@/lib/types';
+import {
+  cancelInvite as cancelInviteRequest,
+  createFamily as createFamilyRequest,
+  getMyFamily,
+  inviteMember as inviteMemberRequest,
+  joinFamily as joinFamilyRequest,
+  joinFamilyByToken as joinFamilyByTokenRequest,
+  leaveFamily as leaveFamilyRequest,
+  regenerateInviteCode as regenerateInviteCodeRequest,
+  removeMember as removeMemberRequest,
+  updateFamily as updateFamilyRequest,
+  updateMemberRole as updateMemberRoleRequest,
+} from '@wardrowbe/shared-services';
 
-// Helper to set token if available (for NextAuth mode)
+import { api, setAccessToken } from '@/lib/api';
+
 function useSetTokenIfAvailable() {
   const { data: session } = useSession();
   if (session?.accessToken) {
@@ -19,9 +31,9 @@ export function useFamily() {
 
   return useQuery({
     queryKey: ['family'],
-    queryFn: () => api.get<Family>('/families/me'),
+    queryFn: () => getMyFamily(api),
     enabled: status !== 'loading',
-    retry: false, // Don't retry on 404 (user not in family)
+    retry: false,
   });
 }
 
@@ -34,7 +46,7 @@ export function useCreateFamily() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<FamilyCreateResponse>('/families', { name });
+      return createFamilyRequest(api, name);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -51,7 +63,7 @@ export function useUpdateFamily() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.patch<Family>('/families/me', { name });
+      return updateFamilyRequest(api, name);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -68,7 +80,7 @@ export function useJoinFamily() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<JoinFamilyResponse>('/families/join', { invite_code: inviteCode });
+      return joinFamilyRequest(api, inviteCode);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -85,7 +97,7 @@ export function useJoinFamilyByToken() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<JoinFamilyResponse>('/families/join-by-token', { token });
+      return joinFamilyByTokenRequest(api, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -102,7 +114,7 @@ export function useLeaveFamily() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<{ message: string }>('/families/me/leave');
+      return leaveFamilyRequest(api);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -119,7 +131,7 @@ export function useRegenerateInviteCode() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<{ invite_code: string }>('/families/me/regenerate-code');
+      return regenerateInviteCodeRequest(api);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -136,10 +148,7 @@ export function useInviteMember() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<{ id: string; email: string; expires_at: string }>(
-        '/families/me/invite',
-        { email, role: role || 'member' }
-      );
+      return inviteMemberRequest(api, email, role || 'member');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -156,7 +165,7 @@ export function useCancelInvite() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.delete(`/families/me/invites/${inviteId}`);
+      return cancelInviteRequest(api, inviteId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -173,7 +182,7 @@ export function useUpdateMemberRole() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.patch<FamilyMember>(`/families/me/members/${memberId}`, { role });
+      return updateMemberRoleRequest(api, memberId, role);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });
@@ -190,7 +199,7 @@ export function useRemoveMember() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.delete(`/families/me/members/${memberId}`);
+      return removeMemberRequest(api, memberId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['family'] });

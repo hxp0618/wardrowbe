@@ -143,6 +143,12 @@ export default function DashboardPage() {
         <Button className="link-btn" size="mini" onClick={() => void Taro.navigateTo({ url: "/pages/learning/index" })}>
           学习洞察
         </Button>
+        <Button className="link-btn" size="mini" onClick={() => void Taro.navigateTo({ url: "/pages/family/index" })}>
+          家庭
+        </Button>
+        <Button className="link-btn" size="mini" onClick={() => void Taro.navigateTo({ url: "/pages/notifications/index" })}>
+          通知
+        </Button>
       </View>
 
       <View className="card">

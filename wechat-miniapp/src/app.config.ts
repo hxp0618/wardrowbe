@@ -9,6 +9,8 @@ export default {
     "pages/history/index",
     "pages/analytics/index",
     "pages/learning/index",
+    "pages/family/index",
+    "pages/notifications/index",
   ],
   window: {
     backgroundTextStyle: "light",
