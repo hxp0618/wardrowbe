@@ -298,10 +298,13 @@ describe('computeEditLoadPhase', () => {
 describe('CanvasPanel', () => {
   it('renders outer layer labels from zh translations', () => {
     render(
-      React.createElement(NextIntlClientProvider, {
-        locale: 'zh',
-        messages: zhMessages,
-        children: React.createElement(CanvasPanel, {
+      React.createElement(
+        NextIntlClientProvider,
+        {
+          locale: 'zh',
+          messages: zhMessages,
+        },
+        React.createElement(CanvasPanel, {
           items: [
             {
               id: '1',
@@ -311,8 +314,8 @@ describe('CanvasPanel', () => {
             },
           ],
           onRemove: vi.fn(),
-        }),
-      })
+        })
+      )
     );
 
     expect(screen.getByText('外套')).toBeInTheDocument();

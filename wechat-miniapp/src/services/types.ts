@@ -54,6 +54,7 @@ export interface OutfitFilters {
   has_source_item?: boolean
   date_from?: string
   date_to?: string
+  family_member_id?: string
 }
 
 export interface SuggestRequest {
@@ -247,4 +248,85 @@ export interface LearningInsightsData {
   best_pairs: ItemPair[]
   insights: StyleInsight[]
   preference_suggestions: PreferenceSuggestions
+}
+
+export interface FamilyCreateResponse {
+  id: string
+  name: string
+  invite_code: string
+  role: string
+}
+
+export interface JoinFamilyResponse {
+  family_id: string
+  family_name: string
+  role: string
+}
+
+export type NotificationChannelType =
+  | 'ntfy'
+  | 'mattermost'
+  | 'email'
+  | 'bark'
+  | 'expo_push'
+  | 'webhook'
+
+export interface NotificationSettings {
+  id: string
+  user_id: string
+  channel: NotificationChannelType
+  enabled: boolean
+  priority: number
+  config: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export interface Schedule {
+  id: string
+  user_id: string
+  day_of_week: number
+  notification_time: string
+  occasion: string
+  enabled: boolean
+  notify_day_before: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationHistory {
+  id: string
+  user_id: string
+  outfit_id?: string
+  channel: string
+  status: string
+  attempts: number
+  sent_at?: string
+  delivered_at?: string
+  error_message?: string
+  created_at: string
+}
+
+export interface UserProfile {
+  id: string
+  email: string
+  display_name: string
+  avatar_url?: string
+  timezone: string
+  location_lat?: number
+  location_lon?: number
+  location_name?: string
+  family_id?: string
+  role: string
+  onboarding_completed: boolean
+  body_measurements?: Record<string, number | string> | null
+}
+
+export interface UserProfileUpdate {
+  display_name?: string
+  timezone?: string
+  location_lat?: number
+  location_lon?: number
+  location_name?: string
+  body_measurements?: Record<string, number | string> | null
 }

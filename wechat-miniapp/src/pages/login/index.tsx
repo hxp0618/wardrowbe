@@ -7,9 +7,12 @@ import { loginWithDev, loginWithWechatCode } from '../../services/auth'
 import { useAuthStore } from '../../stores/auth'
 
 const DASHBOARD_PAGE_URL = '/pages/dashboard/index'
+const ONBOARDING_PAGE_URL = '/pages/onboarding/index'
 const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
 
 export default function LoginPage() {
+  const router = Taro.getCurrentInstance().router
+  const inviteToken = router?.params?.inviteToken
   const setAccessToken = useAuthStore((state) => state.setAccessToken)
   const setHydrated = useAuthStore((state) => state.setHydrated)
   const [email, setEmail] = useState('')
@@ -17,7 +20,9 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  async function handleLogin(action: () => Promise<{ accessToken: string }>) {
+  async function handleLogin(
+    action: () => Promise<{ accessToken: string; onboardingCompleted?: boolean }>
+  ) {
     setIsSubmitting(true)
     setErrorMessage(null)
 
@@ -26,7 +31,13 @@ export default function LoginPage() {
       Taro.setStorageSync(ACCESS_TOKEN_STORAGE_KEY, session.accessToken)
       setAccessToken(session.accessToken)
       setHydrated(true)
-      await Taro.redirectTo({ url: DASHBOARD_PAGE_URL })
+      await Taro.redirectTo({
+        url: inviteToken
+          ? `/pages/invite/index?token=${encodeURIComponent(inviteToken)}`
+          : session.onboardingCompleted
+          ? DASHBOARD_PAGE_URL
+          : ONBOARDING_PAGE_URL,
+      })
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '登录失败，请重试')
     } finally {

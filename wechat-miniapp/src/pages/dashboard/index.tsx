@@ -1,5 +1,6 @@
 import { Button, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { useEffect } from 'react'
 
 import { EmptyState } from '../../components/empty-state'
 import { OutfitCard } from '../../components/outfit-card'
@@ -17,6 +18,7 @@ import {
   useWeather,
 } from '../../hooks/use-outfits'
 import { usePairings } from '../../hooks/use-pairings'
+import { useUserProfile } from '../../hooks/use-user'
 
 function openTab(url: string) {
   void Taro.switchTab({ url })
@@ -43,8 +45,19 @@ export default function DashboardPage() {
   const { data: outfits } = useOutfits({}, 1, 1)
   const { data: pairings } = usePairings(1, 1)
   const { data: pending } = usePendingOutfits(3)
+  const { data: userProfile } = useUserProfile()
   const accept = useAcceptOutfit()
   const reject = useRejectOutfit()
+
+  useEffect(() => {
+    if (canRender && userProfile && !userProfile.onboarding_completed) {
+      void Taro.redirectTo({ url: '/pages/onboarding/index' })
+    }
+  }, [canRender, userProfile])
+
+  if (canRender && userProfile && !userProfile.onboarding_completed) {
+    return null
+  }
 
   if (!canRender) {
     return null
@@ -109,6 +122,9 @@ export default function DashboardPage() {
           <Button onClick={() => openPage('/pages/history/index')}>看历史</Button>
           <Button onClick={() => openPage('/pages/analytics/index')}>看分析</Button>
           <Button onClick={() => openPage('/pages/learning/index')}>看学习</Button>
+          <Button onClick={() => openPage('/pages/family/index')}>看家庭</Button>
+          <Button onClick={() => openPage('/pages/notifications/index')}>看通知</Button>
+          <Button onClick={() => openPage('/pages/settings/index')}>看设置</Button>
         </View>
       </SectionCard>
 

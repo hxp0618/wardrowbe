@@ -21,6 +21,21 @@ export function useOutfits(filters: OutfitFilters = {}, page = 1, pageSize = 20)
   })
 }
 
+export function useFamilyOutfits(memberId: string | undefined, page = 1, pageSize = 20) {
+  return useQuery({
+    queryKey: ['miniapp', 'family-outfits', memberId, page, pageSize],
+    queryFn: () =>
+      listOutfits(
+        {
+          family_member_id: memberId,
+        },
+        page,
+        pageSize
+      ),
+    enabled: !!memberId,
+  })
+}
+
 export function useCalendarOutfits(
   year: number,
   month: number,

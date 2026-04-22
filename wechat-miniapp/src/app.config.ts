@@ -9,6 +9,12 @@ export default defineAppConfig({
     'pages/history/index',
     'pages/analytics/index',
     'pages/learning/index',
+    'pages/family/index',
+    'pages/family-feed/index',
+    'pages/notifications/index',
+    'pages/settings/index',
+    'pages/onboarding/index',
+    'pages/invite/index',
   ],
   tabBar: {
     color: '#6B7280',

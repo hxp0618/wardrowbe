@@ -33,6 +33,7 @@ function buildOutfitParams(
   }
   if (filters.date_from) params.date_from = filters.date_from
   if (filters.date_to) params.date_to = filters.date_to
+  if (filters.family_member_id) params.family_member_id = filters.family_member_id
 
   return params
 }
