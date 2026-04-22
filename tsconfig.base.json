@@ -13,6 +13,9 @@
       "@wardrowbe/shared-api": [
         "./packages/shared-api/src/index.ts"
       ],
+      "@wardrowbe/shared-api/web": [
+        "./packages/shared-api/src/web.ts"
+      ],
       "@wardrowbe/shared-domain": [
         "./packages/shared-domain/src/index.ts"
       ],

@@ -86,9 +86,7 @@ export function useRemoveItemsFromFolder() {
   return useMutation({
     mutationFn: ({ folderId, itemIds }: { folderId: string; itemIds: string[] }) => {
       if (session?.accessToken) setAccessToken(session.accessToken as string);
-      return api.delete<Folder>(`/folders/${folderId}/items`, {
-        body: JSON.stringify({ item_ids: itemIds }),
-      });
+      return api.delete<Folder>(`/folders/${folderId}/items`, { item_ids: itemIds });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['folders'] });

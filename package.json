@@ -5,6 +5,7 @@
   "scripts": {
     "lint:frontend": "npm --workspace frontend run lint",
     "test:frontend": "npm --workspace frontend run test",
+    "typecheck:shared-api": "npm --workspace @wardrowbe/shared-api run typecheck:nodom",
     "lint:miniapp": "npm --workspace wechat-miniapp run lint --if-present",
     "test:miniapp": "npm --workspace wechat-miniapp run test --if-present",
     "build:miniapp": "npm --workspace wechat-miniapp run build --if-present"

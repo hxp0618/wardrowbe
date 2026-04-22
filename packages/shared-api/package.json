@@ -2,9 +2,13 @@
   "name": "@wardrowbe/shared-api",
   "private": true,
   "version": "0.0.0",
+  "scripts": {
+    "typecheck:nodom": "tsc -p tsconfig.nodom.json"
+  },
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./web": "./src/web.ts"
   },
   "types": "./src/index.ts"
 }
