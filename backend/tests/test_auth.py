@@ -201,7 +201,7 @@ class TestWechatLogin:
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == "openid-123456@wechat.local"
-        assert data["display_name"] == "微信用户-123456"
+        assert data["display_name"] == "微信用户-openid"
         assert data["is_new_user"] is True
         assert data["access_token"]
 

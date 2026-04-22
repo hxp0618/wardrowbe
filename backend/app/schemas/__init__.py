@@ -1,4 +1,4 @@
-from app.schemas.auth import AuthSession, DevLoginRequest, TokenPayload, WechatCodeLoginRequest
+from app.schemas.auth import AuthSession, TokenPayload
 from app.schemas.family import (
     FamilyCreate,
     FamilyCreateResponse,
@@ -35,9 +35,7 @@ from app.schemas.user import (
 
 __all__ = [
     "AuthSession",
-    "DevLoginRequest",
     "TokenPayload",
-    "WechatCodeLoginRequest",
     "SessionUser",
     "UserCreate",
     "UserResponse",

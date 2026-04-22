@@ -219,7 +219,7 @@ async def wechat_code_login(
     sync_data = UserSyncRequest(
         external_id=f"wechat:{openid}",
         email=f"{openid}@wechat.local",
-        display_name=f"微信用户-{openid[-6:]}",
+        display_name=f"微信用户-{openid[:6]}",
         provider="wechat",
     )
 
