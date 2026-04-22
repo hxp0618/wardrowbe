@@ -1,0 +1,53 @@
+.page {
+  padding: 48px 40px;
+}
+
+.title {
+  font-size: 40px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.hint {
+  font-size: 24px;
+  color: #9a9a9a;
+  margin-bottom: 48px;
+  line-height: 1.5;
+}
+
+.section {
+  margin-bottom: 48px;
+}
+
+.section-title {
+  font-size: 28px;
+  margin-bottom: 24px;
+  color: #cfcfcf;
+}
+
+.input {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  color: #f5f5f5;
+}
+
+.btn {
+  margin-top: 12px;
+  background: #c9a082;
+  color: #1a1a1a;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.btn-wechat {
+  background: #07c160;
+  color: #fff;
+}
+
+.error {
+  color: #ff8a80;
+  font-size: 24px;
+  margin-top: 16px;
+}

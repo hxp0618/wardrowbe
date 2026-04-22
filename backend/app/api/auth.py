@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Annotated
-
+import httpx
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,9 +12,11 @@ from app.schemas.user import (
     AuthConfigOIDC,
     AuthConfigResponse,
     AuthStatusResponse,
+    DevMiniProgramLoginRequest,
     UserResponse,
     UserSyncRequest,
     UserSyncResponse,
+    WeChatCodeRequest,
 )
 from app.services.user_service import UserEmailConflictError, UserService
 from app.utils.auth import get_current_user
@@ -66,13 +68,126 @@ async def get_auth_config() -> AuthConfigResponse:
 @router.get("/status", response_model=AuthStatusResponse)
 async def auth_status(http_request: Request) -> AuthStatusResponse:
     mode = settings.get_auth_mode()
-    if mode == "unknown":
+    wechat_ok = settings.wechat_mini_program_configured()
+    if mode == "unknown" and not wechat_ok:
         return AuthStatusResponse(
             configured=False,
             mode=mode,
             error=translate_request(http_request, "auth.status_no_method_configured"),
+            wechat_mini_program=False,
         )
-    return AuthStatusResponse(configured=True, mode=mode)
+    return AuthStatusResponse(
+        configured=True,
+        mode=mode,
+        wechat_mini_program=wechat_ok,
+    )
+
+
+@router.post("/dev-login", response_model=UserSyncResponse)
+async def dev_mini_program_login(
+    request: Request,
+    body: DevMiniProgramLoginRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserSyncResponse:
+    """Dev-only login for WeChat mini program (same token model as /auth/sync in dev mode)."""
+    await rate_limit_by_ip(request, "auth_dev_login", 20, 60)
+    if not _is_dev_mode():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=translate_request(request, "error.no_auth_method_configured"),
+        )
+
+    external_id = "".join(
+        ch if ch.isalnum() else "-" for ch in str(body.email).lower()
+    ).strip("-")
+    if not external_id:
+        external_id = "dev-user"
+
+    sync_data = UserSyncRequest(
+        external_id=external_id,
+        email=str(body.email).lower().strip(),
+        display_name=body.display_name,
+        avatar_url=None,
+        id_token=None,
+    )
+    user_service = UserService(db)
+    try:
+        user, is_new = await user_service.sync_from_oidc(sync_data)
+    except UserEmailConflictError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=translate_validation_message(str(e), request),
+        ) from None
+
+    access_token = create_access_token(user.external_id)
+    return UserSyncResponse(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        is_new_user=is_new,
+        onboarding_completed=user.onboarding_completed,
+        access_token=access_token,
+    )
+
+
+@router.post("/wechat/code", response_model=UserSyncResponse)
+async def wechat_code_login(
+    request: Request,
+    body: WeChatCodeRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserSyncResponse:
+    await rate_limit_by_ip(request, "auth_wechat_code", 30, 60)
+    if not settings.wechat_mini_program_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=translate_request(request, "error.wechat_not_configured"),
+        )
+
+    params = {
+        "appid": settings.wechat_mini_program_app_id,
+        "secret": settings.wechat_mini_program_app_secret,
+        "js_code": body.code,
+        "grant_type": "authorization_code",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.weixin.qq.com/sns/jscode2session",
+                params=params,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=translate_request(request, "error.wechat_code_exchange_failed"),
+        ) from None
+
+    errcode = data.get("errcode", 0)
+    if errcode != 0:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=translate_request(request, "error.wechat_code_exchange_failed"),
+        )
+
+    openid = data.get("openid")
+    if not openid or not isinstance(openid, str):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=translate_request(request, "error.wechat_code_exchange_failed"),
+        )
+
+    user_service = UserService(db)
+    user, is_new = await user_service.sync_from_wechat_openid(openid)
+    access_token = create_access_token(user.external_id)
+    return UserSyncResponse(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        is_new_user=is_new,
+        onboarding_completed=user.onboarding_completed,
+        access_token=access_token,
+    )
 
 
 @router.post("/sync", response_model=UserSyncResponse)

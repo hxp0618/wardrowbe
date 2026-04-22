@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
 
@@ -52,6 +54,121 @@ class TestAuthConfig:
         data = response.json()
         assert data["dev_mode"] is True
         assert data["oidc"]["enabled"] is False
+
+
+class TestAuthStatus:
+    @pytest.mark.asyncio
+    async def test_auth_status_includes_wechat_flag(self, client: AsyncClient):
+        response = await client.get("/api/v1/auth/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert "wechat_mini_program" in data
+        assert data["wechat_mini_program"] is False
+
+
+class TestDevMiniProgramLogin:
+    @pytest.mark.asyncio
+    async def test_dev_login_returns_token(self, client: AsyncClient):
+        response = await client.post(
+            "/api/v1/auth/dev-login",
+            json={"email": "mini-dev@example.com", "display_name": "Mini Dev"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "mini-dev@example.com"
+        assert data["display_name"] == "Mini Dev"
+        assert "access_token" in data
+        assert data["is_new_user"] is True
+
+    @pytest.mark.asyncio
+    async def test_dev_login_disabled_outside_dev_mode(self, client: AsyncClient):
+        with patch("app.api.auth._is_dev_mode", return_value=False):
+            response = await client.post(
+                "/api/v1/auth/dev-login",
+                json={"email": "x@example.com", "display_name": "X"},
+            )
+        assert response.status_code == 503
+
+
+class TestWeChatCodeLogin:
+    @pytest.mark.asyncio
+    async def test_wechat_code_requires_config(self, client: AsyncClient):
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "test-code"},
+        )
+        assert response.status_code == 503
+
+    @pytest.mark.asyncio
+    async def test_wechat_code_success(self, client: AsyncClient):
+        fake_json = {"errcode": 0, "openid": "o-test-openid-123"}
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                return fake_json
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return None
+
+            async def get(self, url: str, params=None):
+                return FakeResponse()
+
+        with (
+            patch("app.api.auth.settings.wechat_mini_program_app_id", "wx-test"),
+            patch("app.api.auth.settings.wechat_mini_program_app_secret", "secret"),
+            patch("httpx.AsyncClient", FakeClient),
+        ):
+            response = await client.post(
+                "/api/v1/auth/wechat/code",
+                json={"code": "081abc"},
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert data["is_new_user"] is True
+
+    @pytest.mark.asyncio
+    async def test_wechat_code_wechat_api_error(self, client: AsyncClient):
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                return {"errcode": 40029, "errmsg": "invalid code"}
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return None
+
+            async def get(self, url: str, params=None):
+                return FakeResponse()
+
+        with (
+            patch("app.api.auth.settings.wechat_mini_program_app_id", "wx-test"),
+            patch("app.api.auth.settings.wechat_mini_program_app_secret", "secret"),
+            patch("httpx.AsyncClient", FakeClient),
+        ):
+            response = await client.post(
+                "/api/v1/auth/wechat/code",
+                json={"code": "bad"},
+            )
+        assert response.status_code == 401
 
 
 class TestAuthSync:

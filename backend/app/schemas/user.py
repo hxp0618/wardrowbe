@@ -77,6 +77,16 @@ class AuthStatusResponse(BaseModel):
     configured: bool
     mode: str
     error: str | None = None
+    wechat_mini_program: bool = False
+
+
+class WeChatCodeRequest(BaseModel):
+    code: str = Field(..., min_length=1, max_length=256)
+
+
+class DevMiniProgramLoginRequest(BaseModel):
+    email: EmailStr
+    display_name: str = Field(..., min_length=1, max_length=100)
 
 
 class AuthConfigOIDC(BaseModel):
