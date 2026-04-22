@@ -21,6 +21,30 @@ export function useOutfits(filters: OutfitFilters = {}, page = 1, pageSize = 20)
   })
 }
 
+export function useCalendarOutfits(
+  year: number,
+  month: number,
+  filters: OutfitFilters = {}
+) {
+  const dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const dateTo = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+  return useQuery({
+    queryKey: ['miniapp', 'calendar-outfits', year, month, filters],
+    queryFn: () =>
+      listOutfits(
+        {
+          ...filters,
+          date_from: dateFrom,
+          date_to: dateTo,
+        },
+        1,
+        100
+      ),
+  })
+}
+
 export function usePendingOutfits(limit = 3) {
   return useQuery({
     queryKey: ['miniapp', 'pending-outfits', limit],

@@ -126,6 +126,40 @@ describe('miniapp core flow services', () => {
     })
   })
 
+  it('loads analytics metrics with a days query parameter', async () => {
+    apiGet.mockResolvedValue({ wardrobe: { total_items: 12 } })
+
+    const { getAnalytics } = await import('./analytics')
+
+    await getAnalytics(60)
+
+    expect(apiGet).toHaveBeenCalledWith('/analytics', {
+      params: { days: '60' },
+    })
+  })
+
+  it('loads learning insights and supports learning actions', async () => {
+    apiGet.mockResolvedValue({ profile: { has_learning_data: true }, best_pairs: [], insights: [] })
+    apiPost.mockResolvedValue({ acknowledged: true })
+
+    const {
+      acknowledgeInsight,
+      generateInsights,
+      getLearning,
+      recomputeLearning,
+    } = await import('./learning')
+
+    await getLearning()
+    await recomputeLearning()
+    await generateInsights()
+    await acknowledgeInsight('insight-1')
+
+    expect(apiGet).toHaveBeenCalledWith('/learning')
+    expect(apiPost).toHaveBeenNthCalledWith(1, '/learning/recompute')
+    expect(apiPost).toHaveBeenNthCalledWith(2, '/learning/generate-insights')
+    expect(apiPost).toHaveBeenNthCalledWith(3, '/learning/insights/insight-1/acknowledge')
+  })
+
   it('creates one item and then uploads additional images for the same item', async () => {
     taroGetStorageSync.mockReturnValue('access-token-1')
     taroUploadFile

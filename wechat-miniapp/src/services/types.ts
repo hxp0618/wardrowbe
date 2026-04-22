@@ -45,6 +45,7 @@ export interface OutfitListResponse {
 }
 
 export interface OutfitFilters {
+  occasion?: string
   status?: string
   search?: string
   source?: string
@@ -111,4 +112,139 @@ export interface ForecastResponse {
   latitude: number
   longitude: number
   forecast: ForecastDay[]
+}
+
+export interface ColorDistribution {
+  color: string
+  count: number
+  percentage: number
+}
+
+export interface TypeDistribution {
+  type: string
+  count: number
+  percentage: number
+}
+
+export interface WearStats {
+  id: string
+  name: string | null
+  type: string
+  primary_color: string | null
+  thumbnail_path: string | null
+  thumbnail_url: string | null
+  wear_count: number
+  last_worn_at: string | null
+}
+
+export interface AcceptanceRateTrend {
+  period: string
+  total: number
+  accepted: number
+  rejected: number
+  rate: number
+}
+
+export interface WardrobeStats {
+  total_items: number
+  items_by_status: Record<string, number>
+  total_outfits: number
+  outfits_this_week: number
+  outfits_this_month: number
+  acceptance_rate: number | null
+  average_rating: number | null
+  total_wears: number
+}
+
+export interface AnalyticsData {
+  wardrobe: WardrobeStats
+  color_distribution: ColorDistribution[]
+  type_distribution: TypeDistribution[]
+  most_worn: WearStats[]
+  least_worn: WearStats[]
+  never_worn: WearStats[]
+  acceptance_trend: AcceptanceRateTrend[]
+  insights: string[]
+}
+
+export interface LearnedColorScore {
+  color: string
+  score: number
+  interpretation: string
+}
+
+export interface LearnedStyleScore {
+  style: string
+  score: number
+}
+
+export interface OccasionPattern {
+  occasion: string
+  preferred_colors: string[]
+  success_rate: number
+}
+
+export interface WeatherPreference {
+  weather_type: string
+  preferred_layers: number
+  success_rate: number
+}
+
+export interface LearningProfile {
+  has_learning_data: boolean
+  feedback_count: number
+  outfits_rated: number
+  overall_acceptance_rate: number | null
+  average_rating: number | null
+  average_comfort_rating: number | null
+  average_style_rating: number | null
+  color_preferences: LearnedColorScore[]
+  style_preferences: LearnedStyleScore[]
+  occasion_patterns: OccasionPattern[]
+  weather_preferences: WeatherPreference[]
+  last_computed_at: string | null
+}
+
+export interface LearningItemInfo {
+  id: string
+  type: string
+  name: string | null
+  primary_color: string | null
+  thumbnail_path: string | null
+  thumbnail_url: string | null
+}
+
+export interface ItemPair {
+  item1: LearningItemInfo
+  item2: LearningItemInfo
+  compatibility_score: number
+  times_paired: number
+  times_accepted: number
+}
+
+export interface StyleInsight {
+  id: string
+  category: string
+  insight_type: string
+  title: string
+  description: string
+  confidence: number
+  created_at: string
+}
+
+export interface PreferenceSuggestions {
+  updated: boolean
+  suggestions?: {
+    suggested_favorite_colors?: string[]
+    suggested_avoid_colors?: string[]
+  }
+  confidence?: number | null
+  reason?: string
+}
+
+export interface LearningInsightsData {
+  profile: LearningProfile
+  best_pairs: ItemPair[]
+  insights: StyleInsight[]
+  preference_suggestions: PreferenceSuggestions
 }

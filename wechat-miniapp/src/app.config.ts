@@ -6,6 +6,9 @@ export default defineAppConfig({
     'pages/suggest/index',
     'pages/pairings/index',
     'pages/outfits/index',
+    'pages/history/index',
+    'pages/analytics/index',
+    'pages/learning/index',
   ],
   tabBar: {
     color: '#6B7280',

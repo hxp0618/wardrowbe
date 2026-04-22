@@ -106,6 +106,9 @@ export default function DashboardPage() {
           <Button onClick={() => openTab('/pages/suggest/index')}>去推荐</Button>
           <Button onClick={() => openPage('/pages/pairings/index')}>看搭配</Button>
           <Button onClick={() => openTab('/pages/outfits/index')}>看穿搭</Button>
+          <Button onClick={() => openPage('/pages/history/index')}>看历史</Button>
+          <Button onClick={() => openPage('/pages/analytics/index')}>看分析</Button>
+          <Button onClick={() => openPage('/pages/learning/index')}>看学习</Button>
         </View>
       </SectionCard>
 
