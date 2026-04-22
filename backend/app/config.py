@@ -108,10 +108,12 @@ class Settings(BaseSettings):
 
         oidc_configured = oidc_issuer and oidc_client
         is_dev = self.debug and self.secret_key == DEFAULT_SECRET_KEY
-        if not oidc_configured and not is_dev:
+        wechat_ok = self.wechat_mini_program_configured()
+        if not oidc_configured and not is_dev and not wechat_ok:
             return (
                 "No authentication method configured. "
-                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or enable DEBUG mode."
+                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, enable DEBUG mode for development, "
+                "or set WECHAT_MINI_PROGRAM_APP_ID + WECHAT_MINI_PROGRAM_APP_SECRET for the mini program."
             )
 
         return None
