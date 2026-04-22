@@ -107,41 +107,20 @@ describe('request i18n config', () => {
     vi.doUnmock('next-intl/server')
   })
 
-  it('builds routing from the shared i18n locale constants', async () => {
-    vi.resetModules()
-    vi.doMock('@wardrowbe/shared-i18n', () => ({
-      supportedLocales: ['en', 'es'],
-      defaultLocale: 'en',
-      messages: {
-        en: {
-          __source: 'shared-en',
-        },
-        es: {
-          __source: 'shared-es',
-        },
-      },
-    }))
-
-    const { routing } = await import('../i18n/routing')
-
-    expect(routing.locales).toEqual(['en', 'es'])
-    expect(routing.defaultLocale).toBe('en')
-  })
-
   it('reads locale messages from the shared i18n package', async () => {
     vi.resetModules()
     vi.doMock('next-intl/server', () => ({
       getRequestConfig: (factory: unknown) => factory,
     }))
     vi.doMock('@wardrowbe/shared-i18n', () => ({
-      supportedLocales: ['en', 'es'],
-      defaultLocale: 'en',
+      supportedLocales: ['zh', 'en'],
+      defaultLocale: 'zh',
       messages: {
         en: {
           __source: 'shared-en',
         },
-        es: {
-          __source: 'shared-es',
+        zh: {
+          __source: 'shared-zh',
         },
       },
     }))
@@ -159,20 +138,48 @@ describe('request i18n config', () => {
     })
   })
 
-  it('falls back to the shared default locale for unsupported locales', async () => {
+  it('falls back to a real shared message locale when metadata drifts', async () => {
     vi.resetModules()
     vi.doMock('next-intl/server', () => ({
       getRequestConfig: (factory: unknown) => factory,
     }))
     vi.doMock('@wardrowbe/shared-i18n', () => ({
-      supportedLocales: ['en', 'es'],
-      defaultLocale: 'en',
+      supportedLocales: ['fr'],
+      defaultLocale: 'fr',
       messages: {
         en: {
           __source: 'shared-en',
         },
-        es: {
-          __source: 'shared-es',
+        zh: {
+          __source: 'shared-zh',
+        },
+      },
+    }))
+
+    const { default: getRequestConfig } = await import('../i18n/request')
+    const config = await getRequestConfig({
+      requestLocale: Promise.resolve('fr'),
+    })
+
+    expect(config).toMatchObject({
+      locale: 'zh',
+      messages: {
+        __source: 'shared-zh',
+      },
+    })
+  })
+
+  it('falls back to the first available shared locale when zh is unavailable', async () => {
+    vi.resetModules()
+    vi.doMock('next-intl/server', () => ({
+      getRequestConfig: (factory: unknown) => factory,
+    }))
+    vi.doMock('@wardrowbe/shared-i18n', () => ({
+      supportedLocales: ['fr'],
+      defaultLocale: 'fr',
+      messages: {
+        en: {
+          __source: 'shared-en',
         },
       },
     }))

@@ -14,7 +14,7 @@ import {
 import { mergeAiAssist } from '@/lib/studio/ai-assist-merge';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/studio/draft-storage';
 import { computeEditLoadPhase } from '@/lib/studio/edit-load';
-import { messages } from '@wardrowbe/shared-i18n';
+import zhMessages from '@/messages/zh.json';
 
 vi.mock('next/image', () => ({
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => React.createElement('img', props),
@@ -300,7 +300,7 @@ describe('CanvasPanel', () => {
     render(
       React.createElement(NextIntlClientProvider, {
         locale: 'zh',
-        messages: messages.zh,
+        messages: zhMessages,
         children: React.createElement(CanvasPanel, {
           items: [
             {
