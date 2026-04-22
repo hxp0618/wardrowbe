@@ -175,6 +175,44 @@ jobs:
           npm ci
           npm test
 
+  shared-i18n-test:
+    name: Shared i18n Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: packages/shared-i18n/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd packages/shared-i18n
+          npm ci
+          npm test
+
+  shared-domain-test:
+    name: Shared Domain Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: packages/shared-domain/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd packages/shared-domain
+          npm ci
+          npm test
+
   wechat-miniapp-test:
     name: WeChat Mini Program Tests
     runs-on: ubuntu-latest
