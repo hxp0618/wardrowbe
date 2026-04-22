@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Annotated
 
-import httpx
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +18,12 @@ from app.schemas.user import (
     UserSyncResponse,
 )
 from app.services.user_service import UserEmailConflictError, UserService
-from app.services.wechat_auth_service import WechatAuthService
+from app.services.wechat_auth_service import (
+    WechatAuthCredentialError,
+    WechatAuthResponseError,
+    WechatAuthService,
+    WechatAuthServiceUnavailableError,
+)
 from app.utils.auth import get_current_user
 from app.utils.i18n import translate_request, translate_validation_message
 from app.utils.oidc import validate_oidc_id_token
@@ -53,6 +57,24 @@ def _oidc_configured() -> bool:
 
 def _wechat_configured() -> bool:
     return bool(settings.wechat_app_id and settings.wechat_app_secret)
+
+
+def _require_wechat_openid(session: dict) -> str:
+    openid = session.get("openid")
+    if not isinstance(openid, str):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Wechat login response missing valid openid",
+        )
+
+    openid = openid.strip()
+    if not openid:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Wechat login response missing valid openid",
+        )
+
+    return openid
 
 
 async def _sync_user_and_issue_token(
@@ -198,28 +220,34 @@ async def wechat_code_login(
 
     try:
         session = await WechatAuthService().exchange_code(payload.code)
-    except ValueError as e:
+    except WechatAuthCredentialError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
         ) from None
-    except (RuntimeError, httpx.HTTPError) as e:
+    except WechatAuthResponseError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        ) from None
+    except WechatAuthServiceUnavailableError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e),
         ) from None
 
-    openid = str(session.get("openid", "")).strip()
-    if not openid:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Wechat login response missing openid",
-        )
+    openid = _require_wechat_openid(session)
+    external_id = f"wechat:{openid}"
+    user_service = UserService(db)
+    existing_user = await user_service.get_by_external_id(external_id)
+    display_name = (
+        existing_user.display_name if existing_user else f"微信用户-{openid[:6]}"
+    )
 
     sync_data = UserSyncRequest(
-        external_id=f"wechat:{openid}",
+        external_id=external_id,
         email=f"{openid}@wechat.local",
-        display_name=f"微信用户-{openid[:6]}",
+        display_name=display_name,
         provider="wechat",
     )
 

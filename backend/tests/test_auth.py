@@ -1,9 +1,15 @@
-import pytest
+import json
+from uuid import uuid4
+
+import httpx
 from httpx import AsyncClient
+import pytest
+from sqlalchemy import func, select
 
 from app.api import auth as auth_api
 from app.api.auth import create_access_token
 from app.config import Settings
+from app.models.user import User
 from app.utils.auth import decode_token
 
 
@@ -178,13 +184,20 @@ class TestDevLogin:
 
 
 class TestWechatLogin:
+    @staticmethod
+    def _configure_wechat(monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(auth_api.settings, "wechat_app_id", "wx-app-id")
+        monkeypatch.setattr(auth_api.settings, "wechat_app_secret", "wx-app-secret")
+
     @pytest.mark.asyncio
     async def test_wechat_code_login_success(
         self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
     ):
+        openid = f"wx{uuid4().hex[:10]}"
+
         async def fake_exchange_code(self, code: str) -> dict:
             assert code == "wechat-code"
-            return {"openid": "openid-123456"}
+            return {"openid": openid}
 
         monkeypatch.setattr(auth_api.settings, "wechat_app_id", "wx-app-id")
         monkeypatch.setattr(auth_api.settings, "wechat_app_secret", "wx-app-secret")
@@ -200,10 +213,191 @@ class TestWechatLogin:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["email"] == "openid-123456@wechat.local"
-        assert data["display_name"] == "微信用户-openid"
+        assert data["email"] == f"{openid}@wechat.local"
+        assert data["display_name"] == f"微信用户-{openid[:6]}"
         assert data["is_new_user"] is True
         assert data["access_token"]
+
+    @pytest.mark.asyncio
+    async def test_wechat_code_login_preserves_existing_custom_display_name(
+        self, client: AsyncClient, db_session, monkeypatch: pytest.MonkeyPatch
+    ):
+        openid = f"openid-{uuid4().hex[:8]}"
+
+        async def fake_exchange_code(self, code: str) -> dict:
+            assert code == "wechat-code"
+            return {"openid": openid}
+
+        existing_user = User(
+            external_id=f"wechat:{openid}",
+            email=f"{openid}@wechat.local",
+            display_name="Already Customized",
+            timezone="UTC",
+            is_active=True,
+        )
+        db_session.add(existing_user)
+        await db_session.commit()
+        await db_session.refresh(existing_user)
+
+        self._configure_wechat(monkeypatch)
+        monkeypatch.setattr(
+            "app.services.wechat_auth_service.WechatAuthService.exchange_code",
+            fake_exchange_code,
+        )
+
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "wechat-code"},
+        )
+
+        await db_session.refresh(existing_user)
+
+        assert response.status_code == 200
+        assert response.json()["display_name"] == "Already Customized"
+        assert existing_user.display_name == "Already Customized"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("openid", [None, 123, ""])
+    async def test_wechat_code_login_rejects_invalid_openid_without_creating_user(
+        self,
+        client: AsyncClient,
+        db_session,
+        monkeypatch: pytest.MonkeyPatch,
+        openid,
+    ):
+        async def fake_exchange_code(self, code: str) -> dict:
+            assert code == "wechat-code"
+            return {"openid": openid}
+
+        self._configure_wechat(monkeypatch)
+        monkeypatch.setattr(
+            "app.services.wechat_auth_service.WechatAuthService.exchange_code",
+            fake_exchange_code,
+        )
+
+        before_count = await db_session.scalar(select(func.count()).select_from(User))
+
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "wechat-code"},
+        )
+
+        after_count = await db_session.scalar(select(func.count()).select_from(User))
+
+        assert response.status_code == 502
+        assert response.json()["detail"] == "Wechat login response missing valid openid"
+        assert after_count == before_count
+
+    @pytest.mark.asyncio
+    async def test_wechat_code_login_maps_wechat_business_error_to_401(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                return {"errcode": 40029, "errmsg": "invalid code"}
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, *args, **kwargs):
+                return FakeResponse()
+
+        self._configure_wechat(monkeypatch)
+        monkeypatch.setattr(
+            "app.services.wechat_auth_service.httpx.AsyncClient",
+            lambda *args, **kwargs: FakeAsyncClient(),
+        )
+
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "wechat-code"},
+        )
+
+        assert response.status_code == 401
+        assert response.json()["detail"] == "invalid code"
+
+    @pytest.mark.asyncio
+    async def test_wechat_code_login_maps_invalid_json_to_502(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                raise json.JSONDecodeError("Invalid JSON", "{}", 0)
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, *args, **kwargs):
+                return FakeResponse()
+
+        self._configure_wechat(monkeypatch)
+        monkeypatch.setattr(
+            "app.services.wechat_auth_service.httpx.AsyncClient",
+            lambda *args, **kwargs: FakeAsyncClient(),
+        )
+
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "wechat-code"},
+        )
+
+        assert response.status_code == 502
+
+    @pytest.mark.asyncio
+    async def test_wechat_code_login_maps_upstream_http_error_to_503(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, *args, **kwargs):
+                raise httpx.ConnectError("boom")
+
+        self._configure_wechat(monkeypatch)
+        monkeypatch.setattr(
+            "app.services.wechat_auth_service.httpx.AsyncClient",
+            lambda *args, **kwargs: FakeAsyncClient(),
+        )
+
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "wechat-code"},
+        )
+
+        assert response.status_code == 503
+
+    @pytest.mark.asyncio
+    async def test_wechat_code_login_requires_configuration(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(auth_api.settings, "wechat_app_id", None)
+        monkeypatch.setattr(auth_api.settings, "wechat_app_secret", None)
+
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "wechat-code"},
+        )
+
+        assert response.status_code == 503
+        assert response.json()["detail"] == "Wechat login is not configured"
 
 
 class TestProtectedRoutes:
