@@ -107,18 +107,41 @@ describe('request i18n config', () => {
     vi.doUnmock('next-intl/server')
   })
 
+  it('builds routing from the shared i18n locale constants', async () => {
+    vi.resetModules()
+    vi.doMock('@wardrowbe/shared-i18n', () => ({
+      supportedLocales: ['en', 'es'],
+      defaultLocale: 'en',
+      messages: {
+        en: {
+          __source: 'shared-en',
+        },
+        es: {
+          __source: 'shared-es',
+        },
+      },
+    }))
+
+    const { routing } = await import('../i18n/routing')
+
+    expect(routing.locales).toEqual(['en', 'es'])
+    expect(routing.defaultLocale).toBe('en')
+  })
+
   it('reads locale messages from the shared i18n package', async () => {
     vi.resetModules()
     vi.doMock('next-intl/server', () => ({
       getRequestConfig: (factory: unknown) => factory,
     }))
     vi.doMock('@wardrowbe/shared-i18n', () => ({
+      supportedLocales: ['en', 'es'],
+      defaultLocale: 'en',
       messages: {
         en: {
           __source: 'shared-en',
         },
-        zh: {
-          __source: 'shared-zh',
+        es: {
+          __source: 'shared-es',
         },
       },
     }))
@@ -126,6 +149,37 @@ describe('request i18n config', () => {
     const { default: getRequestConfig } = await import('../i18n/request')
     const config = await getRequestConfig({
       requestLocale: Promise.resolve('en'),
+    })
+
+    expect(config).toMatchObject({
+      locale: 'en',
+      messages: {
+        __source: 'shared-en',
+      },
+    })
+  })
+
+  it('falls back to the shared default locale for unsupported locales', async () => {
+    vi.resetModules()
+    vi.doMock('next-intl/server', () => ({
+      getRequestConfig: (factory: unknown) => factory,
+    }))
+    vi.doMock('@wardrowbe/shared-i18n', () => ({
+      supportedLocales: ['en', 'es'],
+      defaultLocale: 'en',
+      messages: {
+        en: {
+          __source: 'shared-en',
+        },
+        es: {
+          __source: 'shared-es',
+        },
+      },
+    }))
+
+    const { default: getRequestConfig } = await import('../i18n/request')
+    const config = await getRequestConfig({
+      requestLocale: Promise.resolve('fr'),
     })
 
     expect(config).toMatchObject({

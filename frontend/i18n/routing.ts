@@ -1,9 +1,10 @@
 import {defineRouting} from 'next-intl/routing';
+import {defaultLocale, supportedLocales} from '@wardrowbe/shared-i18n';
 
 export const routing = defineRouting({
-  locales: ['zh', 'en'],
-  defaultLocale: 'zh',
+  locales: supportedLocales,
+  defaultLocale,
   localePrefix: 'as-needed',
 });
 
-export type Locale = (typeof routing.locales)[number];
+export type Locale = (typeof supportedLocales)[number];

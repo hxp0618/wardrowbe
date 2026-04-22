@@ -1,9 +1,13 @@
 import {getRequestConfig} from 'next-intl/server';
-import {messages, type SupportedLocale} from '@wardrowbe/shared-i18n';
-import {routing} from './routing';
+import {
+  defaultLocale,
+  messages,
+  supportedLocales,
+  type SupportedLocale,
+} from '@wardrowbe/shared-i18n';
 
 function isSupportedLocale(locale: string): locale is SupportedLocale {
-  return routing.locales.includes(locale as SupportedLocale);
+  return supportedLocales.some((supportedLocale) => supportedLocale === locale);
 }
 
 export default getRequestConfig(async ({requestLocale}) => {
@@ -11,7 +15,7 @@ export default getRequestConfig(async ({requestLocale}) => {
   const locale: SupportedLocale =
     requestedLocale && isSupportedLocale(requestedLocale)
       ? requestedLocale
-      : (routing.defaultLocale as SupportedLocale);
+      : defaultLocale;
 
   return {
     locale,
