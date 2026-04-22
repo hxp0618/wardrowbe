@@ -1,0 +1,9 @@
+{
+  "name": "wardrowbe",
+  "private": true,
+  "description": "Root scripts for the Wardrowbe monorepo (shared packages + mini program tests)",
+  "scripts": {
+    "test:packages": "npm test --prefix packages/shared-api && npm test --prefix packages/shared-domain && npm test --prefix packages/shared-i18n && npm test --prefix packages/shared-services && npm test --prefix wechat-miniapp",
+    "test:packages:ci": "npm ci --prefix packages/shared-api && npm test --prefix packages/shared-api && npm ci --prefix packages/shared-domain && npm test --prefix packages/shared-domain && npm ci --prefix packages/shared-i18n && npm test --prefix packages/shared-i18n && npm ci --prefix packages/shared-services && npm test --prefix packages/shared-services && npm ci --prefix wechat-miniapp && npm test --prefix wechat-miniapp"
+  }
+}

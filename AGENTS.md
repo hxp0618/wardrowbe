@@ -40,6 +40,7 @@ curl http://localhost:8000/api/v1/health
 
 - **Backend:** `docker compose exec backend python -m pytest tests/ -v --tb=short` (runs inside the container where `TEST_DATABASE_URL` is set by `docker-compose.dev.yml`)
 - **Frontend:** `cd frontend && npm test` (vitest, runs locally — no Docker needed)
+- **Shared packages + WeChat mini program (Vitest):** from repo root, `npm run test:packages` (uses each package’s existing `node_modules`; after a clean clone run `npm install` once per package or use `npm run test:packages:ci` which runs `npm ci` in each prefix first)
 
 ### Gotchas
 
