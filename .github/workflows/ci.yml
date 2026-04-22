@@ -156,6 +156,25 @@ jobs:
           npm ci
           npm test
 
+  shared-api-test:
+    name: Shared API Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: packages/shared-api/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd packages/shared-api
+          npm ci
+          npm test
+
   wechat-miniapp-test:
     name: WeChat Mini Program Tests
     runs-on: ubuntu-latest

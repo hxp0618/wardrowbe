@@ -13,5 +13,12 @@
   "types": "./src/index.ts",
   "files": [
     "src"
-  ]
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.4"
+  }
 }
