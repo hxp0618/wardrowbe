@@ -117,3 +117,19 @@
   color: #f0f0f0;
   border-radius: 12px;
 }
+
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.link-btn {
+  flex: 1;
+  min-width: 28%;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border-radius: 10px;
+  font-size: 24px;
+}

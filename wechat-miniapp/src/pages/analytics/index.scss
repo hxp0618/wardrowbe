@@ -1,0 +1,60 @@
+.page {
+  padding: 24px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat {
+  width: calc(50% - 8px);
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #e8b4a0;
+}
+
+.stat-label {
+  font-size: 22px;
+  color: #888;
+  margin-top: 8px;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #f0f0f0;
+  margin-bottom: 12px;
+}
+
+.insight {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  font-size: 24px;
+  color: #ccc;
+  line-height: 1.5;
+}
+
+.empty {
+  color: #888;
+  font-size: 26px;
+  text-align: center;
+  padding: 40px 0;
+}

@@ -133,6 +133,18 @@ export default function DashboardPage() {
         </Button>
       </View>
 
+      <View className="link-row">
+        <Button className="link-btn" size="mini" onClick={() => void Taro.navigateTo({ url: "/pages/history/index" })}>
+          穿搭历史
+        </Button>
+        <Button className="link-btn" size="mini" onClick={() => void Taro.navigateTo({ url: "/pages/analytics/index" })}>
+          数据分析
+        </Button>
+        <Button className="link-btn" size="mini" onClick={() => void Taro.navigateTo({ url: "/pages/learning/index" })}>
+          学习洞察
+        </Button>
+      </View>
+
       <View className="card">
         <Text className="card-title">待处理穿搭</Text>
         {pending.length === 0 ? (

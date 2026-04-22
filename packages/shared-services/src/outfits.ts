@@ -60,3 +60,26 @@ export function rejectOutfit(api: WardrowbeApi, outfitId: string): Promise<Outfi
 export function suggestOutfit(api: WardrowbeApi, body: SuggestRequest): Promise<Outfit> {
   return api.post<Outfit>("/outfits/suggest", body);
 }
+
+/** Outfits in a calendar month (same semantics as Web `useCalendarOutfits`). */
+export function listOutfitsForMonth(
+  api: WardrowbeApi,
+  year: number,
+  month: number,
+  filters: Pick<OutfitListFilters, "status" | "occasion"> = {},
+): Promise<OutfitListResponse> {
+  const date_from = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const date_to = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return listOutfits(
+    api,
+    {
+      date_from,
+      date_to,
+      status: filters.status,
+      occasion: filters.occasion,
+    },
+    1,
+    100,
+  );
+}

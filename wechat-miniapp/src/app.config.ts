@@ -6,6 +6,9 @@ export default {
     "pages/suggest/index",
     "pages/pairings/index",
     "pages/outfits/index",
+    "pages/history/index",
+    "pages/analytics/index",
+    "pages/learning/index",
   ],
   window: {
     backgroundTextStyle: "light",

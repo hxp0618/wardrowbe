@@ -4,6 +4,7 @@ import {
   acceptOutfit as acceptOutfitRequest,
   getOutfit,
   listOutfits,
+  listOutfitsForMonth,
   listPendingOutfits,
   rejectOutfit as rejectOutfitRequest,
 } from '@wardrowbe/shared-services';
@@ -210,25 +211,13 @@ export function useCalendarOutfits(year: number, month: number, filters: OutfitF
   const { status } = useSession();
   useSetTokenIfAvailable();
 
-  // Calculate date range for the month
-  const date_from = `${year}-${String(month).padStart(2, '0')}-01`;
-  const lastDay = new Date(year, month, 0).getDate();
-  const date_to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-
   return useQuery({
     queryKey: ['calendarOutfits', year, month, filters],
     queryFn: () =>
-      listOutfits(
-        api,
-        {
-          date_from,
-          date_to,
-          status: filters.status,
-          occasion: filters.occasion,
-        },
-        1,
-        100,
-      ),
+      listOutfitsForMonth(api, year, month, {
+        status: filters.status,
+        occasion: filters.occasion,
+      }),
     enabled: status !== 'loading',
   });
 }
