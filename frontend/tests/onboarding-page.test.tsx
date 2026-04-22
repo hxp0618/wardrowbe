@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { messages } from '@wardrowbe/shared-i18n'
 
 const authState = vi.hoisted(() => ({
   user: null as null | { display_name?: string; onboarding_completed: boolean },
@@ -70,7 +71,6 @@ vi.mock('sonner', () => ({
 }))
 
 import { NextIntlClientProvider } from 'next-intl'
-import enMessages from '../messages/en.json'
 import OnboardingPage from '@/app/[locale]/onboarding/page'
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -81,7 +81,7 @@ function renderWithProviders(ui: React.ReactElement) {
   })
 
   return render(
-    <NextIntlClientProvider locale="en" messages={enMessages}>
+    <NextIntlClientProvider locale="en" messages={messages.en}>
       <QueryClientProvider client={queryClient}>
         {ui}
       </QueryClientProvider>
