@@ -1,0 +1,32 @@
+.page {
+  padding: 32px 24px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #f0f0f0;
+  margin-bottom: 16px;
+}
+
+.text {
+  font-size: 26px;
+  color: #999;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.err {
+  color: #ff8a80;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  background: #07c160;
+  color: #fff;
+  border-radius: 12px;
+  font-weight: 600;
+}

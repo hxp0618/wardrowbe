@@ -4,6 +4,7 @@ import Taro, { useDidShow } from "@tarojs/taro";
 
 import { ApiError, api } from "@/lib/api";
 import { getAccessToken, setAccessToken } from "@/lib/auth-storage";
+import { fetchSessionUser } from "@/lib/session";
 
 import "./index.scss";
 
@@ -17,11 +18,21 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const tryResumeSession = useCallback(() => {
+  const tryResumeSession = useCallback(async () => {
     const token = getAccessToken();
-    if (token) {
-      void Taro.switchTab({ url: "/pages/dashboard/index" });
+    if (!token) {
+      return;
     }
+    try {
+      const me = await fetchSessionUser();
+      if (!me.onboarding_completed) {
+        void Taro.reLaunch({ url: "/pages/onboarding/index" });
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    void Taro.switchTab({ url: "/pages/dashboard/index" });
   }, []);
 
   useEffect(() => {
@@ -29,14 +40,14 @@ export default function LoginPage() {
     if (stored) {
       setAccessToken(stored);
     }
-    tryResumeSession();
+    void tryResumeSession();
   }, [tryResumeSession]);
 
   useDidShow(() => {
-    tryResumeSession();
+    void tryResumeSession();
   });
 
-  const goAfterLogin = useCallback(() => {
+  const goAfterLogin = useCallback(async () => {
     let target = "/pages/dashboard/index";
     try {
       const saved = Taro.getStorageSync<string>("wardrowbe_post_login_redirect");
@@ -46,6 +57,15 @@ export default function LoginPage() {
       Taro.removeStorageSync("wardrowbe_post_login_redirect");
     } catch {
       /* ignore */
+    }
+    try {
+      const me = await fetchSessionUser();
+      if (!me.onboarding_completed && !target.includes("pages/onboarding")) {
+        void Taro.reLaunch({ url: "/pages/onboarding/index" });
+        return;
+      }
+    } catch {
+      /* ignore; proceed with target */
     }
     const tabPaths = [
       "/pages/dashboard/index",
@@ -81,7 +101,7 @@ export default function LoginPage() {
         display_name: displayName.trim() || email.split("@")[0] || "User",
       });
       persistToken(data.access_token);
-      goAfterLogin();
+      void goAfterLogin();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "登录失败";
       setError(msg);
@@ -102,7 +122,7 @@ export default function LoginPage() {
       }
       const data = await api.post<SyncResponse>("/auth/wechat/code", { code: login.code });
       persistToken(data.access_token);
-      goAfterLogin();
+      void goAfterLogin();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "微信登录失败";
       setError(msg);

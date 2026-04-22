@@ -149,6 +149,9 @@ export default function DashboardPage() {
         <Button className="link-btn" size="mini" onClick={() => void Taro.navigateTo({ url: "/pages/notifications/index" })}>
           通知
         </Button>
+        <Button className="link-btn" size="mini" onClick={() => void Taro.navigateTo({ url: "/pages/settings/index" })}>
+          设置
+        </Button>
       </View>
 
       <View className="card">

@@ -11,6 +11,9 @@ export default {
     "pages/learning/index",
     "pages/family/index",
     "pages/notifications/index",
+    "pages/settings/index",
+    "pages/onboarding/index",
+    "pages/invite/index",
   ],
   window: {
     backgroundTextStyle: "light",
