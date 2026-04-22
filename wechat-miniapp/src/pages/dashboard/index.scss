@@ -1,21 +1,118 @@
 .page {
-  padding: 40px;
+  padding: 24px;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
-.headline {
-  font-size: 36px;
+.card {
+  background: #1e1e1e;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.card-title {
+  font-size: 28px;
   font-weight: 600;
   margin-bottom: 16px;
+  color: #f5f5f5;
 }
 
-.sub {
-  font-size: 26px;
-  color: #a8a8a8;
+.muted {
+  font-size: 24px;
+  color: #9a9a9a;
   line-height: 1.5;
 }
 
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.temp {
+  font-size: 48px;
+  font-weight: 700;
+  color: #f0f0f0;
+}
+
+.btn {
+  margin-top: 16px;
+  background: #c9a082;
+  color: #1a1a1a;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.btn-outline {
+  margin-top: 12px;
+  background: #2a2a2a;
+  color: #f0f0f0;
+  border-radius: 12px;
+}
+
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: #2a2a2a;
+}
+
+.pending-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.pending-title {
+  font-size: 26px;
+  color: #eee;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pending-sub {
+  font-size: 22px;
+  color: #888;
+  margin-top: 6px;
+}
+
+.icon-btns {
+  display: flex;
+  gap: 12px;
+}
+
+.icon-btn {
+  width: 64px;
+  height: 64px;
+  line-height: 64px;
+  text-align: center;
+  border-radius: 12px;
+  font-size: 28px;
+  padding: 0;
+}
+
+.reject {
+  background: #3a2222;
+  color: #ff8a80;
+}
+
+.accept {
+  background: #223a28;
+  color: #69f0ae;
+}
+
 .logout {
-  margin-top: 48px;
+  margin-top: 32px;
   background: #2a2a2a;
   color: #f0f0f0;
   border-radius: 12px;

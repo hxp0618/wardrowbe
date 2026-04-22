@@ -338,6 +338,44 @@ export interface Outfit {
   created_at: string;
 }
 
+export interface OutfitListResponse {
+  outfits: Outfit[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+}
+
+/** Query filters for GET /outfits (aligned with Web `OutfitFilters`). */
+export interface OutfitListFilters {
+  status?: string;
+  occasion?: string;
+  date_from?: string;
+  date_to?: string;
+  source?: string;
+  is_lookbook?: boolean;
+  is_replacement?: boolean;
+  has_source_item?: boolean;
+  search?: string;
+  cloned_from_outfit_id?: string;
+  family_member_id?: string;
+}
+
+/** Current weather from GET /weather/current */
+export interface WeatherCurrent {
+  temperature: number;
+  feels_like: number;
+  humidity: number;
+  precipitation_chance: number;
+  precipitation_mm: number;
+  wind_speed: number;
+  condition: string;
+  condition_code: number;
+  is_day: boolean;
+  uv_index: number;
+  timestamp: string;
+}
+
 export interface SuggestRequest {
   occasion: string;
   weather_override?: {

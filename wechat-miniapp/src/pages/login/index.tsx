@@ -47,8 +47,17 @@ export default function LoginPage() {
     } catch {
       /* ignore */
     }
-    if (target.includes("pages/dashboard") || target.includes("pages/wardrobe")) {
-      void Taro.switchTab({ url: target.includes("wardrobe") ? "/pages/wardrobe/index" : "/pages/dashboard/index" });
+    const tabPaths = [
+      "/pages/dashboard/index",
+      "/pages/wardrobe/index",
+      "/pages/suggest/index",
+      "/pages/pairings/index",
+      "/pages/outfits/index",
+    ];
+    const normalizedTarget = target.startsWith("/") ? target : `/${target}`;
+    const matched = tabPaths.find((p) => normalizedTarget.includes(p));
+    if (matched) {
+      void Taro.switchTab({ url: matched });
     } else {
       void Taro.reLaunch({ url: target });
     }

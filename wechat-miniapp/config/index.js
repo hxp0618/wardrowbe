@@ -13,6 +13,10 @@ const sharedApiSrc = path.join(repoRoot, "packages/shared-api/src");
 const resolveSharedPackages = (chain) => {
   chain.resolve.alias.set("@wardrowbe/shared-api", sharedApiSrc);
   chain.resolve.alias.set("@wardrowbe/shared-domain", path.join(repoRoot, "packages/shared-domain/src"));
+  chain.resolve.alias.set(
+    "@wardrowbe/shared-services",
+    path.join(repoRoot, "packages/shared-services/src"),
+  );
 };
 
 export default defineConfig(async (merge, { command, mode }) => {
@@ -41,7 +45,13 @@ export default defineConfig(async (merge, { command, mode }) => {
     },
     mini: {
       compile: {
-        include: [(modulePath) => typeof modulePath === "string" && modulePath.includes(`${path.sep}packages${path.sep}shared-api`)],
+        include: [
+          (modulePath) =>
+            typeof modulePath === "string" &&
+            (modulePath.includes(`${path.sep}packages${path.sep}shared-api`) ||
+              modulePath.includes(`${path.sep}packages${path.sep}shared-services`) ||
+              modulePath.includes(`${path.sep}packages${path.sep}shared-domain`)),
+        ],
       },
       postcss: {
         pxtransform: {
