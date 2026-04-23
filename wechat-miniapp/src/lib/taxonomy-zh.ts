@@ -57,3 +57,17 @@ export function clothingSubtypeZh(subtype: string | null | undefined): string {
   const k = subtype.toLowerCase();
   return CLOTHING_SUBTYPE_ZH[k] || subtype;
 }
+
+/** Aligned with `packages/shared-i18n/locale/zh.json` → `taxonomy.occasions`. */
+export const OCCASION_LABEL_ZH: Record<string, string> = {
+  casual: "休闲",
+  office: "办公",
+  formal: "正式",
+  date: "约会",
+  sporty: "运动",
+  outdoor: "户外",
+};
+
+export function occasionLabelZh(value: string): string {
+  return OCCASION_LABEL_ZH[value] || value;
+}

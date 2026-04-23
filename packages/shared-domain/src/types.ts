@@ -378,8 +378,12 @@ export interface WeatherCurrent {
   timestamp: string;
 }
 
+/** Matches backend `SuggestRequest.time_of_day`. */
+export type SuggestTimeOfDay = "morning" | "afternoon" | "evening" | "night" | "full day";
+
 export interface SuggestRequest {
   occasion: string;
+  time_of_day?: SuggestTimeOfDay | null;
   weather_override?: {
     temperature: number;
     feels_like?: number;
