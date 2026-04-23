@@ -1,4 +1,5 @@
 export * from "./analytics";
+export * from "./folders";
 export * from "./families";
 export * from "./items";
 export * from "./learning";

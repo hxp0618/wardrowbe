@@ -36,3 +36,8 @@ export function listItems(
 export function getItem(api: WardrowbeApi, itemId: string): Promise<Item> {
   return api.get<Item>(`/items/${itemId}`);
 }
+
+/** Queue AI re-analysis (same as Web `POST /items/{id}/analyze`). */
+export function analyzeItem(api: WardrowbeApi, itemId: string): Promise<Record<string, unknown>> {
+  return api.post<Record<string, unknown>>(`/items/${itemId}/analyze`);
+}
