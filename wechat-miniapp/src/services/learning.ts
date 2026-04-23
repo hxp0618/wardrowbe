@@ -17,3 +17,24 @@ export function generateInsights(): Promise<StyleInsight[]> {
 export function acknowledgeInsight(insightId: string): Promise<{ acknowledged: boolean }> {
   return api.post<{ acknowledged: boolean }>(`/learning/insights/${insightId}/acknowledge`)
 }
+
+export interface ItemPairSuggestion {
+  item: {
+    id: string
+    type: string
+    name: string | null
+    primary_color: string | null
+    thumbnail_path: string | null
+    thumbnail_url: string | null
+  }
+  compatibility_score: number
+}
+
+export function getItemPairSuggestions(
+  itemId: string,
+  limit = 5
+): Promise<ItemPairSuggestion[]> {
+  return api.get<ItemPairSuggestion[]>(`/learning/item-pairs/${itemId}`, {
+    params: { limit: String(limit) },
+  })
+}

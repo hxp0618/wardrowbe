@@ -5,8 +5,10 @@ import { EmptyState } from '../../components/empty-state'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
 import { StatCard } from '../../components/stat-card'
+import { colors, inputStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useAnalytics } from '../../hooks/use-analytics'
+import { formatColorLabel, formatItemTypeLabel } from '../../lib/display'
 
 const DAY_OPTIONS = ['30 天', '60 天', '90 天']
 const DAY_VALUES = [30, 60, 90]
@@ -22,29 +24,22 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <PageShell title='分析' subtitle='移动端先保留信息对齐，把关键统计、分布和趋势改成列表卡片。'>
+    <PageShell title='分析' subtitle='衣橱数据统计与趋势' navKey='dashboard'>
       <SectionCard title='范围'>
         <Picker mode='selector' range={DAY_OPTIONS} value={dayIndex} onChange={(event) => setDayIndex(Number(event.detail.value))}>
-          <View
-            style={{
-              padding: '12px 14px',
-              borderRadius: '14px',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E5E7EB',
-            }}
-          >
-            <Text style={{ fontSize: '22px', color: '#111827' }}>{DAY_OPTIONS[dayIndex]}</Text>
+          <View style={inputStyle}>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{DAY_OPTIONS[dayIndex]}</Text>
           </View>
         </Picker>
       </SectionCard>
 
       {isLoading ? (
         <SectionCard title='加载中'>
-          <Text style={{ fontSize: '22px', color: '#6B7280' }}>正在计算分析数据...</Text>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在计算分析数据...</Text>
         </SectionCard>
       ) : !data ? (
         <SectionCard title='分析结果'>
-          <EmptyState title='当前没有分析数据' description='随着单品和穿搭积累，统计和趋势会自动出现在这里。' />
+          <EmptyState title='还没有可展示的分析数据' description='随着单品和穿搭记录增加，这里会逐步出现统计、趋势和洞察。' />
         </SectionCard>
       ) : (
         <>
@@ -74,11 +69,11 @@ export default function AnalyticsPage() {
                       justifyContent: 'space-between',
                       padding: '12px 14px',
                       borderRadius: '14px',
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: colors.surfaceMuted,
                     }}
                   >
-                    <Text style={{ fontSize: '22px', color: '#111827' }}>{item.color}</Text>
-                    <Text style={{ fontSize: '20px', color: '#6B7280' }}>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{formatColorLabel(item.color)}</Text>
+                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>
                       {item.count} 件 · {item.percentage}%
                     </Text>
                   </View>
@@ -100,11 +95,11 @@ export default function AnalyticsPage() {
                       justifyContent: 'space-between',
                       padding: '12px 14px',
                       borderRadius: '14px',
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: colors.surfaceMuted,
                     }}
                   >
-                    <Text style={{ fontSize: '22px', color: '#111827' }}>{item.type}</Text>
-                    <Text style={{ fontSize: '20px', color: '#6B7280' }}>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{formatItemTypeLabel(item.type)}</Text>
+                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>
                       {item.count} 件 · {item.percentage}%
                     </Text>
                   </View>
@@ -124,15 +119,60 @@ export default function AnalyticsPage() {
                     style={{
                       padding: '12px 14px',
                       borderRadius: '14px',
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: colors.surfaceMuted,
                     }}
                   >
-                    <Text style={{ fontSize: '22px', color: '#111827', lineHeight: 1.5 }}>{insight}</Text>
+                    <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>{insight}</Text>
                   </View>
                 ))}
               </View>
             ) : (
               <EmptyState title='暂无洞察' description='随着反馈积累，analytics 会输出更多可读的整体结论。' />
+            )}
+          </SectionCard>
+
+          <SectionCard title='穿着最多'>
+            {data.most_worn.length ? (
+              <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {data.most_worn.slice(0, 5).map((item) => (
+                  <View key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{item.name || formatItemTypeLabel(item.type)}</Text>
+                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>{item.wear_count} 次</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <EmptyState title='暂无数据' description='穿着记录增加后会自动统计。' />
+            )}
+          </SectionCard>
+
+          <SectionCard title='穿着最少'>
+            {data.least_worn.length ? (
+              <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {data.least_worn.slice(0, 5).map((item) => (
+                  <View key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{item.name || formatItemTypeLabel(item.type)}</Text>
+                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>{item.wear_count} 次</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <EmptyState title='暂无数据' description='需要更多穿着记录。' />
+            )}
+          </SectionCard>
+
+          <SectionCard title='从未穿过'>
+            {data.never_worn.length ? (
+              <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {data.never_worn.slice(0, 5).map((item) => (
+                  <View key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(251, 191, 36, 0.12)' }}>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{item.name || formatItemTypeLabel(item.type)}</Text>
+                    <Text style={{ fontSize: '12px', color: colors.warning }}>未穿</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <EmptyState title='太棒了' description='你的每件单品都穿过了！' />
             )}
           </SectionCard>
         </>

@@ -4,9 +4,9 @@ import type {
   ForecastResponse,
   ManualOutfitRequest,
   Outfit,
+  OutfitFeedbackRequest,
   OutfitFilters,
   OutfitListResponse,
-  Preferences,
   SuggestRequest,
   Weather,
 } from './types'
@@ -48,6 +48,10 @@ export function listOutfits(
   })
 }
 
+export function getOutfit(id: string): Promise<Outfit> {
+  return api.get<Outfit>(`/outfits/${id}`)
+}
+
 export function listPendingOutfits(limit = 3): Promise<OutfitListResponse> {
   return api.get<OutfitListResponse>('/outfits', {
     params: {
@@ -74,6 +78,21 @@ export function rejectOutfit(outfitId: string): Promise<Outfit> {
   return api.post<Outfit>(`/outfits/${outfitId}/reject`)
 }
 
+export function deleteOutfit(outfitId: string): Promise<void> {
+  return api.delete<void>(`/outfits/${outfitId}`)
+}
+
+export function submitOutfitFeedback(
+  outfitId: string,
+  feedback: OutfitFeedbackRequest
+): Promise<Outfit> {
+  return api.post<Outfit>(`/outfits/${outfitId}/feedback`, feedback)
+}
+
+export function cloneOutfit(outfitId: string): Promise<Outfit> {
+  return api.post<Outfit>(`/outfits/${outfitId}/clone`)
+}
+
 export function listCurrentWeather(): Promise<Weather> {
   return api.get<Weather>('/weather/current')
 }
@@ -82,8 +101,4 @@ export function listWeatherForecast(days: number): Promise<ForecastResponse> {
   return api.get<ForecastResponse>('/weather/forecast', {
     params: { days: String(days) },
   })
-}
-
-export function getPreferences(): Promise<Preferences> {
-  return api.get<Preferences>('/users/me/preferences')
 }

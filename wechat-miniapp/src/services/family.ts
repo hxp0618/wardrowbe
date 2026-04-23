@@ -1,6 +1,6 @@
 import { api } from '../lib/api'
 
-import type { Family, FamilyCreateResponse, JoinFamilyResponse } from './types'
+import type { Family, FamilyCreateResponse, FamilyMember, JoinFamilyResponse } from './types'
 
 export function getFamily(): Promise<Family> {
   return api.get<Family>('/families/me')
@@ -44,4 +44,41 @@ export function cancelInvite(inviteId: string): Promise<void> {
 
 export function leaveFamily(): Promise<{ message: string }> {
   return api.post<{ message: string }>('/families/me/leave')
+}
+
+export function updateMemberRole(
+  memberId: string,
+  role: string
+): Promise<FamilyMember> {
+  return api.patch<FamilyMember>(`/families/me/members/${memberId}`, { role })
+}
+
+export function removeMember(memberId: string): Promise<void> {
+  return api.delete<void>(`/families/me/members/${memberId}`)
+}
+
+export interface FamilyRating {
+  id: string
+  outfit_id: string
+  user_id: string
+  display_name: string
+  rating: number
+  comment?: string
+  created_at: string
+}
+
+export function submitFamilyRating(
+  outfitId: string,
+  rating: number,
+  comment?: string
+): Promise<FamilyRating> {
+  return api.post<FamilyRating>(`/outfits/${outfitId}/family-rating`, { rating, comment })
+}
+
+export function getFamilyRatings(outfitId: string): Promise<FamilyRating[]> {
+  return api.get<FamilyRating[]>(`/outfits/${outfitId}/family-ratings`)
+}
+
+export function deleteFamilyRating(outfitId: string): Promise<void> {
+  return api.delete<void>(`/outfits/${outfitId}/family-rating`)
 }

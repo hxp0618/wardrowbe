@@ -1,15 +1,24 @@
-import { Button, Picker, Text, View } from '@tarojs/components'
+import { Picker, Text, View } from '@tarojs/components'
+import Taro from '@tarojs/taro'
 import { useMemo, useState } from 'react'
 
 import { EmptyState } from '../../components/empty-state'
 import { OutfitCard } from '../../components/outfit-card'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
+import { colors, inputStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useCalendarOutfits } from '../../hooks/use-outfits'
+import { formatOccasionLabel } from '../../lib/display'
 
 const OCCASIONS = ['全部场景', 'casual', 'office', 'formal', 'date', 'sporty', 'outdoor']
 const STATUSES = ['全部状态', 'pending', 'accepted', 'rejected', 'viewed']
+const STATUS_LABELS: Record<string, string> = {
+  pending: '待确认',
+  accepted: '已接受',
+  rejected: '已拒绝',
+  viewed: '已查看',
+}
 
 function currentYearMonth(): { year: number; month: number } {
   const now = new Date()
@@ -23,7 +32,7 @@ function toDateString(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-function sortOutfitsByDate(outfits: Array<{ scheduled_for: string | null; created_at: string }>) {
+function sortOutfitsByDate<T extends { scheduled_for: string | null; created_at: string }>(outfits: T[]): T[] {
   return [...outfits].sort((left, right) => {
     const leftKey = left.scheduled_for ?? left.created_at
     const rightKey = right.scheduled_for ?? right.created_at
@@ -63,43 +72,26 @@ export default function HistoryPage() {
   )
 
   return (
-    <PageShell title='历史' subtitle='移动端先用日期列表替代桌面双栏日历，保持历史浏览和筛选可用。'>
+    <PageShell title='历史' subtitle='按日期浏览穿搭记录' navKey='dashboard'>
       <SectionCard title='筛选'>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <Picker mode='date' fields='month' value={monthValue} onChange={(event) => setMonthValue(event.detail.value)}>
-            <View
-              style={{
-                padding: '12px 14px',
-                borderRadius: '14px',
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #E5E7EB',
-              }}
-            >
-              <Text style={{ fontSize: '22px', color: '#111827' }}>月份：{monthValue}</Text>
+            <View style={inputStyle}>
+              <Text style={{ fontSize: '14px', color: colors.text }}>月份：{monthValue}</Text>
             </View>
           </Picker>
           <Picker mode='selector' range={OCCASIONS} value={occasionIndex} onChange={(event) => setOccasionIndex(Number(event.detail.value))}>
-            <View
-              style={{
-                padding: '12px 14px',
-                borderRadius: '14px',
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #E5E7EB',
-              }}
-            >
-              <Text style={{ fontSize: '22px', color: '#111827' }}>{OCCASIONS[occasionIndex]}</Text>
+            <View style={inputStyle}>
+              <Text style={{ fontSize: '14px', color: colors.text }}>
+                {formatOccasionLabel(OCCASIONS[occasionIndex])}
+              </Text>
             </View>
           </Picker>
           <Picker mode='selector' range={STATUSES} value={statusIndex} onChange={(event) => setStatusIndex(Number(event.detail.value))}>
-            <View
-              style={{
-                padding: '12px 14px',
-                borderRadius: '14px',
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #E5E7EB',
-              }}
-            >
-              <Text style={{ fontSize: '22px', color: '#111827' }}>{STATUSES[statusIndex]}</Text>
+            <View style={inputStyle}>
+              <Text style={{ fontSize: '14px', color: colors.text }}>
+                {STATUS_LABELS[STATUSES[statusIndex]] ?? STATUSES[statusIndex]}
+              </Text>
             </View>
           </Picker>
         </View>
@@ -117,11 +109,11 @@ export default function HistoryPage() {
                   style={{
                     padding: '10px 14px',
                     borderRadius: '999px',
-                    border: selected ? '1px solid #0F172A' : '1px solid #CBD5E1',
-                    backgroundColor: selected ? '#E2E8F0' : '#FFFFFF',
+                    border: selected ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
+                    backgroundColor: selected ? '#27272a' : colors.surfaceMuted,
                   }}
                 >
-                  <Text style={{ fontSize: '20px', color: '#111827' }}>{date}</Text>
+                  <Text style={{ fontSize: '12px', color: selected ? colors.text : colors.textMuted }}>{date}</Text>
                 </View>
               )
             })}
@@ -131,9 +123,9 @@ export default function HistoryPage() {
         )}
       </SectionCard>
 
-      <SectionCard title='当日记录' extra={<Text style={{ fontSize: '20px', color: '#6B7280' }}>{selectedDate}</Text>}>
+      <SectionCard title='当日记录' extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{selectedDate}</Text>}>
         {isLoading ? (
-          <Text style={{ fontSize: '22px', color: '#6B7280' }}>正在加载历史记录...</Text>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在加载历史记录...</Text>
         ) : selectedOutfits.length ? (
           <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {selectedOutfits.map((outfit) => (
@@ -141,10 +133,23 @@ export default function HistoryPage() {
             ))}
           </View>
         ) : (
-          <EmptyState title='所选日期没有记录' description='切换其它日期，或者先去推荐页接受一套新的穿搭。' />
+          <EmptyState
+            title='所选日期没有记录'
+            description='切换其它日期，或者先去推荐页接受一套新的穿搭。'
+            action={
+              <View
+                onClick={() => void Taro.switchTab({ url: '/pages/suggest/index' })}
+                style={secondaryButtonStyle}
+              >
+                <Text style={{ fontSize: '14px', color: colors.text }}>去推荐页</Text>
+              </View>
+            }
+          />
         )}
         <View style={{ marginTop: '12px' }}>
-          <Button onClick={() => setSelectedDate(toDateString(new Date()))}>回到今天</Button>
+          <View onClick={() => setSelectedDate(toDateString(new Date()))} style={secondaryButtonStyle}>
+            <Text style={{ fontSize: '14px', color: colors.text }}>回到今天</Text>
+          </View>
         </View>
       </SectionCard>
     </PageShell>

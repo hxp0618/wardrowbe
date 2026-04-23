@@ -9,6 +9,7 @@ import type {
   ItemFilter,
   ItemListResponse,
   ItemTypeCount,
+  UpdateItemInput,
 } from './types'
 
 function buildItemListParams(
@@ -43,8 +44,96 @@ export function listItems(
   })
 }
 
+export function getItem(id: string): Promise<Item> {
+  return api.get<Item>(`/items/${id}`)
+}
+
 export function listItemTypes(): Promise<ItemTypeCount[]> {
   return api.get<ItemTypeCount[]>('/items/types')
+}
+
+export function updateItem(id: string, data: UpdateItemInput): Promise<Item> {
+  return api.patch<Item>(`/items/${id}`, data)
+}
+
+export function deleteItem(id: string): Promise<void> {
+  return api.delete<void>(`/items/${id}`)
+}
+
+export function toggleFavorite(id: string, favorite: boolean): Promise<Item> {
+  return api.patch<Item>(`/items/${id}`, { favorite })
+}
+
+export function toggleNeedsWash(id: string, needsWash: boolean): Promise<Item> {
+  return api.patch<Item>(`/items/${id}`, { needs_wash: needsWash })
+}
+
+export function reanalyzeItem(id: string): Promise<Item> {
+  return api.post<Item>(`/items/${id}/reanalyze`)
+}
+
+export function archiveItem(id: string, reason?: string): Promise<Item> {
+  return api.post<Item>(`/items/${id}/archive`, reason ? { reason } : undefined)
+}
+
+export function unarchiveItem(id: string): Promise<Item> {
+  return api.post<Item>(`/items/${id}/unarchive`)
+}
+
+export function logWear(
+  id: string,
+  worn_at?: string,
+  occasion?: string
+): Promise<Item> {
+  return api.post<Item>(`/items/${id}/wear`, { worn_at, occasion })
+}
+
+export function logWash(
+  id: string,
+  washed_at?: string,
+  method?: string,
+  notes?: string
+): Promise<Item> {
+  return api.post<Item>(`/items/${id}/wash`, { washed_at, method, notes })
+}
+
+export interface WashHistoryEntry {
+  id: string
+  washed_at: string
+  method?: string
+  notes?: string
+}
+
+export function getWashHistory(id: string): Promise<WashHistoryEntry[]> {
+  return api.get<WashHistoryEntry[]>(`/items/${id}/wash-history`)
+}
+
+export interface ItemWearStats {
+  total_wears: number
+  days_since_last_worn: number | null
+  average_wears_per_month: number
+  wear_by_month: Record<string, number>
+  wear_by_day_of_week: Record<string, number>
+  most_common_occasion: string | null
+}
+
+export function getWearStats(id: string): Promise<ItemWearStats> {
+  return api.get<ItemWearStats>(`/items/${id}/wear-stats`)
+}
+
+export interface WearHistoryEntry {
+  id: string
+  worn_at: string
+  occasion?: string
+  notes?: string
+}
+
+export function getWearHistory(id: string, limit = 10): Promise<WearHistoryEntry[]> {
+  return api.get<WearHistoryEntry[]>(`/items/${id}/history?limit=${limit}`)
+}
+
+export function listColorDistribution(): Promise<Array<{ color: string; count: number }>> {
+  return api.get<Array<{ color: string; count: number }>>('/items/colors')
 }
 
 function buildUploadHeaders(): Record<string, string> {

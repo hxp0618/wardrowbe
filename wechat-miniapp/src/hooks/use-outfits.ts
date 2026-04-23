@@ -2,22 +2,33 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   acceptOutfit,
+  cloneOutfit,
   createManualOutfit,
-  getPreferences,
+  deleteOutfit,
+  getOutfit,
   listCurrentWeather,
   listOutfits,
   listPendingOutfits,
   listWeatherForecast,
   rejectOutfit,
+  submitOutfitFeedback,
   suggestOutfit,
 } from '../services/outfits'
 
-import type { OutfitFilters, SuggestRequest } from '../services/types'
+import type { OutfitFeedbackRequest, OutfitFilters, SuggestRequest } from '../services/types'
 
 export function useOutfits(filters: OutfitFilters = {}, page = 1, pageSize = 20) {
   return useQuery({
     queryKey: ['miniapp', 'outfits', filters, page, pageSize],
     queryFn: () => listOutfits(filters, page, pageSize),
+  })
+}
+
+export function useOutfit(id: string) {
+  return useQuery({
+    queryKey: ['miniapp', 'outfit', id],
+    queryFn: () => getOutfit(id),
+    enabled: !!id,
   })
 }
 
@@ -84,11 +95,11 @@ export function useWeatherForecast(days: number, enabled = true) {
   })
 }
 
-export function usePreferences() {
-  return useQuery({
-    queryKey: ['miniapp', 'preferences'],
-    queryFn: getPreferences,
-  })
+function invalidateOutfits(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['miniapp', 'outfits'] })
+  void queryClient.invalidateQueries({ queryKey: ['miniapp', 'outfit'] })
+  void queryClient.invalidateQueries({ queryKey: ['miniapp', 'pending-outfits'] })
+  void queryClient.invalidateQueries({ queryKey: ['miniapp', 'calendar-outfits'] })
 }
 
 export function useSuggestOutfit() {
@@ -96,10 +107,7 @@ export function useSuggestOutfit() {
 
   return useMutation({
     mutationFn: (request: SuggestRequest) => suggestOutfit(request),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'outfits'] })
-      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'pending-outfits'] })
-    },
+    onSuccess: () => invalidateOutfits(queryClient),
   })
 }
 
@@ -108,10 +116,7 @@ export function useCreateManualOutfit() {
 
   return useMutation({
     mutationFn: createManualOutfit,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'outfits'] })
-      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'pending-outfits'] })
-    },
+    onSuccess: () => invalidateOutfits(queryClient),
   })
 }
 
@@ -120,10 +125,7 @@ export function useAcceptOutfit() {
 
   return useMutation({
     mutationFn: (outfitId: string) => acceptOutfit(outfitId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'outfits'] })
-      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'pending-outfits'] })
-    },
+    onSuccess: () => invalidateOutfits(queryClient),
   })
 }
 
@@ -132,9 +134,39 @@ export function useRejectOutfit() {
 
   return useMutation({
     mutationFn: (outfitId: string) => rejectOutfit(outfitId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'outfits'] })
-      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'pending-outfits'] })
-    },
+    onSuccess: () => invalidateOutfits(queryClient),
+  })
+}
+
+export function useDeleteOutfit() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteOutfit,
+    onSuccess: () => invalidateOutfits(queryClient),
+  })
+}
+
+export function useSubmitOutfitFeedback() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      outfitId,
+      feedback,
+    }: {
+      outfitId: string
+      feedback: OutfitFeedbackRequest
+    }) => submitOutfitFeedback(outfitId, feedback),
+    onSuccess: () => invalidateOutfits(queryClient),
+  })
+}
+
+export function useCloneOutfit() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: cloneOutfit,
+    onSuccess: () => invalidateOutfits(queryClient),
   })
 }

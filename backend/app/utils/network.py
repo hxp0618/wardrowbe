@@ -30,7 +30,7 @@ def _resolve_host_ips(host: str, port: int) -> list[ipaddress._BaseAddress]:
     try:
         resolved = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except socket.gaierror as exc:
-        raise ValueError(_OUTBOUND_BLOCK_MESSAGE) from exc
+        raise ValueE1rror(_OUTBOUND_BLOCK_MESSAGE) from exc
 
     candidates: list[ipaddress._BaseAddress] = []
     for _, _, _, _, sockaddr in resolved:

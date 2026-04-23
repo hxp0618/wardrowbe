@@ -1,6 +1,9 @@
 import { Image, Text, View } from '@tarojs/components'
 
+import { formatItemTypeLabel, formatSubtypeLabel } from '../lib/display'
 import type { Item } from '../services/types'
+import { UIBadge } from './ui-badge'
+import { colors } from './ui-theme'
 
 type ItemCardProps = {
   item: Item
@@ -8,17 +11,19 @@ type ItemCardProps = {
 
 export function ItemCard(props: ItemCardProps) {
   const imageUrl = props.item.thumbnail_url ?? props.item.image_url
-  const title = props.item.name || props.item.type
+  const typeLabel = formatItemTypeLabel(props.item.type)
+  const subtypeLabel = formatSubtypeLabel(props.item.subtype)
+  const title = props.item.name || typeLabel
 
   return (
     <View
       style={{
         display: 'flex',
-        gap: '16px',
-        padding: '18px',
+        gap: '14px',
+        padding: '16px',
         borderRadius: '18px',
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E5E7EB',
+        backgroundColor: colors.surface,
+        border: `1px solid ${colors.border}`,
       }}
     >
       {imageUrl ? (
@@ -26,36 +31,36 @@ export function ItemCard(props: ItemCardProps) {
           src={imageUrl}
           mode='aspectFill'
           style={{
-            width: '112px',
+            width: '96px',
             height: '112px',
-            borderRadius: '16px',
-            backgroundColor: '#E5E7EB',
+            borderRadius: '14px',
+            backgroundColor: colors.surfaceMuted,
             flexShrink: 0,
           }}
         />
       ) : (
         <View
           style={{
-            width: '112px',
+            width: '96px',
             height: '112px',
-            borderRadius: '16px',
-            backgroundColor: '#E5E7EB',
+            borderRadius: '14px',
+            backgroundColor: colors.surfaceMuted,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <Text style={{ fontSize: '22px', color: '#6B7280' }}>{props.item.type}</Text>
+          <Text style={{ fontSize: '13px', color: colors.textSoft }}>{typeLabel}</Text>
         </View>
       )}
       <View style={{ flex: 1 }}>
         <Text
           style={{
             display: 'block',
-            fontSize: '26px',
+            fontSize: '17px',
             fontWeight: 600,
-            color: '#111827',
+            color: colors.text,
           }}
         >
           {title}
@@ -63,36 +68,29 @@ export function ItemCard(props: ItemCardProps) {
         <Text
           style={{
             display: 'block',
-            marginTop: '8px',
-            fontSize: '22px',
-            color: '#6B7280',
+            marginTop: '6px',
+            fontSize: '12px',
+            color: colors.textMuted,
           }}
         >
-          {props.item.type}
-          {props.item.subtype ? ` · ${props.item.subtype}` : ''}
+          {typeLabel}
+          {subtypeLabel ? ` · ${subtypeLabel}` : ''}
         </Text>
         <Text
           style={{
             display: 'block',
             marginTop: '8px',
-            fontSize: '22px',
-            color: '#6B7280',
+            fontSize: '12px',
+            color: colors.textSoft,
           }}
         >
           数量 {props.item.quantity} · 穿过 {props.item.wear_count} 次
         </Text>
-        {props.item.needs_wash ? (
-          <Text
-            style={{
-              display: 'block',
-              marginTop: '8px',
-              fontSize: '22px',
-              color: '#B45309',
-            }}
-          >
-            需要清洗
-          </Text>
-        ) : null}
+        <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+          {props.item.favorite ? <UIBadge label='收藏' tone='danger' /> : null}
+          {props.item.needs_wash ? <UIBadge label='需要清洗' tone='warning' /> : null}
+          {props.item.is_archived ? <UIBadge label='已归档' /> : null}
+        </View>
       </View>
     </View>
   )

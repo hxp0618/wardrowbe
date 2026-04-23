@@ -1,25 +1,68 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 
 import { Text, View } from '@tarojs/components'
+import Taro from '@tarojs/taro'
+
+import { AppHeader } from './app-header'
+import { MobileDrawer, resolveMobileDrawerKey } from './mobile-drawer'
+import { MobileTabBar, type MobileTabKey } from './mobile-tab-bar'
+import { colors, pagePadding, subtitleTextStyle, titleTextStyle } from './ui-theme'
 
 type PageShellProps = {
-  title: string
+  title?: string
   subtitle?: string
   actions?: ReactNode
+  header?: ReactNode | null
+  navKey?: MobileTabKey
+  useBuiltInTabBar?: boolean
   children: ReactNode
 }
 
+export function createPageShellHeader(
+  header: ReactNode | null | undefined,
+  onOpenMenu: () => void
+) {
+  if (header === undefined) {
+    return <AppHeader onMenuClick={onOpenMenu} />
+  }
+  return header
+}
+
 export function PageShell(props: PageShellProps) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const header = createPageShellHeader(props.header, () => setMenuOpen(true))
+  const showMobileTabBar = !!props.navKey && !props.useBuiltInTabBar
+  const currentPath = Taro.getCurrentInstance().router?.path
+  const activeDrawerKey = resolveMobileDrawerKey(currentPath)
+
   return (
     <View
       style={{
         minHeight: '100vh',
-        backgroundColor: '#F3F4F6',
-        padding: '24px',
+        backgroundColor: colors.page,
         boxSizing: 'border-box',
       }}
     >
-      <View style={{ marginBottom: '20px' }}>
+      {header}
+      {header ? (
+        <MobileDrawer
+          open={menuOpen}
+          activeKey={activeDrawerKey}
+          onClose={() => setMenuOpen(false)}
+        />
+      ) : null}
+      <View
+        style={{
+          padding: pagePadding,
+          paddingTop: header ? '18px' : '28px',
+          paddingBottom: props.useBuiltInTabBar || showMobileTabBar ? '104px' : '28px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          boxSizing: 'border-box',
+        }}
+      >
         <View
           style={{
             display: 'flex',
@@ -29,42 +72,16 @@ export function PageShell(props: PageShellProps) {
           }}
         >
           <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                display: 'block',
-                fontSize: '32px',
-                fontWeight: 600,
-                color: '#111827',
-              }}
-            >
-              {props.title}
-            </Text>
+            {props.title ? <Text style={titleTextStyle}>{props.title}</Text> : null}
             {props.subtitle ? (
-              <Text
-                style={{
-                  display: 'block',
-                  marginTop: '8px',
-                  fontSize: '24px',
-                  color: '#6B7280',
-                  lineHeight: 1.5,
-                }}
-              >
-                {props.subtitle}
-              </Text>
+              <Text style={subtitleTextStyle}>{props.subtitle}</Text>
             ) : null}
           </View>
           {props.actions ? <View>{props.actions}</View> : null}
         </View>
-      </View>
-      <View
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}
-      >
         {props.children}
       </View>
+      {showMobileTabBar ? <MobileTabBar activeKey={props.navKey!} /> : null}
     </View>
   )
 }

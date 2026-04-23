@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   acknowledgeInsight,
   generateInsights,
+  getItemPairSuggestions,
   getLearning,
   recomputeLearning,
 } from '../services/learning'
@@ -45,5 +46,14 @@ export function useAcknowledgeInsight() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['miniapp', 'learning'] })
     },
+  })
+}
+
+export function useItemPairSuggestions(itemId: string, limit = 5) {
+  return useQuery({
+    queryKey: ['miniapp', 'learning', 'item-pairs', itemId, limit],
+    queryFn: () => getItemPairSuggestions(itemId, limit),
+    enabled: !!itemId,
+    staleTime: 5 * 60 * 1000,
   })
 }

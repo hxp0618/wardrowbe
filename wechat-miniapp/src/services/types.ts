@@ -1,6 +1,26 @@
-import type { Item, Outfit, Pairing, Preferences } from '@wardrowbe/shared-domain'
+import type {
+  Family,
+  FamilyMember,
+  FolderRef,
+  Item,
+  Outfit,
+  Pairing,
+  PendingInvite,
+  Preferences,
+  SourceItem,
+} from '@wardrowbe/shared-domain'
 
-export type { Item, Outfit, Pairing, Preferences }
+export type {
+  Family,
+  FamilyMember,
+  FolderRef,
+  Item,
+  Outfit,
+  Pairing,
+  PendingInvite,
+  Preferences,
+  SourceItem,
+}
 
 export interface ItemListResponse {
   items: Item[]
@@ -34,6 +54,20 @@ export interface CreateItemInput {
   notes?: string
   favorite?: boolean
   quantity?: number
+}
+
+export interface UpdateItemInput {
+  type?: string
+  subtype?: string
+  name?: string
+  brand?: string
+  notes?: string
+  favorite?: boolean
+  needs_wash?: boolean
+  quantity?: number
+  purchase_date?: string
+  purchase_price?: number
+  wash_interval?: number
 }
 
 export interface OutfitListResponse {
@@ -78,12 +112,29 @@ export interface ManualOutfitRequest {
   use_for_learning?: boolean
 }
 
+export interface OutfitFeedbackRequest {
+  rating?: number
+  comment?: string
+  actually_worn?: boolean
+  comfort_rating?: number
+  style_rating?: number
+}
+
 export interface PairingListResponse {
   pairings: Pairing[]
   total: number
   page: number
   page_size: number
   has_more: boolean
+}
+
+export interface GeneratePairingsRequest {
+  num_pairings: number
+}
+
+export interface GeneratePairingsResponse {
+  generated: number
+  pairings: Pairing[]
 }
 
 export interface Weather {

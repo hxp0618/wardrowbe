@@ -88,11 +88,13 @@
 
 共享逻辑需要设计成 Web 前端和小程序都能消费同一套领域与 API 行为，同时把平台相关运行时细节隔离开。
 
-共享模块固定放在仓库根目录 `packages/` 下，建议拆分为：
+共享模块固定放在仓库根目录 `packages/` 下。仓库中 `packages/shared-api`、`packages/shared-domain`、`packages/shared-i18n` 三个包及其 `src/` 骨架已先行创建，后续实现阶段在其中扩展并通过 workspace 被 `frontend/` 和 `wechat-miniapp/` 引用：
 
-- `packages/shared-api`
-- `packages/shared-domain`
-- `packages/shared-i18n`
+- `packages/shared-api`：请求核心与各运行时适配器
+- `packages/shared-domain`：领域类型、taxonomy、工具函数
+- `packages/shared-i18n`：语言包与轻量 runtime
+
+monorepo 工具链使用 `pnpm` workspaces；`frontend/`、`wechat-miniapp/` 与 `packages/*` 位于同一个 workspace，共享包通过 `workspace:*` 协议引用，消费端直接走 TypeScript path 读取 `src/` 以避免预构建开销。
 
 职责边界固定如下：
 
@@ -122,19 +124,29 @@
 ### 开发态登录流程
 
 1. 小程序提供开发专用登录表单，能力上与 Web 端 dev login 对齐。
-2. 小程序将 email 与 display name 提交到新增后端开发登录接口。
-3. 后端校验当前环境允许 dev auth 后，创建或同步本地用户，并返回 access token。
+2. 小程序将 email 与 display name 提交到现有 `POST /api/v1/auth/sync` 接口，`id_token` 留空。
+3. 后端在 `_is_dev_mode()` 为真时直接创建或同步本地用户并返回 access token；Web 端 NextAuth 的 dev credentials 走的也是同一条路径，行为一致。
 4. 小程序保存该 token，后续业务流程与微信登录保持一致。
 
 ### 后端认证接口
 
-后端新增范围仅限于认证接口和必要的认证配置：
+后端新增范围仅限于微信认证接口与小量认证配置：
 
-- `POST /api/v1/auth/wechat/code`
-- `POST /api/v1/auth/dev-login`
-- `GET /api/v1/auth/status`，按需扩展为可声明支持的登录方式
+- `POST /api/v1/auth/wechat/code`：接收小程序 `wx.login()` 的 `code`，向微信换取 `openid`（以及可选 `unionid`），写入/绑定 User 并返回与 `/auth/sync` 一致结构的 access token
+- `GET /api/v1/auth/status`：返回结构扩展 `supported_modes`（取值为 `"oidc" | "wechat" | "dev"` 的数组），让小程序能先查可用登录方式再决定 UI
 
-不为 wardrobe、outfits、family、settings、analytics、learning、notifications 等业务域新增小程序专用业务接口。
+dev login 复用既有 `POST /api/v1/auth/sync`（`_is_dev_mode()` 为真时直接签发 token），不再为小程序新增 dev 专用接口。不为 wardrobe、outfits、family、settings、analytics、learning、notifications 等业务域新增小程序专用业务接口。
+
+### 账户身份模型
+
+为承载多种身份来源并为未来的多身份绑定留出空间：
+
+- `User` 模型新增 `provider`（`"oidc" | "wechat" | "dev"`）与 `provider_id`（OIDC `sub` / 微信 `openid` / dev email）两列，`(provider, provider_id)` 建唯一索引
+- 现有 `external_id` 保留为向下兼容字段，由迁移回填；`provider_id` 成为真源
+- 数据迁移：存量 OIDC 用户回填 `provider="oidc"`、`provider_id=external_id`；dev 用户回填 `provider="dev"`、`provider_id=email`
+- 微信登录写入 `provider="wechat"`、`provider_id=openid`；如拿到 `unionid` 额外存 `provider_secondary_id` 以便未来跨平台身份合并
+- access token 的 `sub` 字段不直接暴露 `openid`，而是使用稳定的内部用户标识
+- 邮箱冲突策略：OIDC 仍保留现有"相同邮箱需 `email_verified=true`"规则；微信端因不能提供可信邮箱，默认不与已有邮箱账户自动合并，由用户在 settings 中手动绑定
 
 ### 小程序会话模型
 
@@ -196,6 +208,13 @@
 - 在当前后端限制范围内上传附加图片
 - 上传失败重试与进度、错误展示
 - 在现有 multipart 接口已可用的前提下，继续复用当前后端上传语义
+
+小程序侧需显式处理的平台差异：
+
+- `Taro.uploadFile` / `wx.uploadFile` 每次只能上传一个文件，且不能与 JSON body 一起混发；多图创建/编辑需在小程序端把聚合流程拆成"先逐张上传、再调用 JSON 接口绑定资源 id"两步
+- 上传源是临时本地路径（`tempFilePath`）而非 Blob/File，预览与再编辑需围绕该路径展开，并在 token 过期时重新获取
+- 微信对单文件约 10MB、整体内存、并发连接数均有限制，重试策略要兼顾网络切换导致的断点与前台切换挂起
+- 上传 helper 需暴露可被测试 mock 的适配层边界，便于客户端单测与集成测试
 
 业务含义保持不变，仅在传输方式与本地预览行为上做平台适配。
 
@@ -312,7 +331,7 @@
 #### Family 与 Family Feed
 
 - 家庭创建与加入
-- 邀请码处理
+- 邀请码处理，三种入口必须都覆盖：手动粘贴邀请码、通过"扫一扫"打开带参数的小程序码（解析 `q` 参数）、通过转发的小程序卡片冷启动（解析 `scene` 参数并 URL-decode 邀请码）
 - 成员管理、角色修改、移除
 - 家庭动态浏览
 - 家庭评分交互
@@ -352,7 +371,9 @@
 - mutation 状态
 - 预览与临时编辑态
 
-如果最终 Taro 工程能稳定支持，React Query 可以继续用于小程序端。query key 与 service 边界需要在概念上对齐，但 Web hooks 与小程序 hooks 必须保持为两套平台实现。
+小程序端服务端状态默认使用 Zustand 作为容器，通过 thunk 风格的 action 调用共享 service 层；store 内保存 `data`、`loading`、`error`、`lastFetchedAt`，并按资源维度手工实现 invalidate、乐观更新与错误回滚。shared service 层的函数签名与 Web 端 React Query 的 `queryKey`（资源 + 入参）在概念上保持对齐，但两端 hook 互不复用，Web 仍保留 React Query。
+
+若后续验证 React Query 在 Taro 下稳定，可在小程序端以 RQ 封装替换 Zustand store，service 契约保持不变；这是可选优化，而不是首版目标。
 
 ## 工程拆分
 
@@ -459,7 +480,7 @@
 - 开发人员在允许的环境中可以通过 dev login 进入系统
 - 小程序业务功能覆盖与当前 `frontend/` 相同的页面级功能面
 - 业务数据访问继续与 `/api/v1/**` 保持一致
-- 后端新增范围仅限于小程序认证支持与必要认证配置
+- 后端新增范围仅限 `POST /api/v1/auth/wechat/code`、`/auth/status` 的字段扩展，以及 User 身份字段迁移；dev login 复用现有 `/auth/sync`
 - 小程序完整支持 `zh` 与 `en`
 - 小程序通过共享层测试、关键客户端测试，以及对照现有 Web 前端的逐页回归矩阵
 
@@ -467,8 +488,11 @@
 
 - 采用独立小程序客户端，而不是把 Web 应用改成多端运行时
 - 小程序技术路线采用 `Taro + React + TypeScript`
+- 共享代码放在仓库根目录 `packages/shared-api|shared-domain|shared-i18n`（骨架已存在），monorepo 使用 pnpm workspaces 拉通
 - 业务 API 继续复用 `/api/v1/**`
-- 后端只新增小程序专用认证接口
+- 后端新增仅限 `POST /api/v1/auth/wechat/code` 与 `/auth/status` 的字段扩展；dev login 复用既有 `POST /auth/sync`
+- User 模型加 `provider` 与 `provider_id` 列以承载多身份来源；微信身份不与已有邮箱账户自动合并
+- 小程序服务端状态默认使用 Zustand + thunk；service 边界向 Web 的 React Query 概念对齐，RQ 仅作后续可选优化
 - 同时支持微信登录与开发态登录
 - 发布范围目标是首版全量功能追平
 - 实现必须拆成多个结构化子计划执行，而不是单次大杂烩式开发

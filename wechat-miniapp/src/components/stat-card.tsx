@@ -1,5 +1,7 @@
 import { Text, View } from '@tarojs/components'
 
+import { cardStyle, colors } from './ui-theme'
+
 type StatCardProps = {
   label: string
   value: string
@@ -10,19 +12,17 @@ export function StatCard(props: StatCardProps) {
   return (
     <View
       style={{
+        ...cardStyle,
         flex: 1,
-        minWidth: '140px',
-        padding: '18px',
-        borderRadius: '18px',
-        backgroundColor: '#F8FAFC',
-        border: '1px solid #E5E7EB',
+        minWidth: '120px',
+        padding: '16px',
       }}
     >
       <Text
         style={{
           display: 'block',
-          fontSize: '22px',
-          color: '#6B7280',
+          fontSize: '12px',
+          color: colors.textMuted,
         }}
       >
         {props.label}
@@ -30,10 +30,10 @@ export function StatCard(props: StatCardProps) {
       <Text
         style={{
           display: 'block',
-          marginTop: '8px',
-          fontSize: '34px',
+          marginTop: '10px',
+          fontSize: '28px',
           fontWeight: 700,
-          color: '#0F172A',
+          color: colors.text,
         }}
       >
         {props.value}
@@ -43,8 +43,8 @@ export function StatCard(props: StatCardProps) {
           style={{
             display: 'block',
             marginTop: '8px',
-            fontSize: '20px',
-            color: '#6B7280',
+            fontSize: '12px',
+            color: colors.textSoft,
           }}
         >
           {props.hint}

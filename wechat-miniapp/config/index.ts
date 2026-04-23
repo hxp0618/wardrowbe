@@ -12,9 +12,17 @@ export default defineConfig({
   date: '2026-04-22',
   sourceRoot: 'src',
   outputRoot: 'dist',
+  env: {
+    TARO_APP_API_BASE_URL: JSON.stringify(
+      process.env.TARO_APP_API_BASE_URL || 'http://127.0.0.1:8000'
+    ),
+  },
   framework: 'react',
   compiler: {
     type: 'webpack5',
+    prebundle: {
+      enable: false,
+    },
   },
   alias: {
     '@': path.resolve(appRoot, 'src'),

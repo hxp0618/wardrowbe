@@ -1,25 +1,28 @@
 import { Text, View } from '@tarojs/components'
+import type { ReactNode } from 'react'
+
+import { cardStyle, colors } from './ui-theme'
 
 type EmptyStateProps = {
   title: string
   description: string
+  action?: ReactNode
 }
 
 export function EmptyState(props: EmptyStateProps) {
   return (
     <View
       style={{
-        padding: '20px',
-        borderRadius: '16px',
-        backgroundColor: '#F9FAFB',
+        ...cardStyle,
+        padding: '24px',
       }}
     >
       <Text
         style={{
           display: 'block',
-          fontSize: '24px',
+          fontSize: '18px',
           fontWeight: 600,
-          color: '#111827',
+          color: colors.text,
         }}
       >
         {props.title}
@@ -27,14 +30,23 @@ export function EmptyState(props: EmptyStateProps) {
       <Text
         style={{
           display: 'block',
-          marginTop: '8px',
-          fontSize: '22px',
-          color: '#6B7280',
+          marginTop: '10px',
+          fontSize: '14px',
+          color: colors.textMuted,
           lineHeight: 1.5,
         }}
       >
         {props.description}
       </Text>
+      {props.action ? (
+        <View
+          style={{
+            marginTop: '16px',
+          }}
+        >
+          {props.action}
+        </View>
+      ) : null}
     </View>
   )
 }

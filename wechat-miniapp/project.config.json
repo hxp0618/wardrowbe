@@ -1,13 +1,37 @@
 {
-  "appid": "touristappid",
+  "appid": "wx05259b39de48754e",
   "projectname": "wardrowbe-wechat-miniapp",
   "compileType": "miniprogram",
-  "miniprogramRoot": "dist",
-  "srcMiniprogramRoot": "dist",
+  "miniprogramRoot": "dist/",
+  "srcMiniprogramRoot": "dist/",
   "setting": {
     "es6": true,
     "enhance": true,
     "minified": true,
-    "postcss": true
-  }
+    "postcss": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
 }

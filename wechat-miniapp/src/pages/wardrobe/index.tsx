@@ -1,61 +1,72 @@
-import { Button, Input, Picker, Text, View } from '@tarojs/components'
-import Taro from '@tarojs/taro'
 import { useState } from 'react'
+import { Picker, Text, View } from '@tarojs/components'
+import Taro from '@tarojs/taro'
 
 import { EmptyState } from '../../components/empty-state'
 import { ItemCard } from '../../components/item-card'
+import { ItemDetailSheet } from '../../components/item-detail-sheet'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
+import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
+import { useFolders } from '../../hooks/use-folders'
 import { useCreateItemWithImages, useItems, useItemTypes } from '../../hooks/use-items'
+
+import type { Item, ItemFilter } from '../../services/types'
+
+const SORT_OPTIONS = [
+  { label: '最新添加', value: 'created_at', order: 'desc' as const },
+  { label: '最早添加', value: 'created_at', order: 'asc' as const },
+  { label: '最近穿着', value: 'last_worn', order: 'desc' as const },
+  { label: '最少穿着', value: 'wear_count', order: 'asc' as const },
+  { label: '最多穿着', value: 'wear_count', order: 'desc' as const },
+  { label: '名称 A-Z', value: 'name', order: 'asc' as const },
+]
 
 export default function WardrobePage() {
   const canRender = useAuthGuard()
   const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
   const [typeIndex, setTypeIndex] = useState(0)
+  const [sortIndex, setSortIndex] = useState(0)
+  const [filterFavorite, setFilterFavorite] = useState(false)
+  const [filterNeedsWash, setFilterNeedsWash] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [folderIndex, setFolderIndex] = useState(0)
+  const [detailItem, setDetailItem] = useState<Item | null>(null)
   const { data: itemTypes } = useItemTypes()
-  const typeOptions = ['全部分类', ...(itemTypes ?? []).map((item) => item.type)]
-  const activeType = typeIndex === 0 ? undefined : typeOptions[typeIndex]
-  const { data, isLoading } = useItems(
-    {
-      search: search || undefined,
-      type: activeType,
-      is_archived: false,
-      sort_by: 'created_at',
-      sort_order: 'desc',
-    },
-    page,
-    20
-  )
+  const { data: folders } = useFolders()
   const createItem = useCreateItemWithImages()
 
-  if (!canRender) {
-    return null
+  const typeOptions = ['全部类型', ...(itemTypes ?? []).map((t) => t.type)]
+  const typeFilter = typeIndex === 0 ? undefined : typeOptions[typeIndex]
+  const sortOption = SORT_OPTIONS[sortIndex]
+  const folderOptions = ['全部文件夹', ...(folders ?? []).map((f) => f.name)]
+  const folderFilter = folderIndex === 0 ? undefined : folders?.[folderIndex - 1]?.id
+
+  const filters: ItemFilter = {
+    type: typeFilter,
+    is_archived: showArchived,
+    sort_by: sortOption.value,
+    sort_order: sortOption.order,
+    favorite: filterFavorite ? true : undefined,
+    needs_wash: filterNeedsWash ? true : undefined,
+    folder_id: folderFilter,
   }
 
-  const handleChooseImages = async () => {
+  const { data, isLoading } = useItems(filters, page, 20)
+  const items = data?.items || []
+  const total = data?.total || 0
+
+  if (!canRender) return null
+
+  const handleChooseImage = async () => {
     try {
-      const result = await Taro.chooseMedia({
-        count: 5,
-        mediaType: ['image'],
-        sizeType: ['compressed'],
-      })
-      const filePaths = result.tempFiles.map((file) => file.tempFilePath)
-
-      if (filePaths.length === 0) {
-        return
-      }
-
-      await createItem.mutateAsync({
-        filePaths,
-        fields: {
-          type: activeType,
-        },
-      })
-      void Taro.showToast({ title: '上传成功', icon: 'success' })
+      const result = await Taro.chooseImage({ count: 5, sizeType: ['compressed'] })
+      if (result.tempFilePaths.length === 0) return
+      await createItem.mutateAsync({ filePaths: result.tempFilePaths })
+      void Taro.showToast({ title: '单品已添加', icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '上传失败'
+      const message = error instanceof Error ? error.message : '添加失败'
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -63,67 +74,112 @@ export default function WardrobePage() {
   return (
     <PageShell
       title='衣橱'
-      subtitle='搜索、筛选和上传能力已经接到真实接口，先覆盖最常用的浏览与上新闭环。'
-      actions={<Button onClick={handleChooseImages} loading={createItem.isPending}>上传单品</Button>}
+      subtitle={`共 ${total} 件单品`}
+      navKey='wardrobe'
+      useBuiltInTabBar
+      actions={
+        <View onClick={handleChooseImage} style={{ ...primaryButtonStyle, minHeight: '40px', padding: '10px 14px' }}>
+          <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>添加</Text>
+        </View>
+      }
     >
-      <SectionCard title='筛选'>
-        <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <Input
-            value={search}
-            placeholder='搜索单品名称'
-            onInput={(event) => {
-              setSearch(event.detail.value)
-              setPage(1)
-            }}
-            style={{
-              width: '100%',
-              height: '44px',
-              padding: '0 14px',
-              borderRadius: '14px',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E5E7EB',
-              boxSizing: 'border-box',
-            }}
-          />
-          <Picker
-            mode='selector'
-            range={typeOptions}
-            value={typeIndex}
-            onChange={(event) => {
-              setTypeIndex(Number(event.detail.value))
-              setPage(1)
-            }}
-          >
+      {/* Filters */}
+      <SectionCard title='筛选与排序'>
+        <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <View style={{ display: 'flex', gap: '10px' }}>
+            <View style={{ flex: 1 }}>
+              <Picker mode='selector' range={typeOptions} value={typeIndex} onChange={(e) => { setTypeIndex(Number(e.detail.value)); setPage(1) }}>
+                <View style={inputStyle}>
+                  <Text style={{ fontSize: '14px', color: colors.text }}>{typeOptions[typeIndex]}</Text>
+                </View>
+              </Picker>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Picker mode='selector' range={SORT_OPTIONS.map((o) => o.label)} value={sortIndex} onChange={(e) => { setSortIndex(Number(e.detail.value)); setPage(1) }}>
+                <View style={inputStyle}>
+                  <Text style={{ fontSize: '14px', color: colors.text }}>{SORT_OPTIONS[sortIndex].label}</Text>
+                </View>
+              </Picker>
+            </View>
+          </View>
+          <View style={{ display: 'flex', gap: '10px' }}>
             <View
+              onClick={() => { setFilterFavorite(!filterFavorite); setPage(1) }}
               style={{
-                padding: '12px 14px',
-                borderRadius: '14px',
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #E5E7EB',
+                padding: '8px 14px',
+                borderRadius: '999px',
+                border: filterFavorite ? '1px solid rgba(248, 113, 113, 0.25)' : `1px solid ${colors.border}`,
+                backgroundColor: filterFavorite ? 'rgba(248, 113, 113, 0.12)' : colors.surfaceMuted,
               }}
             >
-              <Text style={{ fontSize: '22px', color: '#111827' }}>{typeOptions[typeIndex]}</Text>
+              <Text style={{ fontSize: '12px', color: filterFavorite ? colors.danger : colors.textMuted }}>收藏</Text>
             </View>
-          </Picker>
+            <View
+              onClick={() => { setFilterNeedsWash(!filterNeedsWash); setPage(1) }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '999px',
+                border: filterNeedsWash ? '1px solid rgba(251, 191, 36, 0.25)' : `1px solid ${colors.border}`,
+                backgroundColor: filterNeedsWash ? 'rgba(251, 191, 36, 0.12)' : colors.surfaceMuted,
+              }}
+            >
+              <Text style={{ fontSize: '12px', color: filterNeedsWash ? colors.warning : colors.textMuted }}>需清洗</Text>
+            </View>
+            <View
+              onClick={() => { setShowArchived(!showArchived); setPage(1) }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '999px',
+                border: showArchived ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
+                backgroundColor: showArchived ? '#27272a' : colors.surfaceMuted,
+              }}
+            >
+              <Text style={{ fontSize: '12px', color: showArchived ? colors.text : colors.textMuted }}>已归档</Text>
+            </View>
+          </View>
+          {folders && folders.length > 0 && (
+            <Picker mode='selector' range={folderOptions} value={folderIndex} onChange={(e) => { setFolderIndex(Number(e.detail.value)); setPage(1) }}>
+              <View style={inputStyle}>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{folderOptions[folderIndex]}</Text>
+              </View>
+            </Picker>
+          )}
         </View>
       </SectionCard>
 
-      <SectionCard title='单品列表' extra={<Text style={{ fontSize: '20px', color: '#6B7280' }}>{data?.total ?? 0} 件</Text>}>
-        {isLoading ? (
-          <Text style={{ fontSize: '22px', color: '#6B7280' }}>正在加载单品...</Text>
-        ) : data?.items?.length ? (
-          <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {data.items.map((item) => (
-              <ItemCard key={item.id} item={item} />
-            ))}
-            {data.has_more ? (
-              <Button onClick={() => setPage((current) => current + 1)}>加载更多</Button>
-            ) : null}
-          </View>
-        ) : (
-          <EmptyState title='衣橱还是空的' description='上传第一件单品后，这里会同步展示后端返回的分析结果和多图信息。' />
-        )}
-      </SectionCard>
+      {/* Items grid */}
+      {isLoading ? (
+        <SectionCard title='加载中'>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在加载衣橱...</Text>
+        </SectionCard>
+      ) : items.length === 0 ? (
+        <EmptyState
+          title='衣橱还是空的'
+          description='拍照上传你的第一件单品，开始智能穿搭之旅。'
+          action={
+            <View onClick={handleChooseImage} style={primaryButtonStyle}>
+              <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
+                添加第一件单品
+              </Text>
+            </View>
+          }
+        />
+      ) : (
+        <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {items.map((item) => (
+            <View key={item.id} onClick={() => setDetailItem(item)}>
+              <ItemCard item={item} />
+            </View>
+          ))}
+          {data?.has_more && (
+            <View onClick={() => setPage((p) => p + 1)} style={secondaryButtonStyle}>
+              <Text style={{ fontSize: '14px', color: colors.text }}>加载更多</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      <ItemDetailSheet item={detailItem} visible={!!detailItem} onClose={() => setDetailItem(null)} />
     </PageShell>
   )
 }

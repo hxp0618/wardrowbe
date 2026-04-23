@@ -1,6 +1,9 @@
 import { Image, Text, View } from '@tarojs/components'
 
+import { formatItemTypeLabel, formatOccasionLabel } from '../lib/display'
 import type { Outfit, Pairing } from '../services/types'
+import { UIBadge } from './ui-badge'
+import { colors } from './ui-theme'
 
 type OutfitCardProps = {
   outfit: Outfit | Pairing
@@ -23,13 +26,24 @@ function formatStatus(status: string): string {
 }
 
 export function OutfitCard(props: OutfitCardProps) {
+  const badgeTone =
+    props.outfit.status === 'accepted'
+      ? 'success'
+      : props.outfit.status === 'rejected'
+      ? 'danger'
+      : props.outfit.status === 'pending'
+      ? 'warning'
+      : 'default'
+
+  const title = props.outfit.name || formatOccasionLabel(props.outfit.occasion)
+
   return (
     <View
       style={{
-        padding: '18px',
+        padding: '16px',
         borderRadius: '18px',
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E5E7EB',
+        backgroundColor: colors.surface,
+        border: `1px solid ${colors.border}`,
       }}
     >
       <View
@@ -44,44 +58,34 @@ export function OutfitCard(props: OutfitCardProps) {
           <Text
             style={{
               display: 'block',
-              fontSize: '26px',
+              fontSize: '17px',
               fontWeight: 600,
-              color: '#111827',
+              color: colors.text,
             }}
           >
-            {props.outfit.name || props.outfit.occasion}
+            {title}
           </Text>
           <Text
-            style={{
-              display: 'block',
-              marginTop: '6px',
-              fontSize: '22px',
-              color: '#6B7280',
-            }}
-          >
-            {formatStatus(props.outfit.status)}
-            {props.outfit.scheduled_for ? ` · ${props.outfit.scheduled_for}` : ''}
-          </Text>
-        </View>
-        <Text
           style={{
-            fontSize: '20px',
-            color: '#334155',
-            backgroundColor: '#E2E8F0',
-            borderRadius: '999px',
-            padding: '6px 12px',
+            display: 'block',
+            marginTop: '6px',
+            fontSize: '12px',
+            color: colors.textMuted,
           }}
         >
-          {props.badge || props.outfit.source}
+          {formatStatus(props.outfit.status)}
+          {props.outfit.scheduled_for ? ` · ${props.outfit.scheduled_for}` : ''}
         </Text>
+      </View>
+        <UIBadge label={props.badge || props.outfit.source} tone={badgeTone} />
       </View>
       {props.outfit.reasoning ? (
         <Text
           style={{
             display: 'block',
             marginTop: '12px',
-            fontSize: '22px',
-            color: '#475569',
+            fontSize: '13px',
+            color: colors.textMuted,
             lineHeight: 1.5,
           }}
         >
@@ -91,8 +95,8 @@ export function OutfitCard(props: OutfitCardProps) {
       <View
         style={{
           display: 'flex',
-          gap: '10px',
-          marginTop: '16px',
+          gap: '8px',
+          marginTop: '14px',
           flexWrap: 'wrap',
         }}
       >
@@ -104,26 +108,26 @@ export function OutfitCard(props: OutfitCardProps) {
               src={imageUrl}
               mode='aspectFill'
               style={{
-                width: '96px',
-                height: '96px',
-                borderRadius: '14px',
-                backgroundColor: '#E5E7EB',
+                width: '84px',
+                height: '84px',
+                borderRadius: '12px',
+                backgroundColor: colors.surfaceMuted,
               }}
             />
           ) : (
             <View
               key={item.id}
               style={{
-                width: '96px',
-                height: '96px',
-                borderRadius: '14px',
-                backgroundColor: '#E5E7EB',
+                width: '84px',
+                height: '84px',
+                borderRadius: '12px',
+                backgroundColor: colors.surfaceMuted,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontSize: '20px', color: '#6B7280' }}>{item.type}</Text>
+              <Text style={{ fontSize: '12px', color: colors.textSoft }}>{formatItemTypeLabel(item.type)}</Text>
             </View>
           )
         })}

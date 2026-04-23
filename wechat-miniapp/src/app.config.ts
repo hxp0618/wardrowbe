@@ -17,19 +17,20 @@ export default defineAppConfig({
     'pages/invite/index',
   ],
   tabBar: {
-    color: '#6B7280',
-    selectedColor: '#0F172A',
-    backgroundColor: '#FFFFFF',
+    color: '#71717A',
+    selectedColor: '#F5F5F5',
+    backgroundColor: '#0B0B0D',
     borderStyle: 'black',
     list: [
       { pagePath: 'pages/dashboard/index', text: '首页' },
       { pagePath: 'pages/wardrobe/index', text: '衣橱' },
       { pagePath: 'pages/suggest/index', text: '推荐' },
       { pagePath: 'pages/outfits/index', text: '穿搭' },
+      { pagePath: 'pages/settings/index', text: '设置' },
     ],
   },
   window: {
     navigationBarTitleText: 'Wardrowbe',
-    navigationStyle: 'default',
+    navigationStyle: 'custom',
   },
 })

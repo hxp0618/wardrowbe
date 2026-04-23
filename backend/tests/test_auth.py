@@ -165,6 +165,26 @@ class TestDevLogin:
         assert data["access_token"]
 
     @pytest.mark.asyncio
+    async def test_dev_login_skips_rate_limit_in_dev_mode(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def fail_if_called(*args, **kwargs):
+            raise AssertionError("rate_limit_by_ip should not run in dev mode")
+
+        monkeypatch.setattr(auth_api, "rate_limit_by_ip", fail_if_called)
+
+        response = await client.post(
+            "/api/v1/auth/dev-login",
+            json={
+                "email": "dev-user@example.com",
+                "display_name": "Dev User",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["email"] == "dev-user@example.com"
+
+    @pytest.mark.asyncio
     async def test_dev_login_disabled_outside_dev_mode(
         self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
     ):

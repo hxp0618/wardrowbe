@@ -264,9 +264,8 @@ async def dev_login(
     payload: DevLoginRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserSyncResponse:
-    await rate_limit_by_ip(request, "auth_dev_login", 10, 60)
-
     if not _is_dev_mode():
+        await rate_limit_by_ip(request, "auth_dev_login", 10, 60)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Dev login is disabled",

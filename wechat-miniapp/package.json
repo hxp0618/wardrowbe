@@ -3,6 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
+    "dev": "taro build --type weapp --watch",
+    "build": "taro build --type weapp",
     "dev:weapp": "taro build --type weapp --watch",
     "build:weapp": "taro build --type weapp",
     "lint": "eslint src --ext .ts,.tsx",
