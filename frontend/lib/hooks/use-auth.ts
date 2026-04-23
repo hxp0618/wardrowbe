@@ -3,6 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSession, signOut } from 'next-auth/react';
+import { getUserProfile } from '@wardrowbe/shared-services';
+
 import { api, setAccessToken, ApiError } from '@/lib/api';
 import type { UserProfile } from './use-user';
 
@@ -21,7 +23,7 @@ export function useAuth() {
 
   const userQuery = useQuery({
     queryKey: ['auth-user'],
-    queryFn: () => api.get<UserProfile>('/users/me'),
+    queryFn: () => getUserProfile(api),
     // Only fetch when session is loaded AND we have an access token
     enabled: status === 'authenticated' && hasToken,
     retry: false,

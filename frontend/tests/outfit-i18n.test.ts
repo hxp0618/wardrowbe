@@ -12,6 +12,7 @@ import type { Outfit } from '@/lib/hooks/use-outfits'
 function makeOutfit(overrides: Partial<Outfit> = {}): Outfit {
   return {
     id: 'outfit-1',
+    user_id: 'user-1',
     occasion: 'casual',
     scheduled_for: null,
     status: 'accepted',

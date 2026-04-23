@@ -1,12 +1,14 @@
+import { messagesEn } from "@wardrowbe/shared-i18n";
+
 const DEFAULT_EN: Record<ApiMessageKey, string> = {
-  offline: 'You appear to be offline. Please check your connection.',
-  unableToConnect: 'Unable to connect to server. Please try again.',
-  generic: 'An error occurred',
-  createItemFailed: 'Failed to create item',
-  uploadImageFailed: 'Failed to upload image',
-  invalidServerResponse: 'Invalid response from server',
-  bulkUploadFailed: 'Failed to upload items',
-  uploadCancelled: 'Upload was cancelled.',
+  offline: messagesEn.errors.api.offline,
+  unableToConnect: messagesEn.errors.api.unableToConnect,
+  generic: messagesEn.errors.api.generic,
+  createItemFailed: messagesEn.errors.api.createItemFailed,
+  uploadImageFailed: messagesEn.errors.api.uploadImageFailed,
+  invalidServerResponse: messagesEn.errors.api.invalidServerResponse,
+  bulkUploadFailed: messagesEn.errors.api.bulkUploadFailed,
+  uploadCancelled: messagesEn.errors.api.uploadCancelled,
 };
 
 export const API_MESSAGE_KEYS = [

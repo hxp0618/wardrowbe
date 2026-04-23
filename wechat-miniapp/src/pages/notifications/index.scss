@@ -1,0 +1,45 @@
+.page {
+  padding: 24px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #f0f0f0;
+  margin: 24px 0 12px;
+}
+
+.card {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.row1 {
+  font-size: 26px;
+  color: #e8b4a0;
+  text-transform: uppercase;
+}
+
+.row2 {
+  font-size: 22px;
+  color: #888;
+  margin-top: 6px;
+}
+
+.badge-on {
+  color: #69f0ae;
+}
+
+.badge-off {
+  color: #888;
+}
+
+.empty {
+  color: #666;
+  font-size: 24px;
+  padding: 16px 0;
+}

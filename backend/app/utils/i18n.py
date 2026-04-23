@@ -61,6 +61,8 @@ MESSAGES_ZH: dict[str, str] = {
     "error.token_email_mismatch": "令牌邮箱与请求邮箱不一致。",
     "error.email_migration_requires_verification": "该邮箱已关联其他账号，迁移需要已验证的邮箱。",
     "error.no_auth_method_configured": "未配置可用的登录方式。",
+    "error.wechat_not_configured": "未配置微信小程序登录。请设置 WECHAT_MINI_PROGRAM_APP_ID 与 WECHAT_MINI_PROGRAM_APP_SECRET。",
+    "error.wechat_code_exchange_failed": "微信登录失败，请重试。",
     "error.notification_setting_not_found": "未找到通知设置。",
     "error.push_token_invalid": "推送令牌格式无效。",
     "error.schedule_duplicate": "已存在相同的提醒计划。",
@@ -222,6 +224,9 @@ MESSAGES_EN: dict[str, str] = {
     "error.token_email_mismatch": "Token email does not match request email.",
     "error.email_migration_requires_verification": "Email already associated with another account. Verified email required for migration.",
     "error.no_auth_method_configured": "No authentication method configured.",
+    "error.wechat_not_configured": "WeChat mini program login is not configured. "
+    "Set WECHAT_MINI_PROGRAM_APP_ID and WECHAT_MINI_PROGRAM_APP_SECRET.",
+    "error.wechat_code_exchange_failed": "WeChat login failed. Please try again.",
     "error.notification_setting_not_found": "Setting not found.",
     "error.push_token_invalid": "Invalid push token format.",
     "error.schedule_duplicate": "An identical schedule already exists.",

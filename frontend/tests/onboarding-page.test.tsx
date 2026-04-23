@@ -70,7 +70,7 @@ vi.mock('sonner', () => ({
 }))
 
 import { NextIntlClientProvider } from 'next-intl'
-import enMessages from '../messages/en.json'
+import { messagesEn as enMessages } from '@wardrowbe/shared-i18n'
 import OnboardingPage from '@/app/[locale]/onboarding/page'
 
 function renderWithProviders(ui: React.ReactElement) {

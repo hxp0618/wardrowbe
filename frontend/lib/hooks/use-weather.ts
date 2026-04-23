@@ -2,6 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
+import { getCurrentWeather, getWeatherForecast } from '@wardrowbe/shared-services';
+
 import { api, setAccessToken } from '@/lib/api';
 import { useAuth } from '@/lib/hooks/use-auth';
 
@@ -49,7 +51,7 @@ export function useWeather() {
 
   return useQuery({
     queryKey: ['weather', user?.id ?? null, user?.location_lat ?? null, user?.location_lon ?? null],
-    queryFn: () => api.get<Weather>('/weather/current'),
+    queryFn: () => getCurrentWeather(api),
     enabled: status === 'authenticated' && isAuthenticated && !isLoading && hasLocation,
     staleTime: 1000 * 60 * 15, // 15 minutes - weather doesn't change that fast
     retry: false, // Don't retry if location not set
@@ -64,7 +66,7 @@ export function useWeatherForecast(days: number) {
 
   return useQuery({
     queryKey: ['weather-forecast', user?.id ?? null, user?.location_lat ?? null, user?.location_lon ?? null, days],
-    queryFn: () => api.get<ForecastResponse>('/weather/forecast', { params: { days: String(days) } }),
+    queryFn: () => getWeatherForecast(api, days),
     enabled: status === 'authenticated' && isAuthenticated && !isLoading && hasLocation && days > 0,
     staleTime: 1000 * 60 * 30,
     retry: false,

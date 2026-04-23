@@ -1,0 +1,327 @@
+.page {
+  padding: 24px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #f0f0f0;
+}
+
+.hint {
+  font-size: 24px;
+  color: #9a9a9a;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.chip {
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: #2a2a2a;
+  color: #ccc;
+  font-size: 24px;
+}
+
+.chip-active {
+  background: #c9a082;
+  color: #1a1a1a;
+}
+
+.btn {
+  background: #07c160;
+  color: #fff;
+  border-radius: 12px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.result {
+  background: #1e1e1e;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.result-title {
+  font-size: 28px;
+  color: #eee;
+  margin-bottom: 12px;
+}
+
+.row-imgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mini {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  background: #2a2a2a;
+}
+
+.label {
+  font-size: 24px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.picker-box {
+  background: #2a2a2a;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  color: #eee;
+  font-size: 26px;
+}
+
+.input {
+  background: #2a2a2a;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  color: #fff;
+}
+
+.error-text {
+  color: #ff8a80;
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.suggest-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.btn-secondary {
+  background: #3a2222;
+  color: #ff8a80;
+}
+
+.btn-accept-inline {
+  background: #223a28;
+  color: #69f0ae;
+}
+
+.btn-manual {
+  margin-bottom: 20px;
+  background: #2a2a2a;
+  color: #e8b4a0;
+}
+
+.card {
+  background: #1e1e1e;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-size: 26px;
+  font-weight: 600;
+  color: #eee;
+  margin-bottom: 10px;
+}
+
+.forecast-text {
+  font-size: 24px;
+  color: #bbb;
+  line-height: 1.5;
+}
+
+.muted {
+  color: #777;
+  font-size: 24px;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.preset {
+  background: #2a2a2a;
+  color: #ddd;
+}
+
+.override-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.label.inline {
+  margin-bottom: 0;
+}
+
+.override-box {
+  background: #252525;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.cond-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cond-btn {
+  background: #333;
+  color: #ccc;
+}
+
+.cond-on {
+  background: #3a3028;
+  color: #e8b4a0;
+}
+
+.slider-label {
+  font-size: 22px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.reset-override {
+  margin-top: 12px;
+  background: #333;
+  color: #aaa;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 120px;
+  background: #2a2a2a;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  color: #fff;
+  font-size: 24px;
+  box-sizing: border-box;
+}
+
+.result-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.badge {
+  background: #333;
+  color: #e8b4a0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 22px;
+}
+
+.date-badge {
+  font-size: 22px;
+  color: #888;
+}
+
+.link-btn {
+  background: transparent;
+  color: #90caf9;
+  font-size: 22px;
+}
+
+.weather-bar {
+  background: #252525;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.weather-line {
+  display: block;
+  font-size: 22px;
+  color: #bbb;
+  line-height: 1.5;
+}
+
+.highlights {
+  margin-bottom: 12px;
+}
+
+.hi-line {
+  font-size: 22px;
+  color: #999;
+  line-height: 1.45;
+  margin-bottom: 6px;
+}
+
+.item-cell {
+  width: 120px;
+}
+
+.item-cap {
+  display: block;
+  font-size: 20px;
+  color: #888;
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.style-tip {
+  margin-top: 16px;
+  padding: 14px;
+  background: #252525;
+  border-radius: 10px;
+}
+
+.style-tip-label {
+  font-size: 22px;
+  color: #e8b4a0;
+  margin-bottom: 6px;
+}
+
+.style-tip-text {
+  font-size: 24px;
+  color: #ccc;
+  line-height: 1.45;
+}
+
+.result-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.btn-outline-wide {
+  flex: 1;
+  background: #2a2a2a;
+  color: #eee;
+}
+
+.btn-accept-wide {
+  flex: 1;
+  background: #223a28;
+  color: #69f0ae;
+}
+
+.btn-reject-wide {
+  margin-top: 12px;
+  background: #3a2222;
+  color: #ff8a80;
+}

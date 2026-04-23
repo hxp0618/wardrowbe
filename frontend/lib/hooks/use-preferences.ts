@@ -2,6 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
+import {
+  getPreferences,
+  resetPreferences as resetPreferencesRequest,
+  testAIEndpoint as testAIEndpointRequest,
+  updatePreferences as updatePreferencesRequest,
+} from '@wardrowbe/shared-services';
+
 import { api, setAccessToken } from '@/lib/api';
 import { Preferences } from '@/lib/types';
 
@@ -18,7 +25,7 @@ export function usePreferences() {
 
   return useQuery({
     queryKey: ['preferences'],
-    queryFn: () => api.get<Preferences>('/users/me/preferences'),
+    queryFn: () => getPreferences(api),
     enabled: status !== 'loading',
   });
 }
@@ -32,7 +39,7 @@ export function useUpdatePreferences() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.patch<Preferences>('/users/me/preferences', data);
+      return updatePreferencesRequest(api, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['preferences'] });
@@ -49,20 +56,12 @@ export function useResetPreferences() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<Preferences>('/users/me/preferences/reset');
+      return resetPreferencesRequest(api);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['preferences'] });
     },
   });
-}
-
-interface AITestResult {
-  status: 'connected' | 'error';
-  available_models?: string[];
-  vision_models?: string[];
-  text_models?: string[];
-  error?: string;
 }
 
 export function useTestAIEndpoint() {
@@ -73,7 +72,9 @@ export function useTestAIEndpoint() {
       if (session?.accessToken) {
         setAccessToken(session.accessToken as string);
       }
-      return api.post<AITestResult>('/users/me/preferences/test-ai-endpoint', { url });
+      return testAIEndpointRequest(api, url);
     },
   });
 }
+
+export type { AITestResult } from '@wardrowbe/shared-services';

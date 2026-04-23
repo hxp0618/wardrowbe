@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -121,6 +122,33 @@ class UserService:
     async def complete_onboarding(self, user: User) -> None:
         user.onboarding_completed = True
         await self.db.flush()
+
+    async def sync_from_wechat_openid(self, openid: str) -> tuple[User, bool]:
+        """
+        Create or update a user for WeChat mini program login.
+        external_id is stable as wechat:<openid>; email is a synthetic unique address.
+        """
+        external_id = f"wechat:{openid}"
+        digest = hashlib.sha256(openid.encode()).hexdigest()
+        synthetic_email = f"wechat.{digest}@users.wardrowbe.app"
+
+        user = await self.get_by_external_id(external_id)
+        if user is None:
+            user = User(
+                external_id=external_id,
+                email=synthetic_email,
+                display_name="微信用户",
+                last_login_at=datetime.now(UTC),
+            )
+            self.db.add(user)
+            await self.db.flush()
+            await self.db.refresh(user)
+            return user, True
+
+        user.last_login_at = datetime.now(UTC)
+        await self.db.flush()
+        await self.db.refresh(user)
+        return user, False
 
 
 class UserEmailConflictError(Exception):

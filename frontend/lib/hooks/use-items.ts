@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
+import { getItem, listItems } from '@wardrowbe/shared-services';
+
 import { api, getAccessToken, setAccessToken, ApiError, NetworkError } from '@/lib/api';
 import { getApiMessage } from '@/lib/api-messages';
 import { Item, ItemListResponse, ItemFilter, WashHistoryEntry, ItemImage } from '@/lib/types';
@@ -37,7 +39,7 @@ export function useItems(filters: ItemFilter = {}, page = 1, pageSize = 20) {
       if (filters.folder_id) params.folder_id = filters.folder_id;
       if (filters.ids) params.ids = filters.ids;
 
-      return api.get<ItemListResponse>('/items', { params });
+      return listItems(api, filters, page, pageSize);
     },
     enabled: status !== 'loading',
     // Poll more frequently when items are processing (every 5 seconds), otherwise every 30 seconds
@@ -55,7 +57,7 @@ export function useItem(itemId: string) {
 
   return useQuery({
     queryKey: ['item', itemId],
-    queryFn: () => api.get<Item>(`/items/${itemId}`),
+    queryFn: () => getItem(api, itemId),
     enabled: !!itemId && status !== 'loading',
   });
 }

@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     oidc_client_secret: str | None = None
     oidc_mobile_client_id: str | None = None
 
+    # Authentication - WeChat mini program (jscode2session)
+    wechat_mini_program_app_id: str | None = Field(default=None)
+    wechat_mini_program_app_secret: str | None = Field(default=None)
+
     # AI Service (OpenAI-compatible API - supports Ollama, OpenAI, etc.)
     ai_base_url: str = Field(default="")
     ai_api_key: str | None = Field(default=None)
@@ -104,10 +108,12 @@ class Settings(BaseSettings):
 
         oidc_configured = oidc_issuer and oidc_client
         is_dev = self.debug and self.secret_key == DEFAULT_SECRET_KEY
-        if not oidc_configured and not is_dev:
+        wechat_ok = self.wechat_mini_program_configured()
+        if not oidc_configured and not is_dev and not wechat_ok:
             return (
                 "No authentication method configured. "
-                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, or enable DEBUG mode."
+                "Set OIDC_ISSUER_URL + OIDC_CLIENT_ID, enable DEBUG mode for development, "
+                "or set WECHAT_MINI_PROGRAM_APP_ID + WECHAT_MINI_PROGRAM_APP_SECRET for the mini program."
             )
 
         return None
@@ -118,6 +124,9 @@ class Settings(BaseSettings):
         if self.oidc_issuer_url and self.oidc_client_id:
             return "oidc"
         return "unknown"
+
+    def wechat_mini_program_configured(self) -> bool:
+        return bool(self.wechat_mini_program_app_id and self.wechat_mini_program_app_secret)
 
     @field_validator("trusted_proxy_ips", "trusted_proxy_headers", mode="before")
     @classmethod

@@ -183,6 +183,7 @@ class FamilyRatingResponse(BaseModel):
 
 class OutfitResponse(BaseModel):
     id: UUID
+    user_id: UUID
     occasion: str
     scheduled_for: date | None = None
     status: str
@@ -405,6 +406,7 @@ def outfit_to_response(
 
     return OutfitResponse(
         id=outfit.id,
+        user_id=outfit.user_id,
         occasion=outfit.occasion,
         scheduled_for=outfit.scheduled_for,
         status=outfit.status.value,
@@ -770,7 +772,7 @@ async def get_outfit(
 ) -> OutfitResponse:
     query = (
         select(Outfit)
-        .where(and_(Outfit.id == outfit_id, Outfit.user_id == current_user.id))
+        .where(Outfit.id == outfit_id)
         .options(
             selectinload(Outfit.items).selectinload(OutfitItem.item),
             selectinload(Outfit.feedback),
@@ -787,8 +789,25 @@ async def get_outfit(
             detail=translate_request(http_request, "error.outfit_not_found"),
         )
 
+    if outfit.user_id != current_user.id:
+        if not current_user.family_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=translate_request(http_request, "error.access_denied"),
+            )
+        owner_result = await db.execute(
+            select(User).where(User.id == outfit.user_id, User.is_active == True)  # noqa: E712
+        )
+        owner = owner_result.scalar_one_or_none()
+        if not owner or owner.family_id != current_user.family_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=translate_request(http_request, "error.access_denied"),
+            )
+
+    wore_instead_user = outfit.user_id if outfit.user_id != current_user.id else current_user.id
     return outfit_to_response(
-        outfit, await fetch_wore_instead_items_map(db, [outfit], user_id=current_user.id)
+        outfit, await fetch_wore_instead_items_map(db, [outfit], user_id=wore_instead_user)
     )
 
 

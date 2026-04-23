@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, dev]
 
 jobs:
   backend-lint:
@@ -137,6 +137,120 @@ jobs:
           cd frontend
           npx tsc --noEmit
 
+  shared-services-test:
+    name: Shared Services Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: packages/shared-services/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd packages/shared-services
+          npm ci
+          npm test
+
+  shared-api-test:
+    name: Shared API Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: packages/shared-api/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd packages/shared-api
+          npm ci
+          npm test
+
+  shared-i18n-test:
+    name: Shared i18n Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: packages/shared-i18n/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd packages/shared-i18n
+          npm ci
+          npm test
+
+  shared-domain-test:
+    name: Shared Domain Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: packages/shared-domain/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd packages/shared-domain
+          npm ci
+          npm test
+
+  wechat-miniapp-test:
+    name: WeChat Mini Program Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: wechat-miniapp/package-lock.json
+
+      - name: Install and test
+        run: |
+          cd wechat-miniapp
+          npm ci
+          npm test
+
+  wechat-miniapp-build:
+    name: WeChat Mini Program Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: wechat-miniapp/package-lock.json
+
+      - name: Install and build
+        run: |
+          cd wechat-miniapp
+          npm ci
+          npm run build:weapp
+
   frontend-test:
     name: Frontend Tests
     runs-on: ubuntu-latest
@@ -210,7 +324,8 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          context: .
+          file: ./frontend/Dockerfile
           push: false
           tags: wardrowbe/frontend:test
           cache-from: type=gha
