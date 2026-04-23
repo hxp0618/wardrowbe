@@ -1,4 +1,5 @@
 import type {
+  FamilyRating,
   Outfit,
   OutfitListFilters,
   OutfitListResponse,
@@ -55,6 +56,34 @@ export function acceptOutfit(api: WardrowbeApi, outfitId: string): Promise<Outfi
 
 export function rejectOutfit(api: WardrowbeApi, outfitId: string): Promise<Outfit> {
   return api.post<Outfit>(`/outfits/${outfitId}/reject`);
+}
+
+export function deleteOutfit(api: WardrowbeApi, outfitId: string): Promise<void> {
+  return api.delete<void>(`/outfits/${outfitId}`);
+}
+
+export function submitFamilyRating(
+  api: WardrowbeApi,
+  outfitId: string,
+  data: { rating: number; comment?: string | null },
+): Promise<FamilyRating> {
+  return api.post<FamilyRating>(`/outfits/${outfitId}/family-rating`, data);
+}
+
+export function listFamilyRatings(api: WardrowbeApi, outfitId: string): Promise<FamilyRating[]> {
+  return api.get<FamilyRating[]>(`/outfits/${outfitId}/family-ratings`);
+}
+
+export function deleteFamilyRating(api: WardrowbeApi, outfitId: string): Promise<void> {
+  return api.delete<void>(`/outfits/${outfitId}/family-rating`);
+}
+
+export function submitOutfitFeedback(
+  api: WardrowbeApi,
+  outfitId: string,
+  feedback: Record<string, unknown>,
+): Promise<unknown> {
+  return api.post<unknown>(`/outfits/${outfitId}/feedback`, feedback);
 }
 
 export function suggestOutfit(api: WardrowbeApi, body: SuggestRequest): Promise<Outfit> {

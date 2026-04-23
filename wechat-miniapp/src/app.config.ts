@@ -14,6 +14,9 @@ export default {
     "pages/settings/index",
     "pages/onboarding/index",
     "pages/invite/index",
+    "pages/family-feed/index",
+    "pages/outfit-detail/index",
+    "pages/outfit-new/index",
   ],
   window: {
     backgroundTextStyle: "light",

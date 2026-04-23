@@ -2,11 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import {
   acceptOutfit as acceptOutfitRequest,
+  deleteFamilyRating as deleteFamilyRatingRequest,
+  deleteOutfit as deleteOutfitRequest,
   getOutfit,
+  listFamilyRatings as listFamilyRatingsRequest,
   listOutfits,
   listOutfitsForMonth,
   listPendingOutfits,
   rejectOutfit as rejectOutfitRequest,
+  submitFamilyRating as submitFamilyRatingRequest,
+  submitOutfitFeedback as submitOutfitFeedbackRequest,
 } from '@wardrowbe/shared-services';
 
 import { api, setAccessToken } from '@/lib/api';
@@ -55,6 +60,7 @@ export type OutfitSource = 'scheduled' | 'on_demand' | 'manual' | 'pairing';
 
 export interface Outfit {
   id: string;
+  user_id: string;
   occasion: string;
   scheduled_for: string | null;
   status: 'pending' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'skipped' | 'expired';
@@ -182,7 +188,7 @@ export function useSubmitFeedback() {
 
   return useMutation({
     mutationFn: ({ outfitId, feedback }: { outfitId: string; feedback: FeedbackData }) =>
-      api.post<FeedbackResponse>(`/outfits/${outfitId}/feedback`, feedback),
+      submitOutfitFeedbackRequest(api, outfitId, feedback as unknown as Record<string, unknown>) as Promise<FeedbackResponse>,
     onSuccess: (_, { outfitId }) => {
       queryClient.invalidateQueries({ queryKey: ['outfits'] });
       queryClient.invalidateQueries({ queryKey: ['outfit', outfitId] });
@@ -197,7 +203,7 @@ export function useDeleteOutfit() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (outfitId: string) => api.delete<void>(`/outfits/${outfitId}`),
+    mutationFn: (outfitId: string) => deleteOutfitRequest(api, outfitId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['outfits'] });
       queryClient.invalidateQueries({ queryKey: ['calendarOutfits'] });
@@ -240,7 +246,7 @@ export function useSubmitFamilyRating() {
 
   return useMutation({
     mutationFn: ({ outfitId, rating, comment }: { outfitId: string; rating: number; comment?: string }) =>
-      api.post<FamilyRating>(`/outfits/${outfitId}/family-rating`, { rating, comment }),
+      submitFamilyRatingRequest(api, outfitId, { rating, comment }),
     onSuccess: (_, { outfitId }) => {
       queryClient.invalidateQueries({ queryKey: ['outfits'] });
       queryClient.invalidateQueries({ queryKey: ['outfit', outfitId] });
@@ -257,7 +263,7 @@ export function useFamilyRatings(outfitId: string | undefined) {
 
   return useQuery({
     queryKey: ['familyRatings', outfitId],
-    queryFn: () => api.get<FamilyRating[]>(`/outfits/${outfitId}/family-ratings`),
+    queryFn: () => listFamilyRatingsRequest(api, outfitId!),
     enabled: !!outfitId && status !== 'loading',
   });
 }
@@ -266,7 +272,7 @@ export function useDeleteFamilyRating() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (outfitId: string) => api.delete<void>(`/outfits/${outfitId}/family-rating`),
+    mutationFn: (outfitId: string) => deleteFamilyRatingRequest(api, outfitId),
     onSuccess: (_, outfitId) => {
       queryClient.invalidateQueries({ queryKey: ['outfits'] });
       queryClient.invalidateQueries({ queryKey: ['outfit', outfitId] });

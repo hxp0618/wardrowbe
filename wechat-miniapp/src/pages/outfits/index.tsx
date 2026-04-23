@@ -77,7 +77,11 @@ export default function OutfitsPage() {
         lowerThreshold={100}
       >
         {list.map((o) => (
-          <View className="card" key={o.id}>
+            <View
+              className="card"
+              key={o.id}
+              onClick={() => void Taro.navigateTo({ url: `/pages/outfit-detail/index?id=${o.id}` })}
+            >
             <View className="imgs">
               {o.items.slice(0, 6).map((it) => (
                 <Image

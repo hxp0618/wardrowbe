@@ -70,3 +70,48 @@
   border-radius: 8px;
   background: #2a2a2a;
 }
+
+.label {
+  font-size: 24px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.picker-box {
+  background: #2a2a2a;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  color: #eee;
+  font-size: 26px;
+}
+
+.input {
+  background: #2a2a2a;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  color: #fff;
+}
+
+.error-text {
+  color: #ff8a80;
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.suggest-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.btn-secondary {
+  background: #3a2222;
+  color: #ff8a80;
+}
+
+.btn-accept-inline {
+  background: #223a28;
+  color: #69f0ae;
+}

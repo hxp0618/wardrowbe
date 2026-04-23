@@ -311,6 +311,8 @@ export type OutfitSource = "scheduled" | "on_demand" | "manual" | "pairing";
 
 export interface Outfit {
   id: string;
+  /** Outfit owner; matches backend `OutfitResponse.user_id`. */
+  user_id: string;
   occasion: string;
   scheduled_for: string | null;
   status:

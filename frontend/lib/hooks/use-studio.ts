@@ -1,8 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
+import {
+  cloneToLookbook as cloneToLookbookRequest,
+  createStudioOutfit as createStudioOutfitRequest,
+  createWoreInstead as createWoreInsteadRequest,
+  patchOutfit as patchOutfitRequest,
+  type PatchOutfitPayload,
+  type StudioCreatePayload,
+  wearTodayOutfit,
+  type WoreInsteadPayload,
+} from '@wardrowbe/shared-services';
 
 import { api, setAccessToken } from '@/lib/api';
-import type { Outfit } from '@/lib/hooks/use-outfits';
 
 function useSetTokenIfAvailable() {
   const { data: session } = useSession();
@@ -11,21 +20,17 @@ function useSetTokenIfAvailable() {
   }
 }
 
-export interface StudioCreatePayload {
-  items: string[];
-  occasion: string;
-  name?: string;
-  scheduled_for?: string | null;
-  mark_worn?: boolean;
-  source_item_id?: string | null;
-}
+export type {
+  PatchOutfitPayload,
+  StudioCreatePayload,
+  WoreInsteadPayload,
+} from '@wardrowbe/shared-services';
 
 export function useCreateStudioOutfit() {
   const qc = useQueryClient();
   useSetTokenIfAvailable();
   return useMutation({
-    mutationFn: (payload: StudioCreatePayload) =>
-      api.post<Outfit>('/outfits/studio', payload),
+    mutationFn: (payload: StudioCreatePayload) => createStudioOutfitRequest(api, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['outfits'] });
       qc.invalidateQueries({ queryKey: ['analytics'] });
@@ -34,19 +39,11 @@ export function useCreateStudioOutfit() {
   });
 }
 
-export interface WoreInsteadPayload {
-  items: string[];
-  rating?: number;
-  comment?: string;
-  scheduled_for?: string | null;
-}
-
 export function useCreateWoreInstead(originalOutfitId: string) {
   const qc = useQueryClient();
   useSetTokenIfAvailable();
   return useMutation({
-    mutationFn: (payload: WoreInsteadPayload) =>
-      api.post<Outfit>(`/outfits/${originalOutfitId}/wore-instead`, payload),
+    mutationFn: (payload: WoreInsteadPayload) => createWoreInsteadRequest(api, originalOutfitId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['outfits'] });
       qc.invalidateQueries({ queryKey: ['outfit', originalOutfitId] });
@@ -62,8 +59,7 @@ export function useCloneToLookbook(sourceOutfitId: string) {
   const qc = useQueryClient();
   useSetTokenIfAvailable();
   return useMutation({
-    mutationFn: (payload: { name: string }) =>
-      api.post<Outfit>(`/outfits/${sourceOutfitId}/clone-to-lookbook`, payload),
+    mutationFn: (payload: { name: string }) => cloneToLookbookRequest(api, sourceOutfitId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['outfits'] });
     },
@@ -74,8 +70,7 @@ export function useWearToday(templateId: string) {
   const qc = useQueryClient();
   useSetTokenIfAvailable();
   return useMutation({
-    mutationFn: (payload: { scheduled_for?: string | null }) =>
-      api.post<Outfit>(`/outfits/${templateId}/wear-today`, payload),
+    mutationFn: (payload: { scheduled_for?: string | null }) => wearTodayOutfit(api, templateId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['outfits'] });
       qc.invalidateQueries({ queryKey: ['calendarOutfits'] });
@@ -84,17 +79,12 @@ export function useWearToday(templateId: string) {
   });
 }
 
-export interface PatchOutfitPayload {
-  name?: string;
-  items?: string[];
-}
-
 export function usePatchOutfit() {
   const qc = useQueryClient();
   useSetTokenIfAvailable();
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: PatchOutfitPayload }) =>
-      api.patch<Outfit>(`/outfits/${id}`, payload),
+      patchOutfitRequest(api, id, payload),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['outfit', id] });
       qc.invalidateQueries({ queryKey: ['outfits'] });

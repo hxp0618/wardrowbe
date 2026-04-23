@@ -2,6 +2,8 @@ import { api } from "@/lib/api";
 
 export interface SessionUser {
   id: string;
+  /** Same as id; outfit owner checks use this field name in Web types. */
+  user_id?: string;
   email: string;
   display_name: string;
   onboarding_completed: boolean;
@@ -12,5 +14,6 @@ export interface SessionUser {
 }
 
 export async function fetchSessionUser(): Promise<SessionUser> {
-  return api.get<SessionUser>("/auth/session");
+  const raw = await api.get<SessionUser>("/auth/session");
+  return { ...raw, user_id: raw.user_id ?? raw.id };
 }

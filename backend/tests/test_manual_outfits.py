@@ -42,6 +42,7 @@ async def test_create_manual_outfit_via_post_outfits(
 
     assert response.status_code == 201
     payload = response.json()
+    assert payload["user_id"] == str(test_user.id)
     assert payload["source"] == "manual"
     assert payload["status"] == "accepted"
     assert payload["reasoning"] == "Weekend uniform"

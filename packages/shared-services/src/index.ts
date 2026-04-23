@@ -6,6 +6,7 @@ export * from "./notifications";
 export * from "./outfits";
 export * from "./pairings";
 export * from "./preferences";
+export * from "./studio";
 export * from "./users";
 export * from "./weather";
 export type { WardrowbeApi } from "./types";
