@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react'
+
 import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import { useI18n } from '../lib/i18n'
 import { colors } from './ui-theme'
+import { getHeaderChromeHeight, resolveHeaderMetrics } from './header-metrics'
 
 export type MobileDrawerKey =
   | 'dashboard'
@@ -57,6 +60,10 @@ const SECONDARY_ITEMS: DrawerItem[] = [
 ]
 
 const ALL_ITEMS = [...PRIMARY_ITEMS, ...SECONDARY_ITEMS]
+const DRAWER_WIDTH = 288
+const DRAWER_SIDE_PADDING = 16
+const DRAWER_TOP_GAP = 4
+const DRAWER_CAPSULE_GAP = 12
 
 export function resolveMobileDrawerKey(path?: string): MobileDrawerKey | null {
   if (!path) {
@@ -64,6 +71,56 @@ export function resolveMobileDrawerKey(path?: string): MobileDrawerKey | null {
   }
   const match = ALL_ITEMS.find((item) => item.url === path)
   return match?.key ?? null
+}
+
+export function resolveMobileDrawerLayout(
+  topChromeHeight: number,
+  menuButtonLeft?: number
+) {
+  const headerPaddingRight =
+    menuButtonLeft == null
+      ? 0
+      : Math.max(0, DRAWER_WIDTH - menuButtonLeft + DRAWER_CAPSULE_GAP)
+
+  return {
+    paddingTop: `${topChromeHeight + DRAWER_TOP_GAP}px`,
+    headerPaddingRight: `${headerPaddingRight}px`,
+  }
+}
+
+function getMobileDrawerLayout() {
+  const taroWithWindowInfo = Taro as typeof Taro & {
+    getWindowInfo?: () => {
+      statusBarHeight?: number
+    }
+    getAppBaseInfo?: () => {
+      statusBarHeight?: number
+    }
+  }
+  const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
+    | { statusBarHeight?: number }
+    | undefined
+  const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
+    | { statusBarHeight?: number }
+    | undefined
+  const statusBarHeight =
+    windowInfo?.statusBarHeight ||
+    appBaseInfo?.statusBarHeight ||
+    20
+  const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
+  const topChromeHeight = getHeaderChromeHeight(
+    resolveHeaderMetrics({
+      statusBarHeight,
+      menuButtonRect: menuButtonRect
+        ? {
+            top: menuButtonRect.top,
+            height: menuButtonRect.height,
+          }
+        : undefined,
+    })
+  )
+
+  return resolveMobileDrawerLayout(topChromeHeight, menuButtonRect?.left)
 }
 
 type MobileDrawerProps = {
@@ -102,7 +159,7 @@ function renderItem(
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        padding: '10px 12px',
+        padding: '6px 12px',
         borderRadius: '14px',
         backgroundColor: active ? colors.accent : 'transparent',
       }}
@@ -125,6 +182,11 @@ function renderItem(
 
 export function MobileDrawer(props: MobileDrawerProps) {
   const { t } = useI18n()
+  const [layout, setLayout] = useState(() => getMobileDrawerLayout())
+
+  useEffect(() => {
+    setLayout(getMobileDrawerLayout())
+  }, [])
 
   return (
     <View
@@ -152,14 +214,17 @@ export function MobileDrawer(props: MobileDrawerProps) {
           top: '0',
           bottom: '0',
           left: '0',
-          width: '288px',
+          width: `${DRAWER_WIDTH}px`,
           zIndex: 50,
           backgroundColor: colors.surface,
           borderRight: `1px solid ${colors.border}`,
           transform: props.open ? 'translateX(0)' : 'translateX(-110%)',
           transition: 'transform 220ms ease',
           boxSizing: 'border-box',
-          padding: '24px 16px 28px',
+          paddingTop: layout.paddingTop,
+          paddingRight: `${DRAWER_SIDE_PADDING}px`,
+          paddingBottom: '28px',
+          paddingLeft: `${DRAWER_SIDE_PADDING}px`,
           display: 'flex',
           flexDirection: 'column',
           gap: '18px',
@@ -171,6 +236,7 @@ export function MobileDrawer(props: MobileDrawerProps) {
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '12px',
+            paddingRight: layout.headerPaddingRight,
           }}
         >
           <View>

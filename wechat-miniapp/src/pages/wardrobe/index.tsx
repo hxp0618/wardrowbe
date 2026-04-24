@@ -7,11 +7,19 @@ import { ItemCard } from '../../components/item-card'
 import { ItemDetailSheet } from '../../components/item-detail-sheet'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
-import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
+import { colors, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useFolders } from '../../hooks/use-folders'
 import { useCreateItemWithImages, useItems, useItemTypes } from '../../hooks/use-items'
 import { useI18n } from '../../lib/i18n'
+import {
+  getWardrobeChipLabelStyle,
+  getWardrobeChipStyle,
+  getWardrobeCompactActionStyle,
+  getWardrobePickerIconStyle,
+  getWardrobePickerLabelStyle,
+  getWardrobePickerStyle,
+} from './controls-style'
 
 import type { Item, ItemFilter } from '../../services/types'
 
@@ -23,6 +31,27 @@ const SORT_OPTIONS = [
   { label: '最多穿着', value: 'wear_count', order: 'desc' as const },
   { label: '名称 A-Z', value: 'name', order: 'asc' as const },
 ]
+
+function WardrobePickerControl(props: {
+  value: string
+  range: string[]
+  index: number
+  onChange: (nextIndex: number) => void
+}) {
+  return (
+    <Picker
+      mode='selector'
+      range={props.range}
+      value={props.index}
+      onChange={(event) => props.onChange(Number(event.detail.value))}
+    >
+      <View style={getWardrobePickerStyle()}>
+        <Text style={getWardrobePickerLabelStyle()}>{props.value}</Text>
+        <Text style={getWardrobePickerIconStyle()}>▾</Text>
+      </View>
+    </Picker>
+  )
+}
 
 export default function WardrobePage() {
   const canRender = useAuthGuard()
@@ -80,71 +109,86 @@ export default function WardrobePage() {
       navKey='wardrobe'
       useBuiltInTabBar
       actions={
-        <View onClick={handleChooseImage} style={{ ...primaryButtonStyle, minHeight: '40px', padding: '10px 14px' }}>
+        <View
+          onClick={handleChooseImage}
+          style={{ ...primaryButtonStyle, ...getWardrobeCompactActionStyle() }}
+        >
           <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>添加</Text>
         </View>
       }
     >
       {/* Filters */}
       <SectionCard title={t('wardrobe_filter_sort_title')}>
-        <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <View style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <View style={{ display: 'flex', gap: '10px' }}>
             <View style={{ flex: 1 }}>
-              <Picker mode='selector' range={typeOptions} value={typeIndex} onChange={(e) => { setTypeIndex(Number(e.detail.value)); setPage(1) }}>
-                <View style={inputStyle}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>{typeOptions[typeIndex]}</Text>
-                </View>
-              </Picker>
+              <WardrobePickerControl
+                range={typeOptions}
+                index={typeIndex}
+                value={typeOptions[typeIndex]}
+                onChange={(nextIndex) => {
+                  setTypeIndex(nextIndex)
+                  setPage(1)
+                }}
+              />
             </View>
             <View style={{ flex: 1 }}>
-              <Picker mode='selector' range={SORT_OPTIONS.map((o) => o.label)} value={sortIndex} onChange={(e) => { setSortIndex(Number(e.detail.value)); setPage(1) }}>
-                <View style={inputStyle}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>{SORT_OPTIONS[sortIndex].label}</Text>
-                </View>
-              </Picker>
+              <WardrobePickerControl
+                range={SORT_OPTIONS.map((option) => option.label)}
+                index={sortIndex}
+                value={SORT_OPTIONS[sortIndex].label}
+                onChange={(nextIndex) => {
+                  setSortIndex(nextIndex)
+                  setPage(1)
+                }}
+              />
             </View>
           </View>
-          <View style={{ display: 'flex', gap: '10px' }}>
+          <View style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <View
-              onClick={() => { setFilterFavorite(!filterFavorite); setPage(1) }}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '999px',
-                border: filterFavorite ? '1px solid rgba(248, 113, 113, 0.25)' : `1px solid ${colors.border}`,
-                backgroundColor: filterFavorite ? 'rgba(248, 113, 113, 0.12)' : colors.surfaceMuted,
+              onClick={() => {
+                setFilterFavorite(!filterFavorite)
+                setPage(1)
               }}
+              style={getWardrobeChipStyle(filterFavorite, 'favorite')}
             >
-              <Text style={{ fontSize: '12px', color: filterFavorite ? colors.danger : colors.textMuted }}>{t('wardrobe_filter_favorite')}</Text>
+              <Text style={getWardrobeChipLabelStyle(filterFavorite)}>
+                {t('wardrobe_filter_favorite')}
+              </Text>
             </View>
             <View
-              onClick={() => { setFilterNeedsWash(!filterNeedsWash); setPage(1) }}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '999px',
-                border: filterNeedsWash ? '1px solid rgba(251, 191, 36, 0.25)' : `1px solid ${colors.border}`,
-                backgroundColor: filterNeedsWash ? 'rgba(251, 191, 36, 0.12)' : colors.surfaceMuted,
+              onClick={() => {
+                setFilterNeedsWash(!filterNeedsWash)
+                setPage(1)
               }}
+              style={getWardrobeChipStyle(filterNeedsWash, 'warning')}
             >
-              <Text style={{ fontSize: '12px', color: filterNeedsWash ? colors.warning : colors.textMuted }}>{t('wardrobe_filter_needs_wash')}</Text>
+              <Text style={getWardrobeChipLabelStyle(filterNeedsWash)}>
+                {t('wardrobe_filter_needs_wash')}
+              </Text>
             </View>
             <View
-              onClick={() => { setShowArchived(!showArchived); setPage(1) }}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '999px',
-                border: showArchived ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                backgroundColor: showArchived ? colors.surfaceSelected : colors.surfaceMuted,
+              onClick={() => {
+                setShowArchived(!showArchived)
+                setPage(1)
               }}
+              style={getWardrobeChipStyle(showArchived)}
             >
-              <Text style={{ fontSize: '12px', color: showArchived ? colors.text : colors.textMuted }}>{t('wardrobe_filter_archived')}</Text>
+              <Text style={getWardrobeChipLabelStyle(showArchived)}>
+                {t('wardrobe_filter_archived')}
+              </Text>
             </View>
           </View>
           {folders && folders.length > 0 && (
-            <Picker mode='selector' range={folderOptions} value={folderIndex} onChange={(e) => { setFolderIndex(Number(e.detail.value)); setPage(1) }}>
-              <View style={inputStyle}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>{folderOptions[folderIndex]}</Text>
-              </View>
-            </Picker>
+            <WardrobePickerControl
+              range={folderOptions}
+              index={folderIndex}
+              value={folderOptions[folderIndex]}
+              onChange={(nextIndex) => {
+                setFolderIndex(nextIndex)
+                setPage(1)
+              }}
+            />
           )}
         </View>
       </SectionCard>

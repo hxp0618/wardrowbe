@@ -7,8 +7,14 @@ describe('auth store', () => {
     useAuthStore.setState({
       accessToken: null,
       locale: 'zh',
-      appearance: 'dark',
+      appearance: 'light',
       hydrated: false,
+    })
+  })
+
+  it('defaults to light appearance for a fresh session', () => {
+    expect(useAuthStore.getInitialState()).toMatchObject({
+      appearance: 'light',
     })
   })
 

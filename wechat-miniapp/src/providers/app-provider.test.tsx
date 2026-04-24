@@ -44,6 +44,26 @@ describe('AppProvider auth restore', () => {
     })
   })
 
+  it('defaults to light appearance when no stored preference exists', async () => {
+    getStorageSync.mockImplementation((key: string) => {
+      if (key === 'accessToken') return 'persisted-token'
+      if (key === 'locale') return 'zh'
+      if (key === 'appearance') return undefined
+      return undefined
+    })
+
+    const { restoreAccessTokenSession } = await import('./app-provider')
+    const { useAuthStore } = await import('../stores/auth')
+
+    expect(restoreAccessTokenSession()).toBe('persisted-token')
+    expect(useAuthStore.getState()).toMatchObject({
+      accessToken: 'persisted-token',
+      locale: 'zh',
+      appearance: 'light',
+      hydrated: true,
+    })
+  })
+
   it('still hydrates the auth store when storage access throws', async () => {
     getStorageSync.mockImplementation(() => {
       throw new Error('storage unavailable')
@@ -56,7 +76,7 @@ describe('AppProvider auth restore', () => {
     expect(useAuthStore.getState()).toMatchObject({
       accessToken: null,
       locale: 'zh',
-      appearance: 'dark',
+      appearance: 'light',
       hydrated: true,
     })
   })

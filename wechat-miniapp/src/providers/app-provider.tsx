@@ -21,7 +21,7 @@ function normalizeStoredLocale(value: unknown): AppLocale {
 }
 
 function normalizeStoredAppearance(value: unknown): AppAppearance {
-  return value === 'light' ? 'light' : 'dark'
+  return value === 'dark' ? 'dark' : 'light'
 }
 
 export function restoreAccessTokenSession(
@@ -47,7 +47,7 @@ export function restoreAccessTokenSession(
   } catch {
     setAccessToken(null)
     setLocale('zh')
-    setAppearance('dark')
+    setAppearance('light')
   } finally {
     setHydrated(true)
   }

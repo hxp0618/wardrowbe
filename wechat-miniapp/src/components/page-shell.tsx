@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import { AppHeader } from './app-header'
+import { getHeaderChromeHeight, resolveHeaderMetrics } from './header-metrics'
 import { MobileDrawer, resolveMobileDrawerKey } from './mobile-drawer'
 import { MobileTabBar, type MobileTabKey } from './mobile-tab-bar'
 import { useAuthStore } from '../stores/auth'
@@ -20,6 +21,44 @@ type PageShellProps = {
   children: ReactNode
 }
 
+const DEFAULT_PAGE_SECTION_GAP = 18
+const NO_HEADER_TOP_CHROME_GAP = 4
+
+function getPageTopChromeHeight() {
+  const taroWithWindowInfo = Taro as typeof Taro & {
+    getWindowInfo?: () => {
+      statusBarHeight?: number
+    }
+    getAppBaseInfo?: () => {
+      statusBarHeight?: number
+    }
+  }
+
+  const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
+    | { statusBarHeight?: number }
+    | undefined
+  const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
+    | { statusBarHeight?: number }
+    | undefined
+  const statusBarHeight =
+    windowInfo?.statusBarHeight ||
+    appBaseInfo?.statusBarHeight ||
+    20
+  const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
+
+  return getHeaderChromeHeight(
+    resolveHeaderMetrics({
+      statusBarHeight,
+      menuButtonRect: menuButtonRect
+        ? {
+            top: menuButtonRect.top,
+            height: menuButtonRect.height,
+          }
+        : undefined,
+    })
+  )
+}
+
 export function createPageShellHeader(
   header: ReactNode | null | undefined,
   onOpenMenu: () => void
@@ -30,13 +69,29 @@ export function createPageShellHeader(
   return header
 }
 
+export function resolvePageShellContentPaddingTop(
+  hasHeader: boolean,
+  topChromeHeight: number
+) {
+  if (hasHeader) {
+    return `${DEFAULT_PAGE_SECTION_GAP}px`
+  }
+
+  return `${topChromeHeight + NO_HEADER_TOP_CHROME_GAP}px`
+}
+
 export function PageShell(props: PageShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [topChromeHeight, setTopChromeHeight] = useState(() => getPageTopChromeHeight())
   const appearance = useAuthStore((state) => state.appearance)
   const header = createPageShellHeader(props.header, () => setMenuOpen(true))
   const showMobileTabBar = !!props.navKey && !props.useBuiltInTabBar
   const currentPath = Taro.getCurrentInstance().router?.path
   const activeDrawerKey = resolveMobileDrawerKey(currentPath)
+
+  useEffect(() => {
+    setTopChromeHeight(getPageTopChromeHeight())
+  }, [])
 
   return (
     <View
@@ -58,7 +113,7 @@ export function PageShell(props: PageShellProps) {
       <View
         style={{
           padding: pagePadding,
-          paddingTop: header ? '18px' : '28px',
+          paddingTop: resolvePageShellContentPaddingTop(!!header, topChromeHeight),
           paddingBottom: props.useBuiltInTabBar || showMobileTabBar ? '104px' : '28px',
           display: 'flex',
           flexDirection: 'column',

@@ -17,7 +17,7 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   locale: 'zh',
-  appearance: 'dark',
+  appearance: 'light',
   hydrated: false,
   setAccessToken: (accessToken) => set({ accessToken }),
   setLocale: (locale) => set({ locale }),

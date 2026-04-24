@@ -46,4 +46,10 @@ describe('createPageShellHeader', () => {
       expect(pageShellModule.createPageShellHeader(null, onOpenMenu)).toBeNull()
     })
   })
+
+  it('adds top chrome spacing for pages without a rendered header', () => {
+    return import('./page-shell').then((pageShellModule) => {
+      expect(pageShellModule.resolvePageShellContentPaddingTop(false, 68)).toBe('72px')
+    })
+  })
 })

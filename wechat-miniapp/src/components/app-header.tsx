@@ -6,6 +6,7 @@ import { useUserProfile } from '../hooks/use-user'
 import { useI18n } from '../lib/i18n'
 import { useAuthStore } from '../stores/auth'
 import { colors } from './ui-theme'
+import { resolveHeaderMetrics } from './header-metrics'
 
 type AppHeaderProps = {
   onMenuClick?: () => void
@@ -49,19 +50,20 @@ function getHeaderMetrics() {
     appBaseInfo?.statusBarHeight ||
     20
   const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
-
-  if (!menuButtonRect || !menuButtonRect.height) {
-    return {
-      paddingTop: `${statusBarHeight + 8}px`,
-      contentHeight: '44px',
-    }
-  }
-
-  const paddingTop = Math.max(menuButtonRect.top - 8, statusBarHeight + 6)
+  const metrics = resolveHeaderMetrics({
+    statusBarHeight,
+    menuButtonRect: menuButtonRect
+      ? {
+          top: menuButtonRect.top,
+          height: menuButtonRect.height,
+        }
+      : undefined,
+  })
 
   return {
-    paddingTop: `${paddingTop}px`,
-    contentHeight: `${menuButtonRect.height + 10}px`,
+    paddingTop: `${metrics.paddingTop}px`,
+    contentHeight: `${metrics.contentHeight}px`,
+    paddingBottom: `${metrics.paddingBottom}px`,
   }
 }
 
@@ -105,7 +107,7 @@ export function AppHeader(props: AppHeaderProps) {
         paddingTop: metrics.paddingTop,
         paddingLeft: '16px',
         paddingRight: '16px',
-        paddingBottom: '12px',
+        paddingBottom: metrics.paddingBottom,
         backgroundColor: colors.page,
         borderBottom: `1px solid ${colors.border}`,
       }}
