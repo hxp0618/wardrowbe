@@ -11,6 +11,14 @@ import { useCreateItemWithImages } from '../../hooks/use-items'
 import { usePreferences, useUpdatePreferences } from '../../hooks/use-preferences'
 import { useCompleteOnboarding, useUpdateUserProfile, useUserProfile } from '../../hooks/use-user'
 import { formatColorLabel, formatItemTypeLabel } from '../../lib/display'
+import {
+  applyManualLocationName,
+  buildUserProfileUpdate,
+  hasResolvedLocation,
+  toResolvedLocationDraft,
+} from '../../lib/location-form'
+import { getEditableWechatDisplayName } from '../../lib/wechat-user'
+import { chooseWechatLocation, WechatLocationError } from '../../lib/wechat-location'
 
 const DASHBOARD_PAGE_URL = '/pages/dashboard/index'
 const TOTAL_STEPS = 5
@@ -197,6 +205,7 @@ export default function OnboardingPage() {
   const createItem = useCreateItemWithImages()
 
   const [step, setStep] = useState(0)
+  const [displayName, setDisplayName] = useState('')
   const [locationName, setLocationName] = useState('')
   const [locationLat, setLocationLat] = useState<number | undefined>(undefined)
   const [locationLon, setLocationLon] = useState<number | undefined>(undefined)
@@ -217,9 +226,11 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (userProfile) {
-      setLocationName(userProfile.location_name || '')
-      setLocationLat(userProfile.location_lat)
-      setLocationLon(userProfile.location_lon)
+      setDisplayName(getEditableWechatDisplayName(userProfile.display_name))
+      const savedLocation = toResolvedLocationDraft(userProfile)
+      setLocationName(savedLocation.locationName)
+      setLocationLat(savedLocation.locationLat)
+      setLocationLon(savedLocation.locationLon)
       if (userProfile.onboarding_completed) {
         void navigateToDashboard()
       }
@@ -246,13 +257,50 @@ export default function OnboardingPage() {
 
   const handleDetectLocation = async () => {
     try {
-      const result = await Taro.chooseLocation({})
+      const result = await chooseWechatLocation()
       setLocationName(result.name || result.address || '')
       setLocationLat(result.latitude)
       setLocationLon(result.longitude)
       void Taro.showToast({ title: '已获取位置', icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '定位失败'
+      const message =
+        error instanceof WechatLocationError
+          ? error.code === 'permission-denied'
+            ? '请先允许小程序访问位置信息'
+            : error.code === 'canceled'
+              ? '你已取消位置选择'
+              : '微信定位接口暂时不可用'
+          : error instanceof Error
+            ? error.message
+            : '定位失败'
+      void Taro.showToast({ title: message, icon: 'none' })
+    }
+  }
+
+  const handleStartOnboarding = async () => {
+    const normalizedDisplayName = displayName.trim()
+
+    if (!normalizedDisplayName) {
+      void Taro.showToast({ title: '请先设置你的昵称', icon: 'none' })
+      return
+    }
+
+    try {
+      if (normalizedDisplayName !== userProfile?.display_name?.trim()) {
+        await updateUserProfile.mutateAsync(
+          buildUserProfileUpdate({
+            displayName: normalizedDisplayName,
+            location: {
+              locationName,
+              locationLat,
+              locationLon,
+            },
+          })
+        )
+      }
+      setStep(1)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '保存昵称失败'
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -278,13 +326,21 @@ export default function OnboardingPage() {
 
   const handleSaveLocation = async () => {
     if (!locationName.trim()) return
+    if (!hasResolvedLocation({ locationName, locationLat, locationLon })) {
+      void Taro.showToast({ title: '请先选择当前位置', icon: 'none' })
+      return
+    }
 
     try {
-      await updateUserProfile.mutateAsync({
-        location_name: locationName.trim(),
-        location_lat: locationLat,
-        location_lon: locationLon,
-      })
+      await updateUserProfile.mutateAsync(
+        buildUserProfileUpdate({
+          location: {
+            locationName,
+            locationLat,
+            locationLon,
+          },
+        })
+      )
       void Taro.showToast({ title: '位置已保存', icon: 'success' })
       setStep(3)
     } catch (error) {
@@ -369,8 +425,20 @@ export default function OnboardingPage() {
                 <Text style={{ fontSize: '28px', color: colors.text, fontWeight: 700 }}>W</Text>
               </View>
               <Text style={{ fontSize: '18px', fontWeight: 600, color: colors.text }}>
-                {userProfile?.display_name ? `欢迎回来，${userProfile.display_name.split(' ')[0]}` : '欢迎开始配置你的衣橱'}
+                {displayName ? `欢迎回来，${displayName.split(' ')[0]}` : '先设置一个你的昵称'}
               </Text>
+              <View style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
+                  这是 Wardrowbe 内显示的昵称，不会直接读取你的微信真实昵称，后续也可以在设置里随时修改。
+                </Text>
+                <Input
+                  value={displayName}
+                  placeholder='例如：小雨 / Ada'
+                  onInput={(event) => setDisplayName(event.detail.value)}
+                  maxlength={100}
+                  style={inputStyle}
+                />
+              </View>
               <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <View style={{ padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
                   <Text style={{ fontSize: '14px', color: colors.text }}>拍下第一件衣物</Text>
@@ -388,7 +456,12 @@ export default function OnboardingPage() {
             </View>
           </SectionCard>
 
-          <StepActions primaryLabel='开始使用' onPrimary={() => setStep(1)} />
+          <StepActions
+            primaryLabel='保存昵称并继续'
+            onPrimary={handleStartOnboarding}
+            disabled={!displayName.trim()}
+            loading={updateUserProfile.isPending}
+          />
         </>
       ) : null}
 
@@ -459,10 +532,31 @@ export default function OnboardingPage() {
               <View onClick={handleDetectLocation} style={secondaryButtonStyle}>
                 <Text style={{ fontSize: '14px', color: colors.text }}>选择当前位置</Text>
               </View>
-              <Input value={locationName} placeholder='例如：上海市' onInput={(event) => setLocationName(event.detail.value)} style={inputStyle} />
+              <Input
+                value={locationName}
+                placeholder='例如：上海市'
+                onInput={(event) => {
+                  const nextLocation = applyManualLocationName(
+                    {
+                      locationName,
+                      locationLat,
+                      locationLon,
+                    },
+                    event.detail.value
+                  )
+                  setLocationName(nextLocation.locationName)
+                  setLocationLat(nextLocation.locationLat)
+                  setLocationLon(nextLocation.locationLon)
+                }}
+                style={inputStyle}
+              />
               {locationLat != null && locationLon != null ? (
                 <Text style={{ fontSize: '12px', color: colors.textSoft }}>
                   已记录坐标：{locationLat.toFixed(4)}, {locationLon.toFixed(4)}
+                </Text>
+              ) : locationName.trim() ? (
+                <Text style={{ fontSize: '12px', color: colors.warning }}>
+                  手动修改位置名称后，请重新选择当前位置以保存天气坐标。
                 </Text>
               ) : null}
             </View>

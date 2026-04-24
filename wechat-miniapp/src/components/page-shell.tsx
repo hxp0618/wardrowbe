@@ -30,12 +30,22 @@ export function createPageShellHeader(
   return header
 }
 
+export function resolveCurrentPath(
+  taro: Pick<typeof Taro, 'getCurrentInstance'> = Taro
+): string | undefined {
+  try {
+    return taro.getCurrentInstance().router?.path
+  } catch {
+    return undefined
+  }
+}
+
 export function PageShell(props: PageShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const appearance = useAuthStore((state) => state.appearance)
   const header = createPageShellHeader(props.header, () => setMenuOpen(true))
   const showMobileTabBar = !!props.navKey && !props.useBuiltInTabBar
-  const currentPath = Taro.getCurrentInstance().router?.path
+  const currentPath = resolveCurrentPath()
   const activeDrawerKey = resolveMobileDrawerKey(currentPath)
 
   return (

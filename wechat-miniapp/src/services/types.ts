@@ -375,9 +375,10 @@ export interface UserProfile {
 
 export interface UserProfileUpdate {
   display_name?: string
+  avatar_url?: string | null
   timezone?: string
-  location_lat?: number
-  location_lon?: number
-  location_name?: string
+  location_lat?: number | null
+  location_lon?: number | null
+  location_name?: string | null
   body_measurements?: Record<string, number | string> | null
 }

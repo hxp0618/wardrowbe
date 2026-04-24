@@ -46,4 +46,16 @@ describe('createPageShellHeader', () => {
       expect(pageShellModule.createPageShellHeader(null, onOpenMenu)).toBeNull()
     })
   })
+
+  it('falls back to an undefined drawer key when reading the current route throws', () => {
+    return import('./page-shell').then((pageShellModule) => {
+      expect(
+        pageShellModule.resolveCurrentPath({
+          getCurrentInstance: () => {
+            throw new Error('timeout')
+          },
+        } as never)
+      ).toBeUndefined()
+    })
+  })
 })

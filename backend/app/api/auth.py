@@ -77,6 +77,11 @@ def _require_wechat_openid(session: dict) -> str:
     return openid
 
 
+def _resolve_wechat_display_name(existing_display_name: str | None, openid: str) -> str:
+    candidate = existing_display_name.strip() if isinstance(existing_display_name, str) else ""
+    return candidate or f"微信用户-{openid[:6]}"
+
+
 async def _sync_user_and_issue_token(
     sync_data: UserSyncRequest,
     db: AsyncSession,
@@ -240,8 +245,9 @@ async def wechat_code_login(
     external_id = f"wechat:{openid}"
     user_service = UserService(db)
     existing_user = await user_service.get_by_external_id(external_id)
-    display_name = (
-        existing_user.display_name if existing_user else f"微信用户-{openid[:6]}"
+    display_name = _resolve_wechat_display_name(
+        existing_user.display_name if existing_user else None,
+        openid,
     )
 
     sync_data = UserSyncRequest(

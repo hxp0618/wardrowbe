@@ -85,7 +85,7 @@ export default function DashboardPage() {
         ) : (
           <View>
             <Text style={{ display: 'block', fontSize: '14px', color: colors.textMuted, marginBottom: '10px' }}>{t('dashboard_location_missing')}</Text>
-            <View onClick={() => Taro.navigateTo({ url: '/pages/settings/index' })} style={secondaryButtonStyle}>
+            <View onClick={() => Taro.switchTab({ url: '/pages/settings/index' })} style={secondaryButtonStyle}>
               <Text style={{ fontSize: '14px', color: colors.text }}>{t('dashboard_set_location')}</Text>
             </View>
           </View>

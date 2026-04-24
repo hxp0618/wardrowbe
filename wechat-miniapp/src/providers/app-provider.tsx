@@ -60,15 +60,9 @@ type AppProviderProps = {
 }
 
 export function AppProvider(props: AppProviderProps) {
-  const hydrated = useAuthStore((state) => state.hydrated)
-
   useEffect(() => {
     restoreAccessTokenSession()
   }, [])
-
-  if (!hydrated) {
-    return null
-  }
 
   return <>{props.children}</>
 }

@@ -29,39 +29,46 @@ function getInitials(name?: string | null): string {
     .toUpperCase()
 }
 
-function getHeaderMetrics() {
-  const taroWithWindowInfo = Taro as typeof Taro & {
-    getWindowInfo?: () => {
-      statusBarHeight?: number
+export function getHeaderMetrics() {
+  try {
+    const taroWithWindowInfo = Taro as typeof Taro & {
+      getWindowInfo?: () => {
+        statusBarHeight?: number
+      }
+      getAppBaseInfo?: () => {
+        statusBarHeight?: number
+      }
     }
-    getAppBaseInfo?: () => {
-      statusBarHeight?: number
-    }
-  }
-  const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
-    | { statusBarHeight?: number }
-    | undefined
-  const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
-    | { statusBarHeight?: number }
-    | undefined
-  const statusBarHeight =
-    windowInfo?.statusBarHeight ||
-    appBaseInfo?.statusBarHeight ||
-    20
-  const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
+    const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
+      | { statusBarHeight?: number }
+      | undefined
+    const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
+      | { statusBarHeight?: number }
+      | undefined
+    const statusBarHeight =
+      windowInfo?.statusBarHeight ||
+      appBaseInfo?.statusBarHeight ||
+      20
+    const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
 
-  if (!menuButtonRect || !menuButtonRect.height) {
+    if (!menuButtonRect || !menuButtonRect.height) {
+      return {
+        paddingTop: `${statusBarHeight + 8}px`,
+        contentHeight: '44px',
+      }
+    }
+
+    const paddingTop = Math.max(menuButtonRect.top - 8, statusBarHeight + 6)
+
     return {
-      paddingTop: `${statusBarHeight + 8}px`,
+      paddingTop: `${paddingTop}px`,
+      contentHeight: `${menuButtonRect.height + 10}px`,
+    }
+  } catch {
+    return {
+      paddingTop: '28px',
       contentHeight: '44px',
     }
-  }
-
-  const paddingTop = Math.max(menuButtonRect.top - 8, statusBarHeight + 6)
-
-  return {
-    paddingTop: `${paddingTop}px`,
-    contentHeight: `${menuButtonRect.height + 10}px`,
   }
 }
 

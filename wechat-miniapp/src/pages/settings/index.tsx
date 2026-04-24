@@ -12,12 +12,50 @@ import { useUpdatePreferences, usePreferences } from '../../hooks/use-preference
 import { useUpdateUserProfile, useUserProfile } from '../../hooks/use-user'
 import { formatOccasionLabel, formatRoleLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
+import {
+  applyManualLocationName,
+  buildUserProfileUpdate,
+  hasResolvedLocation,
+  toResolvedLocationDraft,
+} from '../../lib/location-form'
+import { chooseWechatLocation, WechatLocationError } from '../../lib/wechat-location'
 import { useAuthStore } from '../../stores/auth'
 import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 
 const OCCASIONS = ['casual', 'office', 'formal', 'date', 'sporty', 'outdoor']
 const TEMPERATURE_UNITS = ['celsius', 'fahrenheit']
-const TIMEZONES = ['Asia/Shanghai', 'Asia/Tokyo', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'UTC']
+const TIMEZONE_OPTIONS = [
+  {
+    value: 'Asia/Shanghai',
+    zh: '北京时间 (Asia/Shanghai)',
+    en: 'Beijing Time (Asia/Shanghai)',
+  },
+  {
+    value: 'Asia/Tokyo',
+    zh: '东京时间 (Asia/Tokyo)',
+    en: 'Tokyo Time (Asia/Tokyo)',
+  },
+  {
+    value: 'America/New_York',
+    zh: '纽约时间 (America/New_York)',
+    en: 'New York Time (America/New_York)',
+  },
+  {
+    value: 'America/Los_Angeles',
+    zh: '洛杉矶时间 (America/Los_Angeles)',
+    en: 'Los Angeles Time (America/Los_Angeles)',
+  },
+  {
+    value: 'Europe/London',
+    zh: '伦敦时间 (Europe/London)',
+    en: 'London Time (Europe/London)',
+  },
+  {
+    value: 'UTC',
+    zh: '协调世界时 (UTC)',
+    en: 'Coordinated Universal Time (UTC)',
+  },
+] as const
 
 export default function SettingsPage() {
   const canRender = useAuthGuard()
@@ -29,6 +67,8 @@ export default function SettingsPage() {
   const setAccessToken = useAuthStore((s) => s.setAccessToken)
   const [displayName, setDisplayName] = useState('')
   const [locationName, setLocationName] = useState('')
+  const [locationLat, setLocationLat] = useState<number | undefined>(undefined)
+  const [locationLon, setLocationLon] = useState<number | undefined>(undefined)
   const [occasionIndex, setOccasionIndex] = useState(0)
   const [tempUnitIndex, setTempUnitIndex] = useState(0)
   const [timezoneIndex, setTimezoneIndex] = useState(0)
@@ -41,12 +81,28 @@ export default function SettingsPage() {
     locale === 'en'
       ? ['Casual', 'Office', 'Formal', 'Date', 'Sporty', 'Outdoor']
       : ['休闲', '办公', '正式', '约会', '运动', '户外']
+  const timezoneOptions = TIMEZONE_OPTIONS.map((timezone) =>
+    locale === 'en' ? timezone.en : timezone.zh
+  )
+  const selectedTimezoneLabel =
+    timezoneOptions[timezoneIndex] ||
+    (() => {
+      const rawValue = userProfile?.timezone || TIMEZONE_OPTIONS[timezoneIndex]?.value || 'UTC'
+      const matched = TIMEZONE_OPTIONS.find((timezone) => timezone.value === rawValue)
+      if (matched) {
+        return locale === 'en' ? matched.en : matched.zh
+      }
+      return rawValue
+    })()
 
   useEffect(() => {
     if (userProfile) {
       setDisplayName(userProfile.display_name)
-      setLocationName(userProfile.location_name || '')
-      const tzIndex = TIMEZONES.indexOf(userProfile.timezone)
+      const savedLocation = toResolvedLocationDraft(userProfile)
+      setLocationName(savedLocation.locationName)
+      setLocationLat(savedLocation.locationLat)
+      setLocationLon(savedLocation.locationLon)
+      const tzIndex = TIMEZONE_OPTIONS.findIndex((timezone) => timezone.value === userProfile.timezone)
       if (tzIndex >= 0) {
         setTimezoneIndex(tzIndex)
       }
@@ -68,15 +124,48 @@ export default function SettingsPage() {
   const enabledNotificationCount = notificationSettings?.filter((setting) => setting.enabled).length ?? 0
 
   const handleSaveProfile = async () => {
+    if (locationName.trim() && !hasResolvedLocation({ locationName, locationLat, locationLon })) {
+      void Taro.showToast({ title: t('settings_location_select_required'), icon: 'none' })
+      return
+    }
+
     try {
-      await updateProfile.mutateAsync({
-        display_name: displayName,
-        location_name: locationName,
-        timezone: TIMEZONES[timezoneIndex],
-      })
+      await updateProfile.mutateAsync(
+        buildUserProfileUpdate({
+          displayName,
+          timezone: TIMEZONE_OPTIONS[timezoneIndex]?.value || 'UTC',
+          location: {
+            locationName,
+            locationLat,
+            locationLon,
+          },
+        })
+      )
       void Taro.showToast({ title: t('settings_toast_profile_updated'), icon: 'success' })
     } catch (error) {
       const message = error instanceof Error ? error.message : t('settings_toast_update_failed')
+      void Taro.showToast({ title: message, icon: 'none' })
+    }
+  }
+
+  const handleChooseLocation = async () => {
+    try {
+      const result = await chooseWechatLocation()
+      setLocationName(result.name || result.address || '')
+      setLocationLat(result.latitude)
+      setLocationLon(result.longitude)
+      void Taro.showToast({ title: t('settings_location_chosen'), icon: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof WechatLocationError
+          ? error.code === 'permission-denied'
+            ? t('settings_location_error_permission')
+            : error.code === 'canceled'
+              ? t('settings_location_error_canceled')
+              : t('settings_location_error_unavailable')
+          : error instanceof Error
+            ? error.message
+            : t('settings_toast_update_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -134,7 +223,7 @@ export default function SettingsPage() {
               }
               tone={userProfile?.onboarding_completed ? 'success' : 'warning'}
             />
-            <UIBadge label={TIMEZONES[timezoneIndex] || userProfile?.timezone || 'UTC'} />
+            <UIBadge label={selectedTimezoneLabel} />
             <UIBadge label={tempUnitLabels[TEMPERATURE_UNITS[tempUnitIndex]]} />
           </View>
           {userProfile?.email ? (
@@ -159,15 +248,42 @@ export default function SettingsPage() {
             <Input
               value={locationName}
               placeholder={t('settings_location_placeholder')}
-              onInput={(e) => setLocationName(e.detail.value)}
+              onInput={(e) => {
+                const nextLocation = applyManualLocationName(
+                  {
+                    locationName,
+                    locationLat,
+                    locationLon,
+                  },
+                  e.detail.value
+                )
+                setLocationName(nextLocation.locationName)
+                setLocationLat(nextLocation.locationLat)
+                setLocationLon(nextLocation.locationLon)
+              }}
               style={inputStyle}
             />
           </View>
+          <View onClick={handleChooseLocation} style={secondaryButtonStyle}>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('settings_choose_location')}</Text>
+          </View>
+          {hasResolvedLocation({ locationName, locationLat, locationLon }) ? (
+            <Text style={{ fontSize: '12px', color: colors.textSoft }}>
+              {tf('settings_location_coordinates_saved', {
+                lat: locationLat!.toFixed(4),
+                lon: locationLon!.toFixed(4),
+              })}
+            </Text>
+          ) : locationName.trim() ? (
+            <Text style={{ fontSize: '12px', color: colors.warning }}>
+              {t('settings_location_coordinates_missing')}
+            </Text>
+          ) : null}
           <View>
             <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>{t('settings_timezone_label')}</Text>
-            <Picker mode='selector' range={TIMEZONES} value={timezoneIndex} onChange={(e) => setTimezoneIndex(Number(e.detail.value))}>
+            <Picker mode='selector' range={timezoneOptions} value={timezoneIndex} onChange={(e) => setTimezoneIndex(Number(e.detail.value))}>
               <View style={inputStyle}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>{TIMEZONES[timezoneIndex]}</Text>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{selectedTimezoneLabel}</Text>
               </View>
             </Picker>
           </View>

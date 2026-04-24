@@ -18,8 +18,11 @@ export function useUpdateUserProfile() {
 
   return useMutation({
     mutationFn: updateUserProfile,
-    onSuccess: () => {
+    onSuccess: (userProfile) => {
+      queryClient.setQueryData(['miniapp', 'user-profile'], userProfile)
       void queryClient.invalidateQueries({ queryKey: ['miniapp', 'user-profile'] })
+      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'weather'] })
+      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'weather-forecast'] })
     },
   })
 }
@@ -31,6 +34,8 @@ export function useCompleteOnboarding() {
     mutationFn: completeOnboarding,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['miniapp', 'user-profile'] })
+      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'weather'] })
+      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'weather-forecast'] })
     },
   })
 }

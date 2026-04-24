@@ -60,6 +60,21 @@ class TestUserUpdate:
         assert float(data["location_lat"]) == pytest.approx(40.7128, rel=1e-4)
         assert float(data["location_lon"]) == pytest.approx(-74.0060, rel=1e-4)
 
+    @pytest.mark.asyncio
+    async def test_update_user_avatar_url(self, client: AsyncClient, test_user, auth_headers):
+        """Test updating the custom avatar URL."""
+        response = await client.patch(
+            "/api/v1/users/me",
+            json={
+                "avatar_url": "https://cdn.example.com/avatar.png",
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["avatar_url"] == "https://cdn.example.com/avatar.png"
+
 
 class TestOnboarding:
     """Tests for onboarding completion endpoint."""

@@ -277,6 +277,44 @@ class TestWechatLogin:
         assert existing_user.display_name == "Already Customized"
 
     @pytest.mark.asyncio
+    async def test_wechat_code_login_recovers_from_existing_blank_display_name(
+        self, client: AsyncClient, db_session, monkeypatch: pytest.MonkeyPatch
+    ):
+        openid = f"openid-{uuid4().hex[:8]}"
+
+        async def fake_exchange_code(self, code: str) -> dict:
+            assert code == "wechat-code"
+            return {"openid": openid}
+
+        existing_user = User(
+            external_id=f"wechat:{openid}",
+            email=f"{openid}@wechat.local",
+            display_name="",
+            timezone="UTC",
+            is_active=True,
+        )
+        db_session.add(existing_user)
+        await db_session.commit()
+        await db_session.refresh(existing_user)
+
+        self._configure_wechat(monkeypatch)
+        monkeypatch.setattr(
+            "app.services.wechat_auth_service.WechatAuthService.exchange_code",
+            fake_exchange_code,
+        )
+
+        response = await client.post(
+            "/api/v1/auth/wechat/code",
+            json={"code": "wechat-code"},
+        )
+
+        await db_session.refresh(existing_user)
+
+        assert response.status_code == 200
+        assert response.json()["display_name"] == f"微信用户-{openid[:6]}"
+        assert existing_user.display_name == f"微信用户-{openid[:6]}"
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("openid", [None, 123, ""])
     async def test_wechat_code_login_rejects_invalid_openid_without_creating_user(
         self,
