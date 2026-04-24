@@ -16,6 +16,7 @@ import {
 } from '../../hooks/use-outfits'
 import { usePreferences } from '../../hooks/use-preferences'
 import { formatItemTypeLabel, formatOccasionLabel, formatWeatherConditionLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 
 import type { Outfit, SuggestRequest } from '../../services/types'
 
@@ -66,19 +67,6 @@ function getForecastDaysForTargetDate(targetDate: string): number {
   return diff > 0 ? diff + 1 : 0
 }
 
-function getWeatherHint(options: {
-  condition: string
-  precipitationChance: number
-  temperature: number
-}) {
-  if (options.precipitationChance > 50) return '今天更适合带伞或准备防水层。'
-  if (options.temperature < 10) return '气温偏低，建议增加外套或针织层。'
-  if (options.temperature < 18) return '偏凉，轻薄外套或叠穿会更稳妥。'
-  if (options.temperature > 28) return '偏热，优先轻薄透气单品。'
-  if (options.condition.toLowerCase().includes('wind')) return '风比较明显，建议考虑防风层。'
-  return '天气条件平稳，可以按场景优先考虑风格。'
-}
-
 export default function SuggestPage() {
   const canRender = useAuthGuard()
   const { data: weather, isLoading: weatherLoading } = useWeather()
@@ -99,6 +87,107 @@ export default function SuggestPage() {
     forecastDays,
     forecastDays > 0
   )
+  const { t, locale } = useI18n()
+  const occasionOptions =
+    locale === 'en'
+      ? [
+          { label: 'Casual', value: 'casual' },
+          { label: 'Office', value: 'office' },
+          { label: 'Formal', value: 'formal' },
+          { label: 'Date', value: 'date' },
+          { label: 'Sporty', value: 'sporty' },
+          { label: 'Outdoor', value: 'outdoor' },
+        ]
+      : OCCASIONS
+  const weatherConditionOptions =
+    locale === 'en'
+      ? [
+          { label: '☀️ Sunny', value: 'sunny' },
+          { label: '☁️ Cloudy', value: 'cloudy' },
+          { label: '🌧️ Rainy', value: 'rainy' },
+        ]
+      : WEATHER_CONDITIONS
+  const datePresets =
+    locale === 'en'
+      ? [
+          { label: 'Today', offset: 0 },
+          { label: 'Tomorrow', offset: 1 },
+          { label: 'In 3 days', offset: 3 },
+          { label: 'In 1 week', offset: 7 },
+        ]
+      : DATE_PRESETS
+  const text =
+    locale === 'en'
+      ? {
+          hintRain: 'Bring an umbrella or add a water-resistant layer today.',
+          hintCold: 'It is cold, so add a coat or knit layer.',
+          hintCool: 'It is cool, so a light outer layer or layering works better.',
+          hintHot: 'It is hot, so prioritize light and breathable pieces.',
+          hintWindy: 'Wind is noticeable, so consider a windproof layer.',
+          hintDefault: 'Weather is stable, so you can prioritize style for the occasion.',
+          suggestFailed: 'Suggestion failed',
+          accepted: 'Accepted',
+          actionFailed: 'Action failed',
+          restart: 'Start over',
+          resultWeatherTitle: 'Weather',
+          resultRecommendationTitle: '✨ Recommended for you',
+          tryAnother: 'Try another',
+          wearThis: 'Wear this',
+          reject: 'Reject',
+          targetWeatherTitle: 'Target date weather',
+          currentWeatherTitle: 'Current weather',
+          weatherLoading: 'Loading weather...',
+          weatherLow: (value: string) => `Low ${value}`,
+          weatherFeelsLike: (value: string) => `Feels like ${value}`,
+          weatherWind: (value: number) => `Wind ${Math.round(value)} km/h`,
+          weatherPrecipitation: (value: number) => `Precipitation ${value}%`,
+          weatherSkip: 'Location not set. Weather will be skipped.',
+          errorTitle: 'Error',
+          chooseOccasion: 'Choose an occasion',
+          wearDate: 'Wear date',
+          weatherOverride: 'Weather override',
+          collapse: 'Collapse',
+          expand: 'Expand',
+          weatherOverrideHint: 'Optionally set weather conditions manually',
+          temperature: (value: string) => `Temperature: ${value}`,
+          generating: 'Generating...',
+          generate: 'Generate suggestion',
+        }
+      : {
+          hintRain: '今天更适合带伞或准备防水层。',
+          hintCold: '气温偏低，建议增加外套或针织层。',
+          hintCool: '偏凉，轻薄外套或叠穿会更稳妥。',
+          hintHot: '偏热，优先轻薄透气单品。',
+          hintWindy: '风比较明显，建议考虑防风层。',
+          hintDefault: '天气条件平稳，可以按场景优先考虑风格。',
+          suggestFailed: '推荐失败',
+          accepted: '已接受',
+          actionFailed: '操作失败',
+          restart: '重新开始',
+          resultWeatherTitle: '天气',
+          resultRecommendationTitle: '✨ 为你推荐',
+          tryAnother: '换一套',
+          wearThis: '就穿它',
+          reject: '拒绝',
+          targetWeatherTitle: '目标日期天气',
+          currentWeatherTitle: '当前天气',
+          weatherLoading: '加载天气中...',
+          weatherLow: (value: string) => `最低 ${value}`,
+          weatherFeelsLike: (value: string) => `体感 ${value}`,
+          weatherWind: (value: number) => `风速 ${Math.round(value)}km/h`,
+          weatherPrecipitation: (value: number) => `降水 ${value}%`,
+          weatherSkip: '未设置位置，将跳过天气',
+          errorTitle: '错误',
+          chooseOccasion: '选择场景',
+          wearDate: '穿着日期',
+          weatherOverride: '天气覆盖',
+          collapse: '收起',
+          expand: '展开',
+          weatherOverrideHint: '手动设置天气条件（可选）',
+          temperature: (value: string) => `温度：${value}`,
+          generating: '生成中...',
+          generate: '生成推荐',
+        }
 
   useEffect(() => {
     if (prefs?.default_occasion && !selectedOccasion) {
@@ -121,11 +210,14 @@ export default function SuggestPage() {
       }
     : weather
   const weatherHint = weatherSummary
-    ? getWeatherHint({
-        condition: weatherSummary.condition,
-        precipitationChance: weatherSummary.precipitation_chance,
-        temperature: weatherSummary.temperature,
-      })
+    ? (() => {
+        if (weatherSummary.precipitation_chance > 50) return text.hintRain
+        if (weatherSummary.temperature < 10) return text.hintCold
+        if (weatherSummary.temperature < 18) return text.hintCool
+        if (weatherSummary.temperature > 28) return text.hintHot
+        if (weatherSummary.condition.toLowerCase().includes('wind')) return text.hintWindy
+        return text.hintDefault
+      })()
     : null
 
   const handleGenerate = async () => {
@@ -134,7 +226,7 @@ export default function SuggestPage() {
     try {
       const request: SuggestRequest = { occasion: selectedOccasion, target_date: targetDate }
       if (overrideConditionIndex >= 0) {
-        const cond = WEATHER_CONDITIONS[overrideConditionIndex].value
+        const cond = weatherConditionOptions[overrideConditionIndex].value
         request.weather_override = {
           temperature: overrideTemp,
           feels_like: overrideTemp,
@@ -146,7 +238,7 @@ export default function SuggestPage() {
       const result = await suggestOutfit.mutateAsync(request)
       setOutfit(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '推荐失败')
+      setError(err instanceof Error ? err.message : text.suggestFailed)
     }
   }
 
@@ -154,10 +246,10 @@ export default function SuggestPage() {
     if (!outfit) return
     try {
       await acceptOutfit.mutateAsync(outfit.id)
-      void Taro.showToast({ title: '已接受', icon: 'success' })
+      void Taro.showToast({ title: text.accepted, icon: 'success' })
       setOutfit(null)
       setSelectedOccasion(null)
-    } catch { void Taro.showToast({ title: '操作失败', icon: 'none' }) }
+    } catch { void Taro.showToast({ title: text.actionFailed, icon: 'none' }) }
   }
 
   const handleReject = async () => {
@@ -182,26 +274,26 @@ export default function SuggestPage() {
   }
 
   // Show result
-  if (outfit) {
+    if (outfit) {
     return (
-      <PageShell title='推荐结果' navKey='suggest' useBuiltInTabBar>
+      <PageShell title={t('page_suggest_result_title')} navKey='suggest' useBuiltInTabBar>
         <View style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           <Text style={{ fontSize: '12px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '4px 10px', borderRadius: '999px' }}>{formatOccasionLabel(outfit.occasion)}</Text>
           {outfit.scheduled_for && <Text style={{ fontSize: '12px', color: colors.textMuted }}>{outfit.scheduled_for}</Text>}
           <View onClick={handleNewRequest} style={{ marginLeft: 'auto' }}>
-            <Text style={{ fontSize: '12px', color: colors.textMuted }}>重新开始</Text>
+            <Text style={{ fontSize: '12px', color: colors.textMuted }}>{text.restart}</Text>
           </View>
         </View>
 
         {outfit.weather && (
-          <SectionCard title='天气'>
+          <SectionCard title={text.resultWeatherTitle}>
               <Text style={{ fontSize: '14px', color: colors.textMuted }}>
               {displayTemp(outfit.weather.temperature, unit)} · {formatWeatherConditionLabel(outfit.weather.condition)} · 降水 {outfit.weather.precipitation_chance}%
             </Text>
           </SectionCard>
         )}
 
-        <SectionCard title='✨ 为你推荐'>
+        <SectionCard title={text.resultRecommendationTitle}>
           {outfit.reasoning && (
             <Text style={{ display: 'block', fontSize: '16px', fontWeight: 600, color: colors.text, marginBottom: '12px' }}>{outfit.reasoning}</Text>
           )}
@@ -239,13 +331,13 @@ export default function SuggestPage() {
 
         <View style={{ display: 'flex', gap: '10px' }}>
           <View onClick={handleTryAnother} style={{ ...secondaryButtonStyle, flex: 1 }}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>换一套</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{text.tryAnother}</Text>
           </View>
           <View onClick={handleAccept} style={{ ...primaryButtonStyle, flex: 1 }}>
-            <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>就穿它</Text>
+            <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{text.wearThis}</Text>
           </View>
           <View onClick={handleReject} style={{ ...secondaryButtonStyle, minWidth: '64px' }}>
-            <Text style={{ fontSize: '14px', color: colors.textMuted }}>拒绝</Text>
+            <Text style={{ fontSize: '14px', color: colors.textMuted }}>{text.reject}</Text>
           </View>
         </View>
       </PageShell>
@@ -254,10 +346,10 @@ export default function SuggestPage() {
 
   // Show request form
   return (
-    <PageShell title='穿搭推荐' subtitle='根据天气和场景生成今日搭配' navKey='suggest' useBuiltInTabBar>
-      <SectionCard title={forecastDay ? '目标日期天气' : '当前天气'}>
+    <PageShell title={t('page_suggest_title')} subtitle={t('page_suggest_subtitle')} navKey='suggest' useBuiltInTabBar>
+      <SectionCard title={forecastDay ? text.targetWeatherTitle : text.currentWeatherTitle}>
         {weatherLoading || forecastLoading ? (
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>加载天气中...</Text>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{text.weatherLoading}</Text>
         ) : weatherSummary ? (
           <View>
             <View style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px' }}>
@@ -267,8 +359,8 @@ export default function SuggestPage() {
                 </Text>
                 <Text style={{ fontSize: '13px', color: colors.textMuted }}>
                   {forecastDay
-                    ? `最低 ${displayTemp(weatherSummary.feels_like, unit)}`
-                    : `体感 ${displayTemp(weatherSummary.feels_like, unit)}`}
+                    ? text.weatherLow(displayTemp(weatherSummary.feels_like, unit))
+                    : text.weatherFeelsLike(displayTemp(weatherSummary.feels_like, unit))}
                 </Text>
               </View>
               {forecastDay ? (
@@ -279,8 +371,8 @@ export default function SuggestPage() {
             </View>
             <Text style={{ display: 'block', fontSize: '13px', color: colors.textMuted }}>
               {formatWeatherConditionLabel(weatherSummary.condition)}
-              {forecastDay ? '' : ` · 风速 ${Math.round(weatherSummary.wind_speed)}km/h`}
-              {` · 降水 ${weatherSummary.precipitation_chance}%`}
+              {forecastDay ? '' : ` · ${text.weatherWind(weatherSummary.wind_speed)}`}
+              {` · ${text.weatherPrecipitation(weatherSummary.precipitation_chance)}`}
             </Text>
             {weatherHint ? (
               <Text style={{ display: 'block', fontSize: '12px', color: colors.textSoft, marginTop: '8px', lineHeight: 1.6 }}>
@@ -289,19 +381,19 @@ export default function SuggestPage() {
             ) : null}
           </View>
         ) : (
-          <Text style={{ fontSize: '13px', color: colors.textMuted }}>未设置位置，将跳过天气</Text>
+          <Text style={{ fontSize: '13px', color: colors.textMuted }}>{text.weatherSkip}</Text>
         )}
       </SectionCard>
 
       {error && (
-        <SectionCard title='错误'>
+        <SectionCard title={text.errorTitle}>
           <Text style={{ fontSize: '13px', color: colors.danger }}>{error}</Text>
         </SectionCard>
       )}
 
-      <SectionCard title='选择场景'>
+      <SectionCard title={text.chooseOccasion}>
         <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-          {OCCASIONS.map((o) => (
+          {occasionOptions.map((o) => (
             <View
               key={o.value}
               onClick={() => setSelectedOccasion(o.value)}
@@ -318,9 +410,9 @@ export default function SuggestPage() {
         </View>
       </SectionCard>
 
-      <SectionCard title='穿着日期'>
+      <SectionCard title={text.wearDate}>
         <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-          {DATE_PRESETS.map((preset) => {
+          {datePresets.map((preset) => {
             const value = toLocalISODate(addDays(new Date(), preset.offset))
             const active = value === targetDate
 
@@ -350,15 +442,15 @@ export default function SuggestPage() {
       </SectionCard>
 
       {/* Weather override */}
-      <SectionCard title='天气覆盖' extra={
+      <SectionCard title={text.weatherOverride} extra={
         <View onClick={() => setShowWeatherOverride(!showWeatherOverride)}>
-          <Text style={{ fontSize: '12px', color: colors.textMuted }}>{showWeatherOverride ? '收起' : '展开'}</Text>
+          <Text style={{ fontSize: '12px', color: colors.textMuted }}>{showWeatherOverride ? text.collapse : text.expand}</Text>
         </View>
       }>
         {showWeatherOverride && (
           <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <View style={{ display: 'flex', gap: '10px' }}>
-              {WEATHER_CONDITIONS.map((c, i) => (
+              {weatherConditionOptions.map((c, i) => (
                 <View
                   key={c.value}
                   onClick={() => setOverrideConditionIndex(overrideConditionIndex === i ? -1 : i)}
@@ -377,14 +469,14 @@ export default function SuggestPage() {
             </View>
             {overrideConditionIndex >= 0 && (
               <View>
-                <Text style={{ fontSize: '13px', color: colors.textMuted, marginBottom: '8px' }}>温度：{displayTemp(overrideTemp, unit)}</Text>
+                <Text style={{ fontSize: '13px', color: colors.textMuted, marginBottom: '8px' }}>{text.temperature(displayTemp(overrideTemp, unit))}</Text>
                 <Slider min={-10} max={40} step={1} value={overrideTemp} onChange={(e) => setOverrideTemp(e.detail.value)} activeColor={colors.accent} backgroundColor={colors.surfaceSelected} />
               </View>
             )}
           </View>
         )}
         {!showWeatherOverride && (
-          <Text style={{ fontSize: '13px', color: colors.textMuted }}>手动设置天气条件（可选）</Text>
+          <Text style={{ fontSize: '13px', color: colors.textMuted }}>{text.weatherOverrideHint}</Text>
         )}
       </SectionCard>
 
@@ -397,7 +489,7 @@ export default function SuggestPage() {
         }}
       >
         <Text style={{ fontSize: '16px', fontWeight: 600, color: colors.accentText }}>
-          {isGenerating ? '生成中...' : '生成推荐'}
+          {isGenerating ? text.generating : text.generate}
         </Text>
       </View>
     </PageShell>

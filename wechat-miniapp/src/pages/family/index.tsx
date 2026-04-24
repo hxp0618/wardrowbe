@@ -19,6 +19,7 @@ import {
   useRegenerateInviteCode,
 } from '../../hooks/use-family'
 import { formatRoleLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 
 export default function FamilyPage() {
   const canRender = useAuthGuard()
@@ -33,6 +34,7 @@ export default function FamilyPage() {
   const [inviteCode, setInviteCode] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member')
+  const { t, tf } = useI18n()
 
   if (!canRender) {
     return null
@@ -42,9 +44,9 @@ export default function FamilyPage() {
     try {
       await createFamily.mutateAsync(familyName.trim())
       setFamilyName('')
-      void Taro.showToast({ title: '家庭已创建', icon: 'success' })
+      void Taro.showToast({ title: t('family_toast_created'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '创建失败'
+      const message = error instanceof Error ? error.message : t('family_toast_create_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -53,9 +55,9 @@ export default function FamilyPage() {
     try {
       await joinFamily.mutateAsync(inviteCode.trim().toUpperCase())
       setInviteCode('')
-      void Taro.showToast({ title: '已加入家庭', icon: 'success' })
+      void Taro.showToast({ title: t('family_toast_joined'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '加入失败'
+      const message = error instanceof Error ? error.message : t('family_toast_join_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -64,9 +66,9 @@ export default function FamilyPage() {
     try {
       await inviteMember.mutateAsync({ email: inviteEmail.trim(), role: inviteRole })
       setInviteEmail('')
-      void Taro.showToast({ title: '邀请已发送', icon: 'success' })
+      void Taro.showToast({ title: t('family_toast_invited'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '邀请失败'
+      const message = error instanceof Error ? error.message : t('family_toast_invite_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -74,9 +76,9 @@ export default function FamilyPage() {
   const handleLeave = async () => {
     try {
       await leaveFamily.mutateAsync()
-      void Taro.showToast({ title: '已离开家庭', icon: 'success' })
+      void Taro.showToast({ title: t('family_toast_left'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '操作失败'
+      const message = error instanceof Error ? error.message : t('family_toast_action_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -84,50 +86,50 @@ export default function FamilyPage() {
   const handleRegenerate = async () => {
     try {
       await regenerateCode.mutateAsync()
-      void Taro.showToast({ title: '邀请码已刷新', icon: 'success' })
+      void Taro.showToast({ title: t('family_toast_regenerated'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '刷新失败'
+      const message = error instanceof Error ? error.message : t('family_toast_regenerate_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
 
   return (
-    <PageShell title='家庭' subtitle='与家人一起分享穿搭' navKey='settings'>
+    <PageShell title={t('page_family_title')} subtitle={t('page_family_subtitle')} navKey='settings'>
       {!family ? (
         <>
           <View style={{ display: 'flex', gap: '12px' }}>
-            <StatCard label='家庭成员' value='0' hint='创建或加入后可与家人共享穿搭' />
-            <StatCard label='待处理邀请' value='0' hint='邀请成员后会显示在这里' />
+            <StatCard label={t('family_stat_members_label')} value='0' hint={t('family_stat_members_empty_hint')} />
+            <StatCard label={t('family_stat_pending_label')} value='0' hint={t('family_stat_pending_empty_hint')} />
           </View>
-          <SectionCard title='创建家庭'>
+          <SectionCard title={t('family_create_title')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
-                新建一个家庭空间，随后你可以分享邀请码、查看家庭动态，并给家人的穿搭打分。
+                {t('family_create_description')}
               </Text>
               <Input
                 value={familyName}
-                placeholder='输入家庭名称'
+                placeholder={t('family_name_placeholder')}
                 onInput={(event) => setFamilyName(event.detail.value)}
                 style={inputStyle}
               />
               <View onClick={handleCreate} style={{ ...primaryButtonStyle, opacity: !familyName.trim() || createFamily.isPending ? 0.7 : 1 }}>
-                <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{createFamily.isPending ? '创建中...' : '创建家庭'}</Text>
+                <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{createFamily.isPending ? t('family_creating') : t('family_create')}</Text>
               </View>
             </View>
           </SectionCard>
-          <SectionCard title='加入家庭'>
+          <SectionCard title={t('family_join_title')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
-                已收到邀请码时，直接输入后即可加入已有家庭。
+                {t('family_join_description')}
               </Text>
               <Input
                 value={inviteCode}
-                placeholder='输入邀请码'
+                placeholder={t('family_invite_code_placeholder')}
                 onInput={(event) => setInviteCode(event.detail.value.toUpperCase())}
                 style={inputStyle}
               />
               <View onClick={handleJoin} style={{ ...secondaryButtonStyle, opacity: !inviteCode.trim() || joinFamily.isPending ? 0.7 : 1 }}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>{joinFamily.isPending ? '加入中...' : '加入家庭'}</Text>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{joinFamily.isPending ? t('family_joining') : t('family_join')}</Text>
               </View>
             </View>
           </SectionCard>
@@ -135,33 +137,33 @@ export default function FamilyPage() {
       ) : (
         <>
           <View style={{ display: 'flex', gap: '12px' }}>
-            <StatCard label='家庭成员' value={String(family.members.length)} hint='包含你在内的全部成员' />
-            <StatCard label='待处理邀请' value={String(family.pending_invites.length)} hint='未接受或未过期的邀请' />
+            <StatCard label={t('family_stat_members_label')} value={String(family.members.length)} hint={t('family_stat_members_hint')} />
+            <StatCard label={t('family_stat_pending_label')} value={String(family.pending_invites.length)} hint={t('family_stat_pending_hint')} />
           </View>
-          <SectionCard title={family.name} extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{family.members.length} 人</Text>}>
+          <SectionCard title={family.name} extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{tf('family_members_count', { count: family.members.length })}</Text>}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <View style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <UIBadge label={`邀请码 ${family.invite_code}`} />
+                <UIBadge label={tf('family_invite_code_badge', { code: family.invite_code })} />
                 <UIBadge
-                  label={family.members.some((member) => member.role === 'admin') ? '含管理员' : '普通成员'}
+                  label={family.members.some((member) => member.role === 'admin') ? t('family_has_admin') : t('family_regular_members')}
                   tone='success'
                 />
               </View>
               <View style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 <View onClick={handleRegenerate} style={{ ...secondaryButtonStyle, flex: 1, minWidth: '110px', opacity: regenerateCode.isPending ? 0.7 : 1 }}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>{regenerateCode.isPending ? '刷新中...' : '刷新邀请码'}</Text>
+                  <Text style={{ fontSize: '14px', color: colors.text }}>{regenerateCode.isPending ? t('family_refreshing_code') : t('family_refresh_invite')}</Text>
                 </View>
                 <View onClick={() => Taro.navigateTo({ url: '/pages/family-feed/index' })} style={{ ...secondaryButtonStyle, flex: 1, minWidth: '110px' }}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>看家庭动态</Text>
+                  <Text style={{ fontSize: '14px', color: colors.text }}>{t('family_view_feed')}</Text>
                 </View>
                 <View onClick={handleLeave} style={{ ...secondaryButtonStyle, flex: 1, minWidth: '110px', backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)', opacity: leaveFamily.isPending ? 0.7 : 1 }}>
-                  <Text style={{ fontSize: '14px', color: colors.danger }}>{leaveFamily.isPending ? '处理中...' : '离开家庭'}</Text>
+                  <Text style={{ fontSize: '14px', color: colors.danger }}>{leaveFamily.isPending ? t('family_processing') : t('family_leave')}</Text>
                 </View>
               </View>
             </View>
           </SectionCard>
 
-          <SectionCard title='成员'>
+          <SectionCard title={t('family_members_title')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {family.members.map((member) => (
                 <View
@@ -184,11 +186,11 @@ export default function FamilyPage() {
             </View>
           </SectionCard>
 
-          <SectionCard title='邀请成员'>
+          <SectionCard title={t('family_invite_members_title')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Input
                 value={inviteEmail}
-                placeholder='输入成员邮箱'
+                placeholder={t('family_invite_email_placeholder')}
                 onInput={(event) => setInviteEmail(event.detail.value)}
                 style={inputStyle}
               />
@@ -209,19 +211,19 @@ export default function FamilyPage() {
                       }}
                     >
                       <Text style={{ fontSize: '13px', color: active ? colors.text : colors.textMuted }}>
-                        {role === 'admin' ? '管理员邀请' : '成员邀请'}
+                        {role === 'admin' ? t('family_role_admin_invite') : t('family_role_member_invite')}
                       </Text>
                     </View>
                   )
                 })}
               </View>
               <View onClick={handleInvite} style={{ ...primaryButtonStyle, opacity: !inviteEmail.trim() || inviteMember.isPending ? 0.7 : 1 }}>
-                <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{inviteMember.isPending ? '发送中...' : '发送邀请'}</Text>
+                <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{inviteMember.isPending ? t('family_sending_invite') : t('family_send_invite')}</Text>
               </View>
             </View>
           </SectionCard>
 
-          <SectionCard title='待处理邀请'>
+          <SectionCard title={t('family_pending_invites_title')}>
             {family.pending_invites.length ? (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {family.pending_invites.map((invite) => (
@@ -240,17 +242,17 @@ export default function FamilyPage() {
                     <View>
                       <Text style={{ display: 'block', fontSize: '14px', color: colors.text }}>{invite.email}</Text>
                       <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>
-                        截止 {invite.expires_at}
+                        {tf('family_invite_deadline', { value: invite.expires_at })}
                       </Text>
                     </View>
                     <View onClick={() => cancelInvite.mutate(invite.id)} style={{ ...secondaryButtonStyle, minHeight: '36px', padding: '8px 12px', opacity: cancelInvite.isPending ? 0.7 : 1 }}>
-                      <Text style={{ fontSize: '12px', color: colors.text }}>取消</Text>
+                      <Text style={{ fontSize: '12px', color: colors.text }}>{t('family_cancel')}</Text>
                     </View>
                   </View>
                 ))}
               </View>
             ) : (
-              <EmptyState title='没有待处理邀请' description='新发送的家庭邀请会展示在这里。' />
+              <EmptyState title={t('family_pending_empty_title')} description={t('family_pending_empty_description')} />
             )}
           </SectionCard>
         </>

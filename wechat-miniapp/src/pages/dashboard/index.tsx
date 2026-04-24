@@ -13,6 +13,7 @@ import { useFamily } from '../../hooks/use-family'
 import { useUserProfile } from '../../hooks/use-user'
 import { usePreferences } from '../../hooks/use-preferences'
 import { formatNotificationChannelLabel, formatOccasionLabel, formatWeatherConditionLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 
 function displayTemp(celsius: number, unit: string): string {
   if (unit === 'fahrenheit') return `${Math.round(celsius * 9 / 5 + 32)}°F`
@@ -31,13 +32,10 @@ export default function DashboardPage() {
   const { data: family } = useFamily()
   const acceptOutfit = useAcceptOutfit()
   const rejectOutfit = useRejectOutfit()
+  const { t, tf, greeting } = useI18n()
   const unit = prefs?.temperature_unit || 'celsius'
 
   if (!canRender) return null
-
-  const greeting = userProfile?.display_name
-    ? `你好，${userProfile.display_name.split(' ')[0]}`
-    : '你好'
 
   const pendingOutfits = pendingData?.outfits || []
 
@@ -60,35 +58,35 @@ export default function DashboardPage() {
   }
 
   return (
-    <PageShell title={greeting} subtitle='今天穿什么？' navKey='dashboard' useBuiltInTabBar>
+    <PageShell title={greeting(userProfile?.display_name)} subtitle={t('page_dashboard_subtitle')} navKey='dashboard' useBuiltInTabBar>
       {/* Weather */}
-      <SectionCard title='🌤️ 天气'>
+      <SectionCard title={t('dashboard_weather_title')}>
         {weatherLoading ? (
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>加载天气中...</Text>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('dashboard_weather_loading')}</Text>
         ) : weather ? (
           <View>
             <View style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
               <Text style={{ fontSize: '34px', fontWeight: 700, color: colors.text }}>{displayTemp(weather.temperature, unit)}</Text>
-              <Text style={{ fontSize: '13px', color: colors.textMuted }}>体感 {displayTemp(weather.feels_like, unit)}</Text>
+              <Text style={{ fontSize: '13px', color: colors.textMuted }}>{tf('dashboard_feels_like', { temp: displayTemp(weather.feels_like, unit) })}</Text>
             </View>
             <Text style={{ display: 'block', fontSize: '14px', color: colors.textMuted }}>{formatWeatherConditionLabel(weather.condition)}</Text>
             {weather.precipitation_chance > 0 && (
               <Text style={{ display: 'block', fontSize: '12px', color: colors.textSoft, marginTop: '4px' }}>
-                💧 降水概率 {weather.precipitation_chance}%
+                {tf('dashboard_precipitation', { value: weather.precipitation_chance })}
               </Text>
             )}
             <View
               onClick={() => Taro.switchTab({ url: '/pages/suggest/index' })}
               style={{ ...primaryButtonStyle, marginTop: '14px' }}
             >
-              <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>获取穿搭推荐</Text>
+              <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{t('dashboard_get_suggestion')}</Text>
             </View>
           </View>
         ) : (
           <View>
-            <Text style={{ display: 'block', fontSize: '14px', color: colors.textMuted, marginBottom: '10px' }}>未设置位置信息</Text>
+            <Text style={{ display: 'block', fontSize: '14px', color: colors.textMuted, marginBottom: '10px' }}>{t('dashboard_location_missing')}</Text>
             <View onClick={() => Taro.navigateTo({ url: '/pages/settings/index' })} style={secondaryButtonStyle}>
-              <Text style={{ fontSize: '14px', color: colors.text }}>设置位置</Text>
+              <Text style={{ fontSize: '14px', color: colors.text }}>{t('dashboard_set_location')}</Text>
             </View>
           </View>
         )}
@@ -96,19 +94,19 @@ export default function DashboardPage() {
 
       {/* Pending outfits */}
       <SectionCard
-        title={pendingOutfits.length > 0 ? `⏳ 待确认 (${pendingData?.total || pendingOutfits.length})` : '✅ 全部处理完毕'}
+        title={pendingOutfits.length > 0 ? tf('dashboard_pending_title', { count: pendingData?.total || pendingOutfits.length }) : t('dashboard_pending_empty_title')}
         extra={
           (pendingData?.total ?? 0) > 3 ? (
             <View onClick={() => Taro.navigateTo({ url: '/pages/history/index' })}>
-              <Text style={{ fontSize: '12px', color: colors.textMuted }}>查看全部</Text>
+              <Text style={{ fontSize: '12px', color: colors.textMuted }}>{t('dashboard_view_all')}</Text>
             </View>
           ) : null
         }
       >
         {pendingLoading ? (
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>加载中...</Text>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('dashboard_loading')}</Text>
         ) : pendingOutfits.length === 0 ? (
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>没有待处理的推荐</Text>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('dashboard_pending_empty')}</Text>
         ) : (
           <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {pendingOutfits.map((outfit) => (
@@ -130,15 +128,15 @@ export default function DashboardPage() {
                     {formatOccasionLabel(outfit.occasion)}
                   </Text>
                   <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted }}>
-                    {outfit.scheduled_for || '穿搭推荐'}
+                    {outfit.scheduled_for || t('dashboard_outfit_fallback')}
                   </Text>
                 </View>
                 <View style={{ display: 'flex', gap: '8px' }}>
                   <View onClick={() => handleReject(outfit.id)} style={{ padding: '8px 10px', borderRadius: '10px', backgroundColor: 'rgba(248, 113, 113, 0.12)' }}>
-                    <Text style={{ fontSize: '14px', color: colors.danger }}>拒绝</Text>
+                    <Text style={{ fontSize: '14px', color: colors.danger }}>{t('dashboard_reject')}</Text>
                   </View>
                   <View onClick={() => handleAccept(outfit.id)} style={{ padding: '8px 10px', borderRadius: '10px', backgroundColor: 'rgba(52, 211, 153, 0.12)' }}>
-                    <Text style={{ fontSize: '14px', color: colors.success }}>接受</Text>
+                    <Text style={{ fontSize: '14px', color: colors.success }}>{t('dashboard_accept')}</Text>
                   </View>
                 </View>
               </View>
@@ -149,11 +147,11 @@ export default function DashboardPage() {
 
       {/* Weekly stats */}
       {analytics && (
-        <SectionCard title='📊 本周概览'>
+        <SectionCard title={t('dashboard_weekly_overview_title')}>
           <View style={{ display: 'flex', gap: '12px' }}>
-            <StatCard label='本周穿搭' value={String(analytics.wardrobe.outfits_this_week)} />
+            <StatCard label={t('dashboard_weekly_outfits')} value={String(analytics.wardrobe.outfits_this_week)} />
             <StatCard
-              label='接受率'
+              label={t('dashboard_acceptance_rate')}
               value={analytics.wardrobe.acceptance_rate != null ? `${analytics.wardrobe.acceptance_rate}%` : '--'}
             />
           </View>
@@ -161,7 +159,7 @@ export default function DashboardPage() {
       )}
 
       {/* Notification status */}
-      <SectionCard title='🔔 通知状态'>
+      <SectionCard title={t('dashboard_notification_status_title')}>
         {notifSettings && notifSettings.length > 0 ? (
           <View>
             <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
@@ -173,19 +171,24 @@ export default function DashboardPage() {
                   color: ch.enabled ? colors.success : colors.textSoft,
                   backgroundColor: ch.enabled ? 'rgba(52, 211, 153, 0.12)' : colors.surfaceMuted,
                 }}>
-                  {ch.enabled ? '✓' : '✗'} {formatNotificationChannelLabel(ch.channel)}
+                  {ch.enabled
+                    ? tf('dashboard_notification_enabled', { channel: formatNotificationChannelLabel(ch.channel) })
+                    : tf('dashboard_notification_disabled', { channel: formatNotificationChannelLabel(ch.channel) })}
                 </Text>
               ))}
             </View>
             <Text style={{ fontSize: '12px', color: colors.textMuted }}>
-              {notifSettings.filter((c) => c.enabled).length}/{notifSettings.length} 渠道已启用
+              {tf('dashboard_notification_summary', {
+                enabled: notifSettings.filter((c) => c.enabled).length,
+                total: notifSettings.length,
+              })}
             </Text>
           </View>
         ) : (
           <View>
-            <Text style={{ display: 'block', fontSize: '14px', color: colors.textMuted, marginBottom: '10px' }}>还未配置通知渠道</Text>
+            <Text style={{ display: 'block', fontSize: '14px', color: colors.textMuted, marginBottom: '10px' }}>{t('dashboard_notification_empty')}</Text>
             <View onClick={() => Taro.navigateTo({ url: '/pages/notifications/index' })} style={secondaryButtonStyle}>
-              <Text style={{ fontSize: '14px', color: colors.text }}>添加渠道</Text>
+              <Text style={{ fontSize: '14px', color: colors.text }}>{t('dashboard_add_channel')}</Text>
             </View>
           </View>
         )}
@@ -193,7 +196,7 @@ export default function DashboardPage() {
 
       {/* Next schedule */}
       {enabledSchedules.length > 0 && (
-        <SectionCard title='📅 下一次提醒'>
+        <SectionCard title={t('dashboard_next_schedule_title')}>
           <Text style={{ display: 'block', fontSize: '16px', fontWeight: 600, color: colors.text }}>
             {DAYS[enabledSchedules[0].day_of_week]} {enabledSchedules[0].notification_time.slice(0, 5)}
           </Text>
@@ -204,35 +207,35 @@ export default function DashboardPage() {
       )}
 
       {/* Quick actions */}
-      <SectionCard title='快捷操作'>
+      <SectionCard title={t('dashboard_quick_actions_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <View onClick={() => Taro.switchTab({ url: '/pages/wardrobe/index' })} style={primaryButtonStyle}>
-            <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>添加新单品</Text>
+            <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{t('dashboard_add_item')}</Text>
           </View>
           <View onClick={() => Taro.switchTab({ url: '/pages/suggest/index' })} style={secondaryButtonStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>获取穿搭推荐</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('dashboard_get_suggestion')}</Text>
           </View>
         </View>
       </SectionCard>
 
       {/* Family */}
       {family && (
-        <SectionCard title='👨‍👩‍👧‍👦 家庭'>
+        <SectionCard title={t('dashboard_family_title')}>
           <Text style={{ display: 'block', fontSize: '14px', color: colors.textMuted, marginBottom: '10px' }}>
             {family.name} · {family.members.length} 位成员
           </Text>
           <View onClick={() => Taro.navigateTo({ url: '/pages/family-feed/index' })} style={secondaryButtonStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>浏览家庭动态</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('dashboard_family_browse')}</Text>
           </View>
         </SectionCard>
       )}
 
       {/* Insights */}
       {analytics && analytics.insights.length > 0 && (
-        <SectionCard title='💡 洞察' extra={
+        <SectionCard title={t('dashboard_insights_title')} extra={
           analytics.insights.length > 3 ? (
             <View onClick={() => Taro.navigateTo({ url: '/pages/analytics/index' })}>
-              <Text style={{ fontSize: '12px', color: colors.textMuted }}>查看全部</Text>
+              <Text style={{ fontSize: '12px', color: colors.textMuted }}>{t('dashboard_view_all')}</Text>
             </View>
           ) : null
         }>

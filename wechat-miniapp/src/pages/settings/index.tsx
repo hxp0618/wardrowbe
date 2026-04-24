@@ -11,16 +11,13 @@ import { useNotificationSettings } from '../../hooks/use-notifications'
 import { useUpdatePreferences, usePreferences } from '../../hooks/use-preferences'
 import { useUpdateUserProfile, useUserProfile } from '../../hooks/use-user'
 import { formatOccasionLabel, formatRoleLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 import { useAuthStore } from '../../stores/auth'
 import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 
 const OCCASIONS = ['casual', 'office', 'formal', 'date', 'sporty', 'outdoor']
 const TEMPERATURE_UNITS = ['celsius', 'fahrenheit']
 const TIMEZONES = ['Asia/Shanghai', 'Asia/Tokyo', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'UTC']
-const TEMP_UNIT_LABELS: Record<string, string> = {
-  celsius: '摄氏',
-  fahrenheit: '华氏',
-}
 
 export default function SettingsPage() {
   const canRender = useAuthGuard()
@@ -35,6 +32,15 @@ export default function SettingsPage() {
   const [occasionIndex, setOccasionIndex] = useState(0)
   const [tempUnitIndex, setTempUnitIndex] = useState(0)
   const [timezoneIndex, setTimezoneIndex] = useState(0)
+  const { t, tf, locale } = useI18n()
+  const tempUnitLabels: Record<string, string> =
+    locale === 'en'
+      ? { celsius: 'Celsius', fahrenheit: 'Fahrenheit' }
+      : { celsius: '摄氏', fahrenheit: '华氏' }
+  const occasionOptions =
+    locale === 'en'
+      ? ['Casual', 'Office', 'Formal', 'Date', 'Sporty', 'Outdoor']
+      : ['休闲', '办公', '正式', '约会', '运动', '户外']
 
   useEffect(() => {
     if (userProfile) {
@@ -68,9 +74,9 @@ export default function SettingsPage() {
         location_name: locationName,
         timezone: TIMEZONES[timezoneIndex],
       })
-      void Taro.showToast({ title: '资料已更新', icon: 'success' })
+      void Taro.showToast({ title: t('settings_toast_profile_updated'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '更新失败'
+      const message = error instanceof Error ? error.message : t('settings_toast_update_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -81,9 +87,9 @@ export default function SettingsPage() {
         default_occasion: OCCASIONS[occasionIndex],
         temperature_unit: TEMPERATURE_UNITS[tempUnitIndex] as 'celsius' | 'fahrenheit',
       })
-      void Taro.showToast({ title: '偏好已更新', icon: 'success' })
+      void Taro.showToast({ title: t('settings_toast_preferences_updated'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '更新失败'
+      const message = error instanceof Error ? error.message : t('settings_toast_update_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -95,30 +101,45 @@ export default function SettingsPage() {
   }
 
   return (
-    <PageShell title='设置' subtitle='管理偏好、位置与通知' navKey='settings' useBuiltInTabBar>
+    <PageShell title={t('page_settings_title')} subtitle={t('page_settings_subtitle')} navKey='settings' useBuiltInTabBar>
       <View style={{ display: 'flex', gap: '12px' }}>
         <StatCard
-          label='通知渠道'
+          label={t('settings_stat_channels_label')}
           value={String(notificationCount)}
-          hint={notificationCount ? `已启用 ${enabledNotificationCount} 个` : '可在下方快捷进入通知管理'}
+          hint={
+            notificationCount
+              ? tf('settings_stat_channels_hint_enabled', { enabled: enabledNotificationCount })
+              : t('settings_stat_channels_hint_empty')
+          }
         />
         <StatCard
-          label='家庭状态'
-          value={userProfile?.family_id ? '已加入' : '未加入'}
-          hint={userProfile?.role ? `角色：${formatRoleLabel(userProfile.role)}` : '单人模式'}
+          label={t('settings_stat_family_label')}
+          value={userProfile?.family_id ? t('settings_family_joined') : t('settings_family_not_joined')}
+          hint={
+            userProfile?.role
+              ? tf('settings_family_role_hint', { role: formatRoleLabel(userProfile.role) })
+              : t('settings_family_solo_hint')
+          }
         />
       </View>
 
-      <SectionCard title='账号摘要'>
+      <SectionCard title={t('settings_account_summary_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <View style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <UIBadge label={userProfile?.onboarding_completed ? '已完成引导' : '待完成引导'} tone={userProfile?.onboarding_completed ? 'success' : 'warning'} />
+            <UIBadge
+              label={
+                userProfile?.onboarding_completed
+                  ? t('settings_badge_onboarding_done')
+                  : t('settings_badge_onboarding_pending')
+              }
+              tone={userProfile?.onboarding_completed ? 'success' : 'warning'}
+            />
             <UIBadge label={TIMEZONES[timezoneIndex] || userProfile?.timezone || 'UTC'} />
-            <UIBadge label={TEMPERATURE_UNITS[tempUnitIndex] === 'fahrenheit' ? '华氏温度' : '摄氏温度'} />
+            <UIBadge label={tempUnitLabels[TEMPERATURE_UNITS[tempUnitIndex]]} />
           </View>
           {userProfile?.email ? (
             <View style={{ padding: '10px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
-              <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted }}>邮箱</Text>
+              <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted }}>{t('settings_email_label')}</Text>
               <Text style={{ display: 'block', marginTop: '4px', fontSize: '14px', color: colors.text }}>
                 {userProfile.email}
               </Text>
@@ -127,18 +148,23 @@ export default function SettingsPage() {
         </View>
       </SectionCard>
 
-      <SectionCard title='个人资料'>
+      <SectionCard title={t('settings_profile_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <View>
-            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>显示名称</Text>
+            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>{t('settings_display_name_label')}</Text>
             <Input value={displayName} onInput={(e) => setDisplayName(e.detail.value)} style={inputStyle} />
           </View>
           <View>
-            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>位置名称</Text>
-            <Input value={locationName} placeholder='例如：北京' onInput={(e) => setLocationName(e.detail.value)} style={inputStyle} />
+            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>{t('settings_location_label')}</Text>
+            <Input
+              value={locationName}
+              placeholder={t('settings_location_placeholder')}
+              onInput={(e) => setLocationName(e.detail.value)}
+              style={inputStyle}
+            />
           </View>
           <View>
-            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>时区</Text>
+            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>{t('settings_timezone_label')}</Text>
             <Picker mode='selector' range={TIMEZONES} value={timezoneIndex} onChange={(e) => setTimezoneIndex(Number(e.detail.value))}>
               <View style={inputStyle}>
                 <Text style={{ fontSize: '14px', color: colors.text }}>{TIMEZONES[timezoneIndex]}</Text>
@@ -147,58 +173,58 @@ export default function SettingsPage() {
           </View>
           <View onClick={handleSaveProfile} style={{ ...primaryButtonStyle, opacity: updateProfile.isPending ? 0.7 : 1 }}>
             <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
-              {updateProfile.isPending ? '保存中...' : '保存资料'}
+              {updateProfile.isPending ? t('settings_saving') : t('settings_save_profile')}
             </Text>
           </View>
         </View>
       </SectionCard>
 
-      <SectionCard title='偏好设置'>
+      <SectionCard title={t('settings_preferences_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <View>
-            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>默认场景</Text>
-            <Picker mode='selector' range={OCCASIONS} value={occasionIndex} onChange={(e) => setOccasionIndex(Number(e.detail.value))}>
+            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>{t('settings_default_occasion_label')}</Text>
+            <Picker mode='selector' range={occasionOptions} value={occasionIndex} onChange={(e) => setOccasionIndex(Number(e.detail.value))}>
               <View style={inputStyle}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>{formatOccasionLabel(OCCASIONS[occasionIndex])}</Text>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{occasionOptions[occasionIndex]}</Text>
               </View>
             </Picker>
           </View>
           <View>
-            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>温度单位</Text>
-            <Picker mode='selector' range={TEMPERATURE_UNITS} value={tempUnitIndex} onChange={(e) => setTempUnitIndex(Number(e.detail.value))}>
+            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '6px' }}>{t('settings_temperature_unit_label')}</Text>
+            <Picker mode='selector' range={TEMPERATURE_UNITS.map((unit) => tempUnitLabels[unit])} value={tempUnitIndex} onChange={(e) => setTempUnitIndex(Number(e.detail.value))}>
               <View style={inputStyle}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>{TEMP_UNIT_LABELS[TEMPERATURE_UNITS[tempUnitIndex]]}</Text>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{tempUnitLabels[TEMPERATURE_UNITS[tempUnitIndex]]}</Text>
               </View>
             </Picker>
           </View>
           <View onClick={handleSavePrefs} style={{ ...primaryButtonStyle, opacity: updatePrefs.isPending ? 0.7 : 1 }}>
             <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
-              {updatePrefs.isPending ? '保存中...' : '保存偏好'}
+              {updatePrefs.isPending ? t('settings_saving') : t('settings_save_preferences')}
             </Text>
           </View>
         </View>
       </SectionCard>
 
-      <SectionCard title='快捷入口'>
+      <SectionCard title={t('settings_shortcuts_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <View onClick={() => Taro.navigateTo({ url: '/pages/notifications/index' })} style={secondaryButtonStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>通知管理</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('settings_shortcut_notifications')}</Text>
           </View>
           <View onClick={() => Taro.navigateTo({ url: '/pages/family/index' })} style={secondaryButtonStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>家庭管理</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('settings_shortcut_family')}</Text>
           </View>
           <View onClick={() => Taro.navigateTo({ url: '/pages/learning/index' })} style={secondaryButtonStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>学习画像</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('settings_shortcut_learning')}</Text>
           </View>
           <View onClick={() => Taro.navigateTo({ url: '/pages/analytics/index' })} style={secondaryButtonStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>数据分析</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('settings_shortcut_analytics')}</Text>
           </View>
         </View>
       </SectionCard>
 
-      <SectionCard title='账号'>
+      <SectionCard title={t('settings_account_title')}>
         <View onClick={handleLogout} style={{ ...secondaryButtonStyle, backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)' }}>
-          <Text style={{ fontSize: '14px', color: colors.danger }}>退出登录</Text>
+          <Text style={{ fontSize: '14px', color: colors.danger }}>{t('settings_logout')}</Text>
         </View>
       </SectionCard>
     </PageShell>

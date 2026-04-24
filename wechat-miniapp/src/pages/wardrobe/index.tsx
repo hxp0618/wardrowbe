@@ -11,6 +11,7 @@ import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '..
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useFolders } from '../../hooks/use-folders'
 import { useCreateItemWithImages, useItems, useItemTypes } from '../../hooks/use-items'
+import { useI18n } from '../../lib/i18n'
 
 import type { Item, ItemFilter } from '../../services/types'
 
@@ -33,6 +34,7 @@ export default function WardrobePage() {
   const [showArchived, setShowArchived] = useState(false)
   const [folderIndex, setFolderIndex] = useState(0)
   const [detailItem, setDetailItem] = useState<Item | null>(null)
+  const { t } = useI18n()
   const { data: itemTypes } = useItemTypes()
   const { data: folders } = useFolders()
   const createItem = useCreateItemWithImages()
@@ -73,7 +75,7 @@ export default function WardrobePage() {
 
   return (
     <PageShell
-      title='衣橱'
+      title={t('page_wardrobe_title')}
       subtitle={`共 ${total} 件单品`}
       navKey='wardrobe'
       useBuiltInTabBar
@@ -84,7 +86,7 @@ export default function WardrobePage() {
       }
     >
       {/* Filters */}
-      <SectionCard title='筛选与排序'>
+      <SectionCard title={t('wardrobe_filter_sort_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <View style={{ display: 'flex', gap: '10px' }}>
             <View style={{ flex: 1 }}>
@@ -112,7 +114,7 @@ export default function WardrobePage() {
                 backgroundColor: filterFavorite ? 'rgba(248, 113, 113, 0.12)' : colors.surfaceMuted,
               }}
             >
-              <Text style={{ fontSize: '12px', color: filterFavorite ? colors.danger : colors.textMuted }}>收藏</Text>
+              <Text style={{ fontSize: '12px', color: filterFavorite ? colors.danger : colors.textMuted }}>{t('wardrobe_filter_favorite')}</Text>
             </View>
             <View
               onClick={() => { setFilterNeedsWash(!filterNeedsWash); setPage(1) }}
@@ -123,7 +125,7 @@ export default function WardrobePage() {
                 backgroundColor: filterNeedsWash ? 'rgba(251, 191, 36, 0.12)' : colors.surfaceMuted,
               }}
             >
-              <Text style={{ fontSize: '12px', color: filterNeedsWash ? colors.warning : colors.textMuted }}>需清洗</Text>
+              <Text style={{ fontSize: '12px', color: filterNeedsWash ? colors.warning : colors.textMuted }}>{t('wardrobe_filter_needs_wash')}</Text>
             </View>
             <View
               onClick={() => { setShowArchived(!showArchived); setPage(1) }}
@@ -134,7 +136,7 @@ export default function WardrobePage() {
                 backgroundColor: showArchived ? colors.surfaceSelected : colors.surfaceMuted,
               }}
             >
-              <Text style={{ fontSize: '12px', color: showArchived ? colors.text : colors.textMuted }}>已归档</Text>
+              <Text style={{ fontSize: '12px', color: showArchived ? colors.text : colors.textMuted }}>{t('wardrobe_filter_archived')}</Text>
             </View>
           </View>
           {folders && folders.length > 0 && (
@@ -149,17 +151,17 @@ export default function WardrobePage() {
 
       {/* Items grid */}
       {isLoading ? (
-        <SectionCard title='加载中'>
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在加载衣橱...</Text>
+        <SectionCard title={t('wardrobe_loading_title')}>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('wardrobe_loading')}</Text>
         </SectionCard>
       ) : items.length === 0 ? (
         <EmptyState
-          title='衣橱还是空的'
-          description='拍照上传你的第一件单品，开始智能穿搭之旅。'
+          title={t('wardrobe_empty_title')}
+          description={t('wardrobe_empty_description')}
           action={
             <View onClick={handleChooseImage} style={primaryButtonStyle}>
               <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
-                添加第一件单品
+                {t('wardrobe_add_first_item')}
               </Text>
             </View>
           }

@@ -10,6 +10,7 @@ import { SectionCard } from '../../components/section-card'
 import { colors, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useOutfits } from '../../hooks/use-outfits'
+import { useI18n } from '../../lib/i18n'
 
 import type { Outfit, OutfitFilters } from '../../services/types'
 
@@ -38,6 +39,7 @@ export default function OutfitsPage() {
   const [activeChip, setActiveChip] = useState<FilterChip>('all')
   const [page, setPage] = useState(1)
   const [detailOutfit, setDetailOutfit] = useState<Outfit | null>(null)
+  const { t } = useI18n()
   const filters = chipToFilters(activeChip)
   const { data, isLoading } = useOutfits(filters, page, 20)
 
@@ -46,7 +48,7 @@ export default function OutfitsPage() {
   const outfits = data?.outfits ?? []
 
   return (
-    <PageShell title='穿搭' subtitle='查看、筛选和管理你的穿搭记录' navKey='outfits' useBuiltInTabBar>
+    <PageShell title={t('page_outfits_title')} subtitle={t('page_outfits_subtitle')} navKey='outfits' useBuiltInTabBar>
       {/* Filter chips */}
       <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '4px' }}>
         {CHIPS.map((chip) => (
@@ -78,20 +80,20 @@ export default function OutfitsPage() {
 
       {/* Outfit list */}
       {isLoading ? (
-        <SectionCard title='加载中'>
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在加载穿搭...</Text>
+        <SectionCard title={t('outfits_loading_title')}>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('outfits_loading')}</Text>
         </SectionCard>
       ) : outfits.length === 0 ? (
         <EmptyState
-          title='还没有穿搭'
-          description={activeChip === 'my-looks' ? '去推荐页创建你的第一套穿搭' : '当有更多穿搭记录后，这里会显示'}
+          title={t('outfits_empty_title')}
+          description={activeChip === 'my-looks' ? t('outfits_empty_description_my_looks') : t('outfits_empty_description_default')}
           action={
             <View
               onClick={() => Taro.switchTab({ url: '/pages/suggest/index' })}
               style={primaryButtonStyle}
             >
               <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
-                去获取推荐
+                {t('outfits_get_suggestion')}
               </Text>
             </View>
           }
@@ -105,7 +107,7 @@ export default function OutfitsPage() {
           ))}
           {data?.has_more && (
             <View onClick={() => setPage((p) => p + 1)} style={secondaryButtonStyle}>
-              <Text style={{ fontSize: '14px', color: colors.text }}>加载更多</Text>
+              <Text style={{ fontSize: '14px', color: colors.text }}>{t('outfits_load_more')}</Text>
             </View>
           )}
         </View>

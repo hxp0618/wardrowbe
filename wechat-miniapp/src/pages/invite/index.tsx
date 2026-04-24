@@ -8,8 +8,10 @@ import { SectionCard } from '../../components/section-card'
 import { colors, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useJoinFamilyByToken } from '../../hooks/use-family'
+import { useI18n } from '../../lib/i18n'
 
 export default function InvitePage() {
+  const { t } = useI18n()
   const router = Taro.getCurrentInstance().router
   const initialToken = useMemo(() => router?.params?.token ?? '', [router?.params?.token])
   const canRender = useAuthGuard(
@@ -37,33 +39,33 @@ export default function InvitePage() {
   }
 
   return (
-    <PageShell header={null} title='家庭邀请' subtitle='通过邀请加入家庭'>
+    <PageShell header={null} title={t('page_invite_title')} subtitle={t('page_invite_subtitle')}>
       {!initialToken ? (
-        <SectionCard title='邀请状态'>
+        <SectionCard title={t('invite_status_title')}>
           <EmptyState
-            title='未检测到邀请链接'
-            description='请从家庭邀请链接重新进入，或先去家庭页查看当前状态。'
+            title={t('invite_missing_title')}
+            description={t('invite_missing_description')}
             action={
               <View onClick={() => Taro.redirectTo({ url: '/pages/family/index' })} style={secondaryButtonStyle}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>去家庭页</Text>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{t('invite_go_family')}</Text>
               </View>
             }
           />
         </SectionCard>
       ) : (
         <>
-          <SectionCard title='邀请说明'>
+          <SectionCard title={t('invite_explain_title')}>
             <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
-              已检测到分享邀请。确认后会直接尝试加入对应家庭，无需手动输入 token。
+              {t('invite_explain_body')}
             </Text>
           </SectionCard>
 
-          <SectionCard title='接受邀请'>
+          <SectionCard title={t('invite_accept_title')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {joinByToken.isError ? (
                 <View style={{ padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)' }}>
                   <Text style={{ fontSize: '13px', color: colors.danger }}>
-                    {joinByToken.error instanceof Error ? joinByToken.error.message : '邀请不可用或已失效'}
+                    {joinByToken.error instanceof Error ? joinByToken.error.message : t('invite_invalid')}
                   </Text>
                 </View>
               ) : null}
@@ -73,7 +75,7 @@ export default function InvitePage() {
                 style={{ ...primaryButtonStyle, opacity: joinByToken.isPending || joinByToken.isSuccess ? 0.7 : 1 }}
               >
                 <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
-                  {joinByToken.isPending ? '处理中...' : joinByToken.isSuccess ? '已接受邀请' : '接受邀请'}
+                  {joinByToken.isPending ? t('invite_processing') : joinByToken.isSuccess ? t('invite_accepted') : t('invite_accept_button')}
                 </Text>
               </View>
             </View>

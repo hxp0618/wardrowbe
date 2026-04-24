@@ -11,14 +11,16 @@ import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useItemTypes } from '../../hooks/use-items'
 import { useGeneratePairings, usePairings } from '../../hooks/use-pairings'
 import { formatItemTypeLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 
 export default function PairingsPage() {
   const canRender = useAuthGuard()
+  const { t, tf } = useI18n()
   const [page, setPage] = useState(1)
   const [typeIndex, setTypeIndex] = useState(0)
   const { data: itemTypes } = useItemTypes()
   const generatePairings = useGeneratePairings()
-  const typeOptions = ['全部来源', ...(itemTypes ?? []).map((item) => item.type)]
+  const typeOptions = [t('pairings_all_sources'), ...(itemTypes ?? []).map((item) => item.type)]
   const sourceType = typeIndex === 0 ? undefined : typeOptions[typeIndex]
   const { data, isLoading } = usePairings(page, 20, sourceType)
 
@@ -27,39 +29,39 @@ export default function PairingsPage() {
   const handleGenerate = async () => {
     try {
       const result = await generatePairings.mutateAsync({ num_pairings: 5 })
-      void Taro.showToast({ title: `已生成 ${result.generated} 套搭配`, icon: 'success' })
+      void Taro.showToast({ title: tf('pairings_toast_generated', { count: result.generated }), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '生成失败'
+      const message = error instanceof Error ? error.message : t('pairings_generate_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
 
   return (
     <PageShell
-      title='搭配'
-      subtitle='AI 生成的单品搭配'
+      title={t('page_pairings_title')}
+      subtitle={t('page_pairings_subtitle')}
       navKey='suggest'
       actions={
         <View onClick={handleGenerate} style={{ ...primaryButtonStyle, minHeight: '40px', padding: '10px 14px', opacity: generatePairings.isPending ? 0.7 : 1 }}>
           <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
-            {generatePairings.isPending ? '生成中...' : '生成搭配'}
+            {generatePairings.isPending ? t('pairings_generating') : t('pairings_generate')}
           </Text>
         </View>
       }
     >
-      <SectionCard title='筛选'>
+      <SectionCard title={t('pairings_filter_title')}>
         <Picker mode='selector' range={typeOptions} value={typeIndex} onChange={(event) => { setTypeIndex(Number(event.detail.value)); setPage(1) }}>
           <View style={inputStyle}>
             <Text style={{ fontSize: '14px', color: colors.text }}>
-              {formatItemTypeLabel(typeOptions[typeIndex])}
+              {typeIndex === 0 ? typeOptions[typeIndex] : formatItemTypeLabel(typeOptions[typeIndex])}
             </Text>
           </View>
         </Picker>
       </SectionCard>
 
-      <SectionCard title='搭配列表' extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{data?.total ?? 0} 套</Text>}>
+      <SectionCard title={t('pairings_list_title')} extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{tf('pairings_count', { count: data?.total ?? 0 })}</Text>}>
         {isLoading ? (
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在加载搭配...</Text>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('pairings_loading')}</Text>
         ) : data?.pairings?.length ? (
           <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {data.pairings.map((pairing) => (
@@ -71,12 +73,12 @@ export default function PairingsPage() {
             ))}
             {data.has_more ? (
               <View onClick={() => setPage((current) => current + 1)} style={secondaryButtonStyle}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>加载更多</Text>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{t('pairings_load_more')}</Text>
               </View>
             ) : null}
           </View>
         ) : (
-          <EmptyState title='还没有搭配结果' description='点击上方"生成搭配"让 AI 为你推荐单品组合。' />
+          <EmptyState title={t('pairings_empty_title')} description={t('pairings_empty_description')} />
         )}
       </SectionCard>
     </PageShell>

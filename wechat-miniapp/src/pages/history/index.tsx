@@ -9,16 +9,10 @@ import { SectionCard } from '../../components/section-card'
 import { colors, inputStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useCalendarOutfits } from '../../hooks/use-outfits'
-import { formatOccasionLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 
-const OCCASIONS = ['全部场景', 'casual', 'office', 'formal', 'date', 'sporty', 'outdoor']
-const STATUSES = ['全部状态', 'pending', 'accepted', 'rejected', 'viewed']
-const STATUS_LABELS: Record<string, string> = {
-  pending: '待确认',
-  accepted: '已接受',
-  rejected: '已拒绝',
-  viewed: '已查看',
-}
+const OCCASION_VALUES = ['casual', 'office', 'formal', 'date', 'sporty', 'outdoor']
+const STATUS_VALUES = ['pending', 'accepted', 'rejected', 'viewed']
 
 function currentYearMonth(): { year: number; month: number } {
   const now = new Date()
@@ -47,9 +41,19 @@ export default function HistoryPage() {
   const [occasionIndex, setOccasionIndex] = useState(0)
   const [statusIndex, setStatusIndex] = useState(0)
   const [selectedDate, setSelectedDate] = useState<string>(toDateString(new Date()))
+  const { t, tf, locale } = useI18n()
+  const occasionOptions =
+    locale === 'en'
+      ? ['All occasions', 'Casual', 'Office', 'Formal', 'Date', 'Sporty', 'Outdoor']
+      : ['全部场景', '休闲', '办公', '正式', '约会', '运动', '户外']
+  const statusOptions =
+    locale === 'en'
+      ? ['All statuses', 'Pending', 'Accepted', 'Rejected', 'Viewed']
+      : ['全部状态', '待确认', '已接受', '已拒绝', '已查看']
+  const loadingText = locale === 'en' ? 'Loading history...' : '正在加载历史记录...'
   const [year, month] = monthValue.split('-').map(Number)
-  const occasion = occasionIndex === 0 ? undefined : OCCASIONS[occasionIndex]
-  const status = statusIndex === 0 ? undefined : STATUSES[statusIndex]
+  const occasion = occasionIndex === 0 ? undefined : OCCASION_VALUES[occasionIndex - 1]
+  const status = statusIndex === 0 ? undefined : STATUS_VALUES[statusIndex - 1]
   const { data, isLoading } = useCalendarOutfits(year, month, {
     occasion,
     status,
@@ -72,32 +76,28 @@ export default function HistoryPage() {
   )
 
   return (
-    <PageShell title='历史' subtitle='按日期浏览穿搭记录' navKey='dashboard'>
-      <SectionCard title='筛选'>
+    <PageShell title={t('page_history_title')} subtitle={t('page_history_subtitle')} navKey='dashboard'>
+      <SectionCard title={t('history_filters_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <Picker mode='date' fields='month' value={monthValue} onChange={(event) => setMonthValue(event.detail.value)}>
             <View style={inputStyle}>
-              <Text style={{ fontSize: '14px', color: colors.text }}>月份：{monthValue}</Text>
+              <Text style={{ fontSize: '14px', color: colors.text }}>{tf('history_month_label', { value: monthValue })}</Text>
             </View>
           </Picker>
-          <Picker mode='selector' range={OCCASIONS} value={occasionIndex} onChange={(event) => setOccasionIndex(Number(event.detail.value))}>
+          <Picker mode='selector' range={occasionOptions} value={occasionIndex} onChange={(event) => setOccasionIndex(Number(event.detail.value))}>
             <View style={inputStyle}>
-              <Text style={{ fontSize: '14px', color: colors.text }}>
-                {formatOccasionLabel(OCCASIONS[occasionIndex])}
-              </Text>
+              <Text style={{ fontSize: '14px', color: colors.text }}>{occasionOptions[occasionIndex]}</Text>
             </View>
           </Picker>
-          <Picker mode='selector' range={STATUSES} value={statusIndex} onChange={(event) => setStatusIndex(Number(event.detail.value))}>
+          <Picker mode='selector' range={statusOptions} value={statusIndex} onChange={(event) => setStatusIndex(Number(event.detail.value))}>
             <View style={inputStyle}>
-              <Text style={{ fontSize: '14px', color: colors.text }}>
-                {STATUS_LABELS[STATUSES[statusIndex]] ?? STATUSES[statusIndex]}
-              </Text>
+              <Text style={{ fontSize: '14px', color: colors.text }}>{statusOptions[statusIndex]}</Text>
             </View>
           </Picker>
         </View>
       </SectionCard>
 
-      <SectionCard title='日期'>
+      <SectionCard title={t('history_dates_title')}>
         {groupedDates.length ? (
           <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {groupedDates.map((date) => {
@@ -119,13 +119,13 @@ export default function HistoryPage() {
             })}
           </View>
         ) : (
-          <EmptyState title='这个月还没有历史记录' description='接受推荐或创建穿搭后，历史记录会按日期聚合到这里。' />
+          <EmptyState title={t('history_empty_month_title')} description={t('history_empty_month_description')} />
         )}
       </SectionCard>
 
-      <SectionCard title='当日记录' extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{selectedDate}</Text>}>
+      <SectionCard title={t('history_records_title')} extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{selectedDate}</Text>}>
         {isLoading ? (
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在加载历史记录...</Text>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{loadingText}</Text>
         ) : selectedOutfits.length ? (
           <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {selectedOutfits.map((outfit) => (
@@ -134,21 +134,21 @@ export default function HistoryPage() {
           </View>
         ) : (
           <EmptyState
-            title='所选日期没有记录'
-            description='切换其它日期，或者先去推荐页接受一套新的穿搭。'
+            title={t('history_empty_day_title')}
+            description={t('history_empty_day_description')}
             action={
               <View
                 onClick={() => void Taro.switchTab({ url: '/pages/suggest/index' })}
                 style={secondaryButtonStyle}
               >
-                <Text style={{ fontSize: '14px', color: colors.text }}>去推荐页</Text>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{t('history_go_suggest')}</Text>
               </View>
             }
           />
         )}
         <View style={{ marginTop: '12px' }}>
           <View onClick={() => setSelectedDate(toDateString(new Date()))} style={secondaryButtonStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>回到今天</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('history_back_today')}</Text>
           </View>
         </View>
       </SectionCard>

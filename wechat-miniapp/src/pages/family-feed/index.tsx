@@ -12,10 +12,12 @@ import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useFamily } from '../../hooks/use-family'
 import { useFamilyOutfits } from '../../hooks/use-outfits'
 import { formatRoleLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 import Taro from '@tarojs/taro'
 
 export default function FamilyFeedPage() {
   const canRender = useAuthGuard()
+  const { t, tf } = useI18n()
   const { data: family } = useFamily()
   const memberOptions = useMemo(
     () =>
@@ -32,15 +34,15 @@ export default function FamilyFeedPage() {
   }
 
   return (
-    <PageShell title='家庭动态' subtitle='查看家庭成员的穿搭' navKey='settings'>
+    <PageShell title={t('page_family_feed_title')} subtitle={t('page_family_feed_subtitle')} navKey='settings'>
       {!family ? (
-        <SectionCard title='家庭状态'>
+        <SectionCard title={t('family_feed_status_title')}>
           <EmptyState
-            title='你还不在家庭中'
-            description='先去家庭页创建或加入家庭，再回来查看家庭动态。'
+            title={t('family_feed_missing_title')}
+            description={t('family_feed_missing_description')}
             action={
               <View onClick={() => Taro.navigateTo({ url: '/pages/family/index' })} style={secondaryButtonStyle}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>去家庭页</Text>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{t('family_feed_go_family')}</Text>
               </View>
             }
           />
@@ -48,11 +50,11 @@ export default function FamilyFeedPage() {
       ) : (
         <>
           <View style={{ display: 'flex', gap: '12px' }}>
-            <StatCard label='家庭成员' value={String(family.members.length)} hint='可切换查看不同成员' />
-            <StatCard label='穿搭总数' value={String(data?.total ?? 0)} hint='当前筛选成员的动态' />
+            <StatCard label={t('family_feed_stat_members_label')} value={String(family.members.length)} hint={t('family_feed_stat_members_hint')} />
+            <StatCard label={t('family_feed_stat_outfits_label')} value={String(data?.total ?? 0)} hint={t('family_feed_stat_outfits_hint')} />
           </View>
 
-          <SectionCard title='成员选择'>
+          <SectionCard title={t('family_feed_member_picker_title')}>
             <Picker
               mode='selector'
               range={memberOptions}
@@ -61,14 +63,14 @@ export default function FamilyFeedPage() {
             >
               <View style={inputStyle}>
                 <Text style={{ fontSize: '14px', color: colors.text }}>
-                  {memberOptions[memberIndex] ?? '请选择成员'}
+                  {memberOptions[memberIndex] ?? t('family_feed_member_placeholder')}
                 </Text>
               </View>
             </Picker>
           </SectionCard>
 
           {member ? (
-            <SectionCard title='成员摘要'>
+            <SectionCard title={t('family_feed_member_summary_title')}>
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                   <View>
@@ -82,15 +84,15 @@ export default function FamilyFeedPage() {
                   <UIBadge label={formatRoleLabel(member.role)} tone={member.role === 'admin' ? 'warning' : 'default'} />
                 </View>
                 <Text style={{ fontSize: '12px', color: colors.textSoft }}>
-                  在这里可以浏览该成员最近的公开穿搭动态与组合记录。
+                  {t('family_feed_member_summary_description')}
                 </Text>
               </View>
             </SectionCard>
           ) : null}
 
-          <SectionCard title='穿搭动态' extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{data?.total ?? 0} 套</Text>}>
+          <SectionCard title={t('family_feed_outfits_title')} extra={<Text style={{ fontSize: '12px', color: colors.textMuted }}>{tf('family_feed_outfits_count', { count: data?.total ?? 0 })}</Text>}>
             {isLoading ? (
-              <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在加载家庭动态...</Text>
+              <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('family_feed_loading')}</Text>
             ) : data?.outfits?.length ? (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {data.outfits.map((outfit) => (
@@ -99,11 +101,11 @@ export default function FamilyFeedPage() {
               </View>
             ) : (
               <EmptyState
-                title='该成员还没有穿搭记录'
-                description='接受推荐或手动创建穿搭后，这里会显示最新动态。'
+                title={t('family_feed_empty_title')}
+                description={t('family_feed_empty_description')}
                 action={
                   <View onClick={() => Taro.switchTab({ url: '/pages/outfits/index' })} style={secondaryButtonStyle}>
-                    <Text style={{ fontSize: '14px', color: colors.text }}>查看我的穿搭</Text>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{t('family_feed_view_my_outfits')}</Text>
                   </View>
                 }
               />

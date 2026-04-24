@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Input, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
@@ -7,7 +7,13 @@ import { EmptyState } from '../../components/empty-state'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
 import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
-import { loginWithDev, loginWithWechatCode } from '../../services/auth'
+import { useI18n } from '../../lib/i18n'
+import {
+  getMiniappAuthAvailability,
+  loginWithDev,
+  loginWithWechatCode,
+  type MiniappAuthAvailability,
+} from '../../services/auth'
 import { useAuthStore } from '../../stores/auth'
 
 const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
@@ -36,12 +42,38 @@ async function navigateAfterLogin(options: {
 export default function LoginPage() {
   const router = Taro.getCurrentInstance().router
   const inviteToken = router?.params?.inviteToken
+  const { t } = useI18n()
   const setAccessToken = useAuthStore((state) => state.setAccessToken)
   const setHydrated = useAuthStore((state) => state.setHydrated)
   const [email, setEmail] = useState('dev@wardrobe.local')
   const [displayName, setDisplayName] = useState('Dev User')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [authAvailability, setAuthAvailability] = useState<MiniappAuthAvailability | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    void getMiniappAuthAvailability()
+      .then((nextAvailability) => {
+        if (active) {
+          setAuthAvailability(nextAvailability)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAuthAvailability({
+            wechatEnabled: true,
+            devEnabled: false,
+            message: null,
+          })
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function handleLogin(
     action: () => Promise<{ accessToken: string; onboardingCompleted?: boolean }>
@@ -82,7 +114,7 @@ export default function LoginPage() {
   }
 
   return (
-    <PageShell header={null} title='登录 Wardrowbe' subtitle='使用微信或开发模式账号继续'>
+    <PageShell header={null} title={t('page_login_title')} subtitle={t('page_login_subtitle')}>
       <View
         style={{
           width: '72px',
@@ -100,55 +132,72 @@ export default function LoginPage() {
       </View>
 
       {inviteToken ? (
-        <EmptyState title='检测到家庭邀请' description='登录后会自动继续加入家庭流程。' />
+        <EmptyState title={t('login_invite_detected_title')} description={t('login_invite_detected_description')} />
       ) : null}
 
-      <SectionCard title='欢迎回来'>
+      <SectionCard title={t('login_welcome_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>
-            登录后会直接进入首页；如果当前链接带有家庭邀请，会自动继续邀请流程。
+            {t('login_intro')}
           </Text>
-          <View onClick={handleWechatLogin} style={{ ...primaryButtonStyle, opacity: isSubmitting ? 0.7 : 1 }}>
-            <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
-              {isSubmitting ? '登录中...' : '微信登录'}
-            </Text>
-          </View>
+          {authAvailability ? (
+            <>
+              {authAvailability.wechatEnabled ? (
+                <View onClick={handleWechatLogin} style={{ ...primaryButtonStyle, opacity: isSubmitting ? 0.7 : 1 }}>
+                  <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
+                    {isSubmitting ? t('login_submitting') : t('login_wechat')}
+                  </Text>
+                </View>
+              ) : null}
 
-          <View style={{ padding: '12px', borderRadius: '14px', backgroundColor: colors.surfaceMuted, border: `1px solid ${colors.border}` }}>
-            <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '10px' }}>
-              开发模式
-            </Text>
-            <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <Input
-                placeholder='邮箱'
-                value={email}
-                onInput={(event) => setEmail(event.detail.value)}
-                style={inputStyle}
-              />
-              <Input
-                placeholder='显示名称'
-                value={displayName}
-                onInput={(event) => setDisplayName(event.detail.value)}
-                style={inputStyle}
-              />
-              <View onClick={handleDevLogin} style={{ ...secondaryButtonStyle, opacity: isSubmitting ? 0.7 : 1 }}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>
-                  {isSubmitting ? '提交中...' : 'Dev 登录'}
-                </Text>
-              </View>
-            </View>
-          </View>
+              {authAvailability.devEnabled ? (
+                <View style={{ padding: '12px', borderRadius: '14px', backgroundColor: colors.surfaceMuted, border: `1px solid ${colors.border}` }}>
+                  <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '10px' }}>
+                    {t('login_dev_mode')}
+                  </Text>
+                  <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <Input
+                      placeholder={t('login_email_placeholder')}
+                      value={email}
+                      onInput={(event) => setEmail(event.detail.value)}
+                      style={inputStyle}
+                    />
+                    <Input
+                      placeholder={t('login_display_name_placeholder')}
+                      value={displayName}
+                      onInput={(event) => setDisplayName(event.detail.value)}
+                      style={inputStyle}
+                    />
+                    <View onClick={handleDevLogin} style={{ ...secondaryButtonStyle, opacity: isSubmitting ? 0.7 : 1 }}>
+                      <Text style={{ fontSize: '14px', color: colors.text }}>
+                        {isSubmitting ? t('login_dev_submitting') : t('login_dev_submit')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
+              {!authAvailability.wechatEnabled && !authAvailability.devEnabled ? (
+                <EmptyState
+                  title={t('login_unavailable_title')}
+                  description={authAvailability.message || '当前后端未配置可用的小程序登录方式。'}
+                />
+              ) : null}
+            </>
+          ) : (
+            <Text style={{ fontSize: '13px', color: colors.textMuted }}>{t('login_loading_methods')}</Text>
+          )}
         </View>
       </SectionCard>
 
       {errorMessage ? (
-        <SectionCard title='登录失败'>
+        <SectionCard title={t('login_failed_title')}>
           <Text style={{ fontSize: '13px', color: colors.danger }}>{errorMessage}</Text>
         </SectionCard>
       ) : null}
 
       <Text style={{ fontSize: '12px', color: colors.textSoft, lineHeight: 1.6 }}>
-        继续即表示你同意使用 Wardrowbe 提供的登录与穿搭服务。
+        {t('login_terms')}
       </Text>
     </PageShell>
   )

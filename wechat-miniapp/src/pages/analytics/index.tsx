@@ -9,6 +9,7 @@ import { colors, inputStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useAnalytics } from '../../hooks/use-analytics'
 import { formatColorLabel, formatItemTypeLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 
 const DAY_OPTIONS = ['30 天', '60 天', '90 天']
 const DAY_VALUES = [30, 60, 90]
@@ -16,6 +17,8 @@ const DAY_VALUES = [30, 60, 90]
 export default function AnalyticsPage() {
   const canRender = useAuthGuard()
   const [dayIndex, setDayIndex] = useState(1)
+  const { t, tf, locale } = useI18n()
+  const dayOptions = locale === 'en' ? ['30 days', '60 days', '90 days'] : DAY_OPTIONS
   const days = DAY_VALUES[dayIndex]
   const { data, isLoading } = useAnalytics(days)
 
@@ -24,41 +27,41 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <PageShell title='分析' subtitle='衣橱数据统计与趋势' navKey='dashboard'>
-      <SectionCard title='范围'>
-        <Picker mode='selector' range={DAY_OPTIONS} value={dayIndex} onChange={(event) => setDayIndex(Number(event.detail.value))}>
+    <PageShell title={t('page_analytics_title')} subtitle={t('page_analytics_subtitle')} navKey='dashboard'>
+      <SectionCard title={t('analytics_range_title')}>
+        <Picker mode='selector' range={dayOptions} value={dayIndex} onChange={(event) => setDayIndex(Number(event.detail.value))}>
           <View style={inputStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>{DAY_OPTIONS[dayIndex]}</Text>
+            <Text style={{ fontSize: '14px', color: colors.text }}>{dayOptions[dayIndex]}</Text>
           </View>
         </Picker>
       </SectionCard>
 
       {isLoading ? (
-        <SectionCard title='加载中'>
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>正在计算分析数据...</Text>
+        <SectionCard title={t('analytics_loading_title')}>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('analytics_loading_description')}</Text>
         </SectionCard>
       ) : !data ? (
-        <SectionCard title='分析结果'>
-          <EmptyState title='还没有可展示的分析数据' description='随着单品和穿搭记录增加，这里会逐步出现统计、趋势和洞察。' />
+        <SectionCard title={t('analytics_result_title')}>
+          <EmptyState title={t('analytics_empty_title')} description={t('analytics_empty_description')} />
         </SectionCard>
       ) : (
         <>
-          <SectionCard title='核心指标'>
+          <SectionCard title={t('analytics_core_metrics_title')}>
             <View style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-              <StatCard label='总单品' value={String(data.wardrobe.total_items)} />
-              <StatCard label='总穿搭' value={String(data.wardrobe.total_outfits)} />
+              <StatCard label={t('analytics_total_items')} value={String(data.wardrobe.total_items)} />
+              <StatCard label={t('analytics_total_outfits')} value={String(data.wardrobe.total_outfits)} />
               <StatCard
-                label='接受率'
+                label={t('analytics_acceptance_rate')}
                 value={data.wardrobe.acceptance_rate == null ? '--' : `${data.wardrobe.acceptance_rate}%`}
               />
               <StatCard
-                label='平均评分'
+                label={t('analytics_average_rating')}
                 value={data.wardrobe.average_rating == null ? '--' : String(data.wardrobe.average_rating)}
               />
             </View>
           </SectionCard>
 
-          <SectionCard title='颜色分布'>
+          <SectionCard title={t('analytics_color_distribution_title')}>
             {data.color_distribution.length ? (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {data.color_distribution.map((item) => (
@@ -74,17 +77,17 @@ export default function AnalyticsPage() {
                   >
                     <Text style={{ fontSize: '14px', color: colors.text }}>{formatColorLabel(item.color)}</Text>
                     <Text style={{ fontSize: '12px', color: colors.textMuted }}>
-                      {item.count} 件 · {item.percentage}%
+                      {tf('analytics_distribution_value', { count: item.count, percentage: item.percentage })}
                     </Text>
                   </View>
                 ))}
               </View>
             ) : (
-              <EmptyState title='暂无颜色分布' description='准备就绪的单品越多，这里的颜色统计越有意义。' />
+              <EmptyState title={t('analytics_color_empty_title')} description={t('analytics_color_empty_description')} />
             )}
           </SectionCard>
 
-          <SectionCard title='类型分布'>
+          <SectionCard title={t('analytics_type_distribution_title')}>
             {data.type_distribution.length ? (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {data.type_distribution.map((item) => (
@@ -100,17 +103,17 @@ export default function AnalyticsPage() {
                   >
                     <Text style={{ fontSize: '14px', color: colors.text }}>{formatItemTypeLabel(item.type)}</Text>
                     <Text style={{ fontSize: '12px', color: colors.textMuted }}>
-                      {item.count} 件 · {item.percentage}%
+                      {tf('analytics_distribution_value', { count: item.count, percentage: item.percentage })}
                     </Text>
                   </View>
                 ))}
               </View>
             ) : (
-              <EmptyState title='暂无类型分布' description='单品类型统计会直接复用后端 analytics 输出。' />
+              <EmptyState title={t('analytics_type_empty_title')} description={t('analytics_type_empty_description')} />
             )}
           </SectionCard>
 
-          <SectionCard title='洞察'>
+          <SectionCard title={t('analytics_insights_title')}>
             {data.insights.length ? (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {data.insights.map((insight) => (
@@ -127,52 +130,52 @@ export default function AnalyticsPage() {
                 ))}
               </View>
             ) : (
-              <EmptyState title='暂无洞察' description='随着反馈积累，analytics 会输出更多可读的整体结论。' />
+              <EmptyState title={t('analytics_insights_empty_title')} description={t('analytics_insights_empty_description')} />
             )}
           </SectionCard>
 
-          <SectionCard title='穿着最多'>
+          <SectionCard title={t('analytics_most_worn_title')}>
             {data.most_worn.length ? (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {data.most_worn.slice(0, 5).map((item) => (
                   <View key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
                     <Text style={{ fontSize: '14px', color: colors.text }}>{item.name || formatItemTypeLabel(item.type)}</Text>
-                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>{item.wear_count} 次</Text>
+                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>{tf('analytics_wear_count', { count: item.wear_count })}</Text>
                   </View>
                 ))}
               </View>
             ) : (
-              <EmptyState title='暂无数据' description='穿着记录增加后会自动统计。' />
+              <EmptyState title={t('analytics_no_data_title')} description={t('analytics_no_data_description')} />
             )}
           </SectionCard>
 
-          <SectionCard title='穿着最少'>
+          <SectionCard title={t('analytics_least_worn_title')}>
             {data.least_worn.length ? (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {data.least_worn.slice(0, 5).map((item) => (
                   <View key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
                     <Text style={{ fontSize: '14px', color: colors.text }}>{item.name || formatItemTypeLabel(item.type)}</Text>
-                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>{item.wear_count} 次</Text>
+                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>{tf('analytics_wear_count', { count: item.wear_count })}</Text>
                   </View>
                 ))}
               </View>
             ) : (
-              <EmptyState title='暂无数据' description='需要更多穿着记录。' />
+              <EmptyState title={t('analytics_no_data_title')} description={t('analytics_need_more_records')} />
             )}
           </SectionCard>
 
-          <SectionCard title='从未穿过'>
+          <SectionCard title={t('analytics_never_worn_title')}>
             {data.never_worn.length ? (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {data.never_worn.slice(0, 5).map((item) => (
                   <View key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(251, 191, 36, 0.12)' }}>
                     <Text style={{ fontSize: '14px', color: colors.text }}>{item.name || formatItemTypeLabel(item.type)}</Text>
-                    <Text style={{ fontSize: '12px', color: colors.warning }}>未穿</Text>
+                    <Text style={{ fontSize: '12px', color: colors.warning }}>{t('analytics_never_worn_label')}</Text>
                   </View>
                 ))}
               </View>
             ) : (
-              <EmptyState title='太棒了' description='你的每件单品都穿过了！' />
+              <EmptyState title={t('analytics_everything_worn_title')} description={t('analytics_everything_worn_description')} />
             )}
           </SectionCard>
         </>
