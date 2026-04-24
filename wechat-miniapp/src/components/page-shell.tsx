@@ -7,7 +7,8 @@ import Taro from '@tarojs/taro'
 import { AppHeader } from './app-header'
 import { MobileDrawer, resolveMobileDrawerKey } from './mobile-drawer'
 import { MobileTabBar, type MobileTabKey } from './mobile-tab-bar'
-import { colors, pagePadding, subtitleTextStyle, titleTextStyle } from './ui-theme'
+import { useAuthStore } from '../stores/auth'
+import { colors, getThemeStyle, pagePadding, subtitleTextStyle, titleTextStyle } from './ui-theme'
 
 type PageShellProps = {
   title?: string
@@ -31,6 +32,7 @@ export function createPageShellHeader(
 
 export function PageShell(props: PageShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const appearance = useAuthStore((state) => state.appearance)
   const header = createPageShellHeader(props.header, () => setMenuOpen(true))
   const showMobileTabBar = !!props.navKey && !props.useBuiltInTabBar
   const currentPath = Taro.getCurrentInstance().router?.path
@@ -42,6 +44,7 @@ export function PageShell(props: PageShellProps) {
         minHeight: '100vh',
         backgroundColor: colors.page,
         boxSizing: 'border-box',
+        ...getThemeStyle(appearance),
       }}
     >
       {header}

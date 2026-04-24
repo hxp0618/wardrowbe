@@ -6,7 +6,7 @@ import type { ApiTransportRequest } from '@wardrowbe/shared-api'
 import { useAuthStore } from '../stores/auth'
 
 const API_BASE_PATH = '/api/v1'
-const DEFAULT_API_ORIGIN = 'http://127.0.0.1:8000'
+const DEFAULT_API_ORIGIN = 'https://wardrowbe.191027.xyz'
 
 export function resolveApiOrigin(): string {
   const rawBaseUrl = process.env.TARO_APP_API_BASE_URL?.trim() || DEFAULT_API_ORIGIN

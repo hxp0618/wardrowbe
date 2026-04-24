@@ -131,7 +131,7 @@ export default function WardrobePage() {
                 padding: '8px 14px',
                 borderRadius: '999px',
                 border: showArchived ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                backgroundColor: showArchived ? '#27272a' : colors.surfaceMuted,
+                backgroundColor: showArchived ? colors.surfaceSelected : colors.surfaceMuted,
               }}
             >
               <Text style={{ fontSize: '12px', color: showArchived ? colors.text : colors.textMuted }}>已归档</Text>

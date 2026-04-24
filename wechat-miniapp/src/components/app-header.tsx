@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 
 import { useUserProfile } from '../hooks/use-user'
+import { useI18n } from '../lib/i18n'
 import { useAuthStore } from '../stores/auth'
 import { colors } from './ui-theme'
 
@@ -66,10 +67,13 @@ function getHeaderMetrics() {
 
 export function AppHeader(props: AppHeaderProps) {
   const locale = useAuthStore((state) => state.locale)
+  const appearance = useAuthStore((state) => state.appearance)
   const setLocale = useAuthStore((state) => state.setLocale)
+  const setAppearance = useAuthStore((state) => state.setAppearance)
   const setAccessToken = useAuthStore((state) => state.setAccessToken)
   const { data: userProfile } = useUserProfile()
   const [metrics, setMetrics] = useState(() => getHeaderMetrics())
+  const { t } = useI18n()
 
   useEffect(() => {
     setMetrics(getHeaderMetrics())
@@ -81,7 +85,9 @@ export function AppHeader(props: AppHeaderProps) {
   )
 
   const handleThemeTap = () => {
-    void Taro.showToast({ title: '当前提供深色外观', icon: 'none' })
+    const nextAppearance = appearance === 'dark' ? 'light' : 'dark'
+    setAppearance(nextAppearance)
+    Taro.setStorageSync('appearance', nextAppearance)
   }
 
   const handleLogout = () => {
@@ -139,7 +145,8 @@ export function AppHeader(props: AppHeaderProps) {
               const nextIndex = Number(event.detail.value)
               const nextLocale = LOCALE_OPTIONS[nextIndex]?.value
               if (nextLocale) {
-                setLocale(nextLocale)
+                setLocale(nextLocale as 'zh' | 'en')
+                Taro.setStorageSync('locale', nextLocale)
               }
             }}
           >
@@ -185,7 +192,9 @@ export function AppHeader(props: AppHeaderProps) {
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: colors.text, fontSize: '16px' }}>◐</Text>
+            <Text style={{ color: colors.text, fontSize: '16px' }}>
+              {appearance === 'dark' ? '☾' : '☀'}
+            </Text>
           </View>
 
           <View
@@ -193,14 +202,14 @@ export function AppHeader(props: AppHeaderProps) {
               width: '34px',
               height: '34px',
               borderRadius: '999px',
-              backgroundColor: '#27272a',
+              backgroundColor: colors.avatar,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
             <Text style={{ color: colors.text, fontSize: '12px', fontWeight: 600 }}>
-              {getInitials(userProfile?.display_name)}
+              {getInitials(userProfile?.display_name || t('nav_settings'))}
             </Text>
           </View>
 

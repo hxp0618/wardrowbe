@@ -220,7 +220,7 @@ export default function LearningPage() {
                     {item.preferred_colors.length > 0 && (
                       <View style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {item.preferred_colors.map((c) => (
-                          <Text key={c} style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: '#27272a', padding: '2px 8px', borderRadius: '999px' }}>{formatColorLabel(c)}</Text>
+                          <Text key={c} style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceSelected, padding: '2px 8px', borderRadius: '999px' }}>{formatColorLabel(c)}</Text>
                         ))}
                       </View>
                     )}

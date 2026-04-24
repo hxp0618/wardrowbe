@@ -56,8 +56,8 @@ export default function OutfitsPage() {
             style={{
               padding: '8px 16px',
               borderRadius: '999px',
-              border: activeChip === chip.key ? '2px solid rgba(255,255,255,0.14)' : '1px solid rgba(255,255,255,0.08)',
-              backgroundColor: activeChip === chip.key ? '#27272a' : '#17171c',
+              border: activeChip === chip.key ? `2px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
+              backgroundColor: activeChip === chip.key ? colors.surfaceSelected : colors.surfaceMuted,
             }}
           >
             <Text style={{

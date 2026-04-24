@@ -110,7 +110,7 @@ export default function HistoryPage() {
                     padding: '10px 14px',
                     borderRadius: '999px',
                     border: selected ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                    backgroundColor: selected ? '#27272a' : colors.surfaceMuted,
+                    backgroundColor: selected ? colors.surfaceSelected : colors.surfaceMuted,
                   }}
                 >
                   <Text style={{ fontSize: '12px', color: selected ? colors.text : colors.textMuted }}>{date}</Text>

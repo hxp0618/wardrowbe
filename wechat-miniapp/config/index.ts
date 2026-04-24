@@ -14,7 +14,7 @@ export default defineConfig({
   outputRoot: 'dist',
   env: {
     TARO_APP_API_BASE_URL: JSON.stringify(
-      process.env.TARO_APP_API_BASE_URL || 'http://127.0.0.1:8000'
+      process.env.TARO_APP_API_BASE_URL || 'https://wardrowbe.191027.xyz'
     ),
   },
   framework: 'react',

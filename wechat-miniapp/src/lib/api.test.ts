@@ -16,12 +16,12 @@ describe('resolveApiOrigin', () => {
     vi.resetModules()
   })
 
-  it('falls back to the local backend origin when TARO_APP_API_BASE_URL is not set', async () => {
+  it('falls back to the production backend origin when TARO_APP_API_BASE_URL is not set', async () => {
     vi.stubEnv('TARO_APP_API_BASE_URL', '')
 
     const { resolveApiOrigin } = await import('./api')
 
-    expect(resolveApiOrigin()).toBe('http://127.0.0.1:8000')
+    expect(resolveApiOrigin()).toBe('https://wardrowbe.191027.xyz')
   })
 
   it('trims a trailing slash from TARO_APP_API_BASE_URL', async () => {

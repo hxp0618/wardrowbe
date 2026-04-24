@@ -204,7 +204,7 @@ export default function FamilyPage() {
                         padding: '10px 12px',
                         borderRadius: '12px',
                         border: active ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                        backgroundColor: active ? '#27272a' : colors.surfaceMuted,
+                        backgroundColor: active ? colors.surfaceSelected : colors.surfaceMuted,
                         textAlign: 'center',
                       }}
                     >

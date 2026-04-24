@@ -309,7 +309,7 @@ export default function SuggestPage() {
                 padding: '10px 18px',
                 borderRadius: '999px',
                 border: selectedOccasion === o.value ? `2px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                backgroundColor: selectedOccasion === o.value ? '#27272a' : colors.surfaceMuted,
+                backgroundColor: selectedOccasion === o.value ? colors.surfaceSelected : colors.surfaceMuted,
               }}
             >
               <Text style={{ fontSize: '13px', color: selectedOccasion === o.value ? colors.text : colors.textMuted, fontWeight: selectedOccasion === o.value ? 600 : 400 }}>{o.label}</Text>
@@ -332,7 +332,7 @@ export default function SuggestPage() {
                   padding: '8px 12px',
                   borderRadius: '999px',
                   border: active ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                  backgroundColor: active ? '#27272a' : colors.surfaceMuted,
+                  backgroundColor: active ? colors.surfaceSelected : colors.surfaceMuted,
                 }}
               >
                 <Text style={{ fontSize: '12px', color: active ? colors.text : colors.textMuted }}>
@@ -367,7 +367,7 @@ export default function SuggestPage() {
                     padding: '10px',
                     borderRadius: '12px',
                     border: overrideConditionIndex === i ? `2px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                    backgroundColor: overrideConditionIndex === i ? '#27272a' : colors.surfaceMuted,
+                    backgroundColor: overrideConditionIndex === i ? colors.surfaceSelected : colors.surfaceMuted,
                     textAlign: 'center',
                   }}
                 >
@@ -378,7 +378,7 @@ export default function SuggestPage() {
             {overrideConditionIndex >= 0 && (
               <View>
                 <Text style={{ fontSize: '13px', color: colors.textMuted, marginBottom: '8px' }}>温度：{displayTemp(overrideTemp, unit)}</Text>
-                <Slider min={-10} max={40} step={1} value={overrideTemp} onChange={(e) => setOverrideTemp(e.detail.value)} activeColor='#F5F5F5' backgroundColor='#27272A' />
+                <Slider min={-10} max={40} step={1} value={overrideTemp} onChange={(e) => setOverrideTemp(e.detail.value)} activeColor={colors.accent} backgroundColor={colors.surfaceSelected} />
               </View>
             )}
           </View>
@@ -392,7 +392,7 @@ export default function SuggestPage() {
         onClick={handleGenerate}
         style={{
           ...primaryButtonStyle,
-          backgroundColor: !selectedOccasion || isGenerating ? '#71717A' : colors.accent,
+          backgroundColor: !selectedOccasion || isGenerating ? colors.disabledSurface : colors.accent,
           opacity: !selectedOccasion || isGenerating ? 0.6 : 1,
         }}
       >

@@ -406,7 +406,7 @@ export default function OnboardingPage() {
                     flex: 1,
                     padding: '12px 14px',
                     borderRadius: '14px',
-                    backgroundColor: familyMode === 'create' ? '#27272a' : colors.surfaceMuted,
+                    backgroundColor: familyMode === 'create' ? colors.surfaceSelected : colors.surfaceMuted,
                     border: familyMode === 'create' ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
                   }}
                 >
@@ -419,7 +419,7 @@ export default function OnboardingPage() {
                     flex: 1,
                     padding: '12px 14px',
                     borderRadius: '14px',
-                    backgroundColor: familyMode === 'join' ? '#27272a' : colors.surfaceMuted,
+                    backgroundColor: familyMode === 'join' ? colors.surfaceSelected : colors.surfaceMuted,
                     border: familyMode === 'join' ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
                   }}
                 >

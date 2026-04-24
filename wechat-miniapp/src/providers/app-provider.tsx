@@ -2,9 +2,11 @@ import { ReactNode, useEffect } from 'react'
 
 import Taro from '@tarojs/taro'
 
-import { useAuthStore } from '../stores/auth'
+import { type AppAppearance, type AppLocale, useAuthStore } from '../stores/auth'
 
 const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
+const LOCALE_STORAGE_KEY = 'locale'
+const APPEARANCE_STORAGE_KEY = 'appearance'
 
 function normalizeStoredAccessToken(value: unknown): string | null {
   if (typeof value !== 'string') {
@@ -14,16 +16,41 @@ function normalizeStoredAccessToken(value: unknown): string | null {
   return value.length > 0 ? value : null
 }
 
+function normalizeStoredLocale(value: unknown): AppLocale {
+  return value === 'en' ? 'en' : 'zh'
+}
+
+function normalizeStoredAppearance(value: unknown): AppAppearance {
+  return value === 'light' ? 'light' : 'dark'
+}
+
 export function restoreAccessTokenSession(
   storage: Pick<typeof Taro, 'getStorageSync'> = Taro
 ): string | null {
-  const accessToken = normalizeStoredAccessToken(
-    storage.getStorageSync<string | undefined>(ACCESS_TOKEN_STORAGE_KEY)
-  )
-  const { setAccessToken, setHydrated } = useAuthStore.getState()
+  const { setAccessToken, setLocale, setAppearance, setHydrated } = useAuthStore.getState()
+  let accessToken: string | null = null
 
-  setAccessToken(accessToken)
-  setHydrated(true)
+  try {
+    accessToken = normalizeStoredAccessToken(
+      storage.getStorageSync<string | undefined>(ACCESS_TOKEN_STORAGE_KEY)
+    )
+    const locale = normalizeStoredLocale(
+      storage.getStorageSync<string | undefined>(LOCALE_STORAGE_KEY)
+    )
+    const appearance = normalizeStoredAppearance(
+      storage.getStorageSync<string | undefined>(APPEARANCE_STORAGE_KEY)
+    )
+
+    setAccessToken(accessToken)
+    setLocale(locale)
+    setAppearance(appearance)
+  } catch {
+    setAccessToken(null)
+    setLocale('zh')
+    setAppearance('dark')
+  } finally {
+    setHydrated(true)
+  }
 
   return accessToken
 }

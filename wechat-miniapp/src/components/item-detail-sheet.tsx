@@ -128,7 +128,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
       <View onClick={onClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '85vh', backgroundColor: colors.surface, borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column', borderTop: `1px solid ${colors.border}` }}>
         <View style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-          <View style={{ width: '40px', height: '4px', borderRadius: '2px', backgroundColor: '#3f3f46' }} />
+          <View style={{ width: '40px', height: '4px', borderRadius: '2px', backgroundColor: colors.sheetHandle }} />
         </View>
         <ScrollView scrollY style={{ flex: 1 }}>
           <View style={{ padding: '0 20px 40px' }}>
@@ -172,7 +172,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
                   {item.tags.style?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '4px 10px', borderRadius: '999px' }}>{formatStyleLabel(s)}</Text>)}
                   {item.tags.season?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.warning, backgroundColor: 'rgba(251, 191, 36, 0.12)', padding: '4px 10px', borderRadius: '999px' }}>{s}</Text>)}
                   {item.tags.material && <Text style={{ fontSize: '11px', color: colors.success, backgroundColor: 'rgba(52, 211, 153, 0.12)', padding: '4px 10px', borderRadius: '999px' }}>{item.tags.material}</Text>}
-                  {item.tags.pattern && <Text style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: '#1f2937', padding: '4px 10px', borderRadius: '999px' }}>{item.tags.pattern}</Text>}
+                  {item.tags.pattern && <Text style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceSelected, padding: '4px 10px', borderRadius: '999px' }}>{item.tags.pattern}</Text>}
                 </View>
               </View>
             )}
@@ -213,7 +213,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
 
             {/* Log wash form */}
             {showLogWash && (
-              <View style={{ marginBottom: '12px', padding: '14px', borderRadius: '14px', backgroundColor: '#172554', border: '1px solid #1d4ed8' }}>
+              <View style={{ marginBottom: '12px', padding: '14px', borderRadius: '14px', backgroundColor: colors.infoSurface, border: `1px solid ${colors.infoBorder}` }}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>记录清洗</Text>
                 <Picker mode='selector' range={WASH_METHODS} value={washMethodIndex} onChange={(e) => setWashMethodIndex(Number(e.detail.value))}>
                   <View style={{ ...inputStyle, marginBottom: '10px' }}>
@@ -224,7 +224,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
                   <View onClick={() => setShowLogWash(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
                     <Text style={{ fontSize: '14px', color: colors.text }}>取消</Text>
                   </View>
-                  <View onClick={handleLogWash} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: '#1D4ED8' }}>
+                  <View onClick={handleLogWash} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: colors.infoText }}>
                     <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>确认</Text>
                   </View>
                 </View>
@@ -247,8 +247,8 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
                   <View onClick={() => setShowLogWear(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.22)', textAlign: 'center' }}>
                     <Text style={{ fontSize: '14px', color: colors.success }}>记录穿着</Text>
                   </View>
-                  <View onClick={() => setShowLogWash(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: '#172554', border: '1px solid #1d4ed8', textAlign: 'center' }}>
-                    <Text style={{ fontSize: '14px', color: '#93C5FD' }}>记录清洗</Text>
+                  <View onClick={() => setShowLogWash(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: colors.infoSurface, border: `1px solid ${colors.infoBorder}`, textAlign: 'center' }}>
+                    <Text style={{ fontSize: '14px', color: colors.infoText }}>记录清洗</Text>
                   </View>
                 </View>
               )}

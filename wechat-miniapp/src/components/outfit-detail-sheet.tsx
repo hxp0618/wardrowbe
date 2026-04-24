@@ -88,7 +88,7 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
       <View onClick={onClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '85vh', backgroundColor: colors.surface, borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column', borderTop: `1px solid ${colors.border}` }}>
         <View style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-          <View style={{ width: '40px', height: '4px', borderRadius: '2px', backgroundColor: '#3f3f46' }} />
+          <View style={{ width: '40px', height: '4px', borderRadius: '2px', backgroundColor: colors.sheetHandle }} />
         </View>
         <ScrollView scrollY style={{ flex: 1 }}>
           <View style={{ padding: '0 20px 40px' }}>
@@ -117,7 +117,7 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
             {/* Reasoning */}
             {outfit.reasoning && (
               <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.22)' }}>
-                <Text style={{ fontSize: '13px', color: '#6ee7b7', lineHeight: 1.5 }}>{outfit.reasoning}</Text>
+                <Text style={{ fontSize: '13px', color: colors.success, lineHeight: 1.5 }}>{outfit.reasoning}</Text>
               </View>
             )}
 
@@ -192,7 +192,7 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '12px' }}>评价这套穿搭</Text>
                 <View style={{ marginBottom: '12px' }}>
                   <Text style={{ fontSize: '13px', color: colors.textMuted, marginBottom: '8px' }}>评分：{rating}/5</Text>
-                  <Slider min={1} max={5} step={1} value={rating} onChange={(e) => setRating(e.detail.value)} activeColor='#F5F5F5' backgroundColor='#27272A' />
+                  <Slider min={1} max={5} step={1} value={rating} onChange={(e) => setRating(e.detail.value)} activeColor={colors.accent} backgroundColor={colors.surfaceSelected} />
                 </View>
                 <Textarea
                   value={comment}

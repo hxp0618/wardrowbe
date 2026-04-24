@@ -1,6 +1,7 @@
 import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
+import { useI18n } from '../lib/i18n'
 import { colors } from './ui-theme'
 
 export type MobileDrawerKey =
@@ -19,28 +20,40 @@ export type MobileDrawerKey =
 
 type DrawerItem = {
   key: MobileDrawerKey
-  label: string
+  labelKey:
+    | 'nav_dashboard'
+    | 'nav_wardrobe'
+    | 'nav_suggest'
+    | 'nav_outfits'
+    | 'nav_pairings'
+    | 'nav_history'
+    | 'nav_family_feed'
+    | 'nav_analytics'
+    | 'nav_learning'
+    | 'nav_family'
+    | 'nav_notifications'
+    | 'nav_settings'
   icon: string
   url: string
   type: 'tab' | 'page'
 }
 
 const PRIMARY_ITEMS: DrawerItem[] = [
-  { key: 'dashboard', label: '首页', icon: '⌂', url: '/pages/dashboard/index', type: 'tab' },
-  { key: 'wardrobe', label: '衣橱', icon: '⌘', url: '/pages/wardrobe/index', type: 'tab' },
-  { key: 'suggest', label: '推荐', icon: '✦', url: '/pages/suggest/index', type: 'tab' },
-  { key: 'outfits', label: '穿搭', icon: '▣', url: '/pages/outfits/index', type: 'tab' },
-  { key: 'pairings', label: '配对', icon: '◫', url: '/pages/pairings/index', type: 'page' },
-  { key: 'history', label: '历史', icon: '↺', url: '/pages/history/index', type: 'page' },
-  { key: 'family-feed', label: '家庭动态', icon: '♡', url: '/pages/family-feed/index', type: 'page' },
-  { key: 'analytics', label: '分析', icon: '◔', url: '/pages/analytics/index', type: 'page' },
-  { key: 'learning', label: '学习', icon: '◌', url: '/pages/learning/index', type: 'page' },
+  { key: 'dashboard', labelKey: 'nav_dashboard', icon: '⌂', url: '/pages/dashboard/index', type: 'tab' },
+  { key: 'wardrobe', labelKey: 'nav_wardrobe', icon: '⌘', url: '/pages/wardrobe/index', type: 'tab' },
+  { key: 'suggest', labelKey: 'nav_suggest', icon: '✦', url: '/pages/suggest/index', type: 'tab' },
+  { key: 'outfits', labelKey: 'nav_outfits', icon: '▣', url: '/pages/outfits/index', type: 'tab' },
+  { key: 'pairings', labelKey: 'nav_pairings', icon: '◫', url: '/pages/pairings/index', type: 'page' },
+  { key: 'history', labelKey: 'nav_history', icon: '↺', url: '/pages/history/index', type: 'page' },
+  { key: 'family-feed', labelKey: 'nav_family_feed', icon: '♡', url: '/pages/family-feed/index', type: 'page' },
+  { key: 'analytics', labelKey: 'nav_analytics', icon: '◔', url: '/pages/analytics/index', type: 'page' },
+  { key: 'learning', labelKey: 'nav_learning', icon: '◌', url: '/pages/learning/index', type: 'page' },
 ]
 
 const SECONDARY_ITEMS: DrawerItem[] = [
-  { key: 'family', label: '家庭', icon: '◍', url: '/pages/family/index', type: 'page' },
-  { key: 'notifications', label: '通知', icon: '◉', url: '/pages/notifications/index', type: 'page' },
-  { key: 'settings', label: '设置', icon: '⚙', url: '/pages/settings/index', type: 'tab' },
+  { key: 'family', labelKey: 'nav_family', icon: '◍', url: '/pages/family/index', type: 'page' },
+  { key: 'notifications', labelKey: 'nav_notifications', icon: '◉', url: '/pages/notifications/index', type: 'page' },
+  { key: 'settings', labelKey: 'nav_settings', icon: '⚙', url: '/pages/settings/index', type: 'tab' },
 ]
 
 const ALL_ITEMS = [...PRIMARY_ITEMS, ...SECONDARY_ITEMS]
@@ -71,7 +84,12 @@ async function navigateToItem(item: DrawerItem, activeKey: MobileDrawerKey | nul
   await Taro.navigateTo({ url: item.url })
 }
 
-function renderItem(item: DrawerItem, activeKey: MobileDrawerKey | null, onClose: () => void) {
+function renderItem(
+  item: DrawerItem,
+  activeKey: MobileDrawerKey | null,
+  onClose: () => void,
+  label: string
+) {
   const active = item.key === activeKey
 
   return (
@@ -99,13 +117,15 @@ function renderItem(item: DrawerItem, activeKey: MobileDrawerKey | null, onClose
           fontWeight: 600,
         }}
       >
-        {item.label}
+        {label}
       </Text>
     </View>
   )
 }
 
 export function MobileDrawer(props: MobileDrawerProps) {
+  const { t } = useI18n()
+
   return (
     <View
       style={{
@@ -158,7 +178,7 @@ export function MobileDrawer(props: MobileDrawerProps) {
               Wardrowbe
             </Text>
             <Text style={{ display: 'block', marginTop: '4px', color: colors.textMuted, fontSize: '12px' }}>
-              导航
+              {t('drawer_title')}
             </Text>
           </View>
           <View
@@ -179,15 +199,19 @@ export function MobileDrawer(props: MobileDrawerProps) {
         </View>
 
         <View style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {PRIMARY_ITEMS.map((item) => renderItem(item, props.activeKey, props.onClose))}
+          {PRIMARY_ITEMS.map((item) =>
+            renderItem(item, props.activeKey, props.onClose, t(item.labelKey))
+          )}
         </View>
 
         <View>
           <Text style={{ display: 'block', marginBottom: '8px', color: colors.textSoft, fontSize: '11px' }}>
-            设置与协作
+            {t('drawer_section_settings')}
           </Text>
           <View style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {SECONDARY_ITEMS.map((item) => renderItem(item, props.activeKey, props.onClose))}
+            {SECONDARY_ITEMS.map((item) =>
+              renderItem(item, props.activeKey, props.onClose, t(item.labelKey))
+            )}
           </View>
         </View>
       </View>

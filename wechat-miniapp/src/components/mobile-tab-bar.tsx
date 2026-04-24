@@ -1,21 +1,22 @@
 import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
+import { useI18n } from '../lib/i18n'
 import { colors } from './ui-theme'
 
 export type MobileTabKey = 'dashboard' | 'wardrobe' | 'suggest' | 'outfits' | 'settings'
 
 const TAB_ITEMS: Array<{
   key: MobileTabKey
-  label: string
+  labelKey: 'nav_dashboard' | 'nav_wardrobe' | 'nav_suggest' | 'nav_outfits' | 'nav_settings'
   icon: string
   url: string
 }> = [
-  { key: 'dashboard', label: '首页', icon: '⌂', url: '/pages/dashboard/index' },
-  { key: 'wardrobe', label: '衣橱', icon: '⌘', url: '/pages/wardrobe/index' },
-  { key: 'suggest', label: '推荐', icon: '✦', url: '/pages/suggest/index' },
-  { key: 'outfits', label: '穿搭', icon: '▣', url: '/pages/outfits/index' },
-  { key: 'settings', label: '设置', icon: '⚙', url: '/pages/settings/index' },
+  { key: 'dashboard', labelKey: 'nav_dashboard', icon: '⌂', url: '/pages/dashboard/index' },
+  { key: 'wardrobe', labelKey: 'nav_wardrobe', icon: '⌘', url: '/pages/wardrobe/index' },
+  { key: 'suggest', labelKey: 'nav_suggest', icon: '✦', url: '/pages/suggest/index' },
+  { key: 'outfits', labelKey: 'nav_outfits', icon: '▣', url: '/pages/outfits/index' },
+  { key: 'settings', labelKey: 'nav_settings', icon: '⚙', url: '/pages/settings/index' },
 ]
 
 type MobileTabBarProps = {
@@ -23,6 +24,8 @@ type MobileTabBarProps = {
 }
 
 export function MobileTabBar(props: MobileTabBarProps) {
+  const { t } = useI18n()
+
   return (
     <View
       style={{
@@ -33,7 +36,7 @@ export function MobileTabBar(props: MobileTabBarProps) {
         zIndex: 30,
         borderRadius: '22px',
         border: `1px solid ${colors.borderStrong}`,
-        backgroundColor: 'rgba(11, 11, 13, 0.96)',
+        backgroundColor: colors.surfaceFloating,
         display: 'flex',
         padding: '8px',
         boxSizing: 'border-box',
@@ -61,7 +64,7 @@ export function MobileTabBar(props: MobileTabBarProps) {
               {item.icon}
             </Text>
             <Text style={{ color: active ? colors.text : colors.textSoft, fontSize: '11px' }}>
-              {item.label}
+              {t(item.labelKey)}
             </Text>
           </View>
         )

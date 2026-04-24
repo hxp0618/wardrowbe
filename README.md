@@ -205,8 +205,8 @@ npm run build:miniapp
 npm --workspace wechat-miniapp run dev
 ```
 
-After `dist/app.json` exists, open `wechat-miniapp/project.config.json` in WeChat DevTools.
-
+After `dist/app.json` exists, set your local mini program `appid` in `wechat-miniapp/project.config.json`, then open `wechat-miniapp/project.config.json` in WeChat DevTools.
+Keep the committed `appid` value empty so real App IDs do not enter Git history.
 For local WeChat DevTools development in this repo, `project.private.config.json` disables request-domain checks and the miniapp defaults to `http://127.0.0.1:8000`.
 For real devices or any environment where domain checks apply, set `TARO_APP_API_BASE_URL` to an HTTPS domain that is listed in the mini program's legal request domain list before building.
 
