@@ -1,4 +1,6 @@
-const ITEM_TYPE_LABELS: Record<string, string> = {
+import { useAuthStore, type AppLocale } from '../stores/auth'
+
+const ITEM_TYPE_LABELS_ZH: Record<string, string> = {
   tops: '上装',
   bottoms: '下装',
   outerwear: '外套',
@@ -36,7 +38,45 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   bag: '包',
 }
 
-const SUBTYPE_LABELS: Record<string, string> = {
+const ITEM_TYPE_LABELS_EN: Record<string, string> = {
+  tops: 'Tops',
+  bottoms: 'Bottoms',
+  outerwear: 'Outerwear',
+  shoes: 'Shoes',
+  accessories: 'Accessories',
+  dresses: 'Dresses',
+  activewear: 'Activewear',
+  't-shirt': 'T-Shirt',
+  top: 'Top',
+  polo: 'Polo Shirt',
+  blouse: 'Blouse',
+  'tank-top': 'Tank Top',
+  sweater: 'Sweater',
+  hoodie: 'Hoodie',
+  cardigan: 'Cardigan',
+  vest: 'Vest',
+  pants: 'Pants',
+  jeans: 'Jeans',
+  shorts: 'Shorts',
+  skirt: 'Skirt',
+  dress: 'Dress',
+  jumpsuit: 'Jumpsuit',
+  jacket: 'Jacket',
+  blazer: 'Blazer',
+  coat: 'Coat',
+  suit: 'Suit',
+  sneakers: 'Sneakers',
+  boots: 'Boots',
+  sandals: 'Sandals',
+  socks: 'Socks',
+  tie: 'Tie',
+  hat: 'Hat',
+  scarf: 'Scarf',
+  belt: 'Belt',
+  bag: 'Bag',
+}
+
+const SUBTYPE_LABELS_ZH: Record<string, string> = {
   henley: '亨利领',
   'button-down': '扣领衬衫',
   oxford: '牛津纺',
@@ -87,6 +127,59 @@ const SUBTYPE_LABELS: Record<string, string> = {
   necktie: '领带',
   'bow-tie': '领结',
   bolo: '波洛领带',
+}
+
+const SUBTYPE_LABELS_EN: Record<string, string> = {
+  henley: 'Henley',
+  'button-down': 'Button-Down',
+  oxford: 'Oxford',
+  flannel: 'Flannel',
+  hawaiian: 'Hawaiian Shirt',
+  'camp-collar': 'Camp Collar',
+  'track-jacket': 'Track Jacket',
+  'denim-jacket': 'Denim Jacket',
+  bomber: 'Bomber Jacket',
+  parka: 'Parka',
+  windbreaker: 'Windbreaker',
+  trucker: 'Trucker Jacket',
+  anorak: 'Anorak',
+  chinos: 'Chinos',
+  joggers: 'Joggers',
+  cargo: 'Cargo Pants',
+  trousers: 'Trousers',
+  leggings: 'Leggings',
+  sweatpants: 'Sweatpants',
+  sundress: 'Sundress',
+  'slip-dress': 'Slip Dress',
+  maxi: 'Maxi',
+  midi: 'Midi',
+  wrap: 'Wrap',
+  'shirt-dress': 'Shirt Dress',
+  'a-line': 'A-Line',
+  loafers: 'Loafers',
+  oxfords: 'Oxfords',
+  mules: 'Mules',
+  flats: 'Flats',
+  heels: 'Heels',
+  platforms: 'Platforms',
+  'low-top': 'Low Top',
+  'high-top': 'High Top',
+  chunky: 'Chunky',
+  'slip-on': 'Slip-On',
+  ankle: 'Ankle',
+  chelsea: 'Chelsea',
+  combat: 'Combat',
+  'knee-high': 'Knee High',
+  rain: 'Rain',
+  pleated: 'Pleated',
+  pencil: 'Pencil',
+  pullover: 'Pullover',
+  crewneck: 'Crewneck',
+  turtleneck: 'Turtleneck',
+  'v-neck': 'V-Neck',
+  necktie: 'Necktie',
+  'bow-tie': 'Bow Tie',
+  bolo: 'Bolo',
 }
 
 const SUBTYPE_VALUE_BY_ZH: Record<string, string> = {
@@ -142,7 +235,7 @@ const SUBTYPE_VALUE_BY_ZH: Record<string, string> = {
   波洛领带: 'bolo',
 }
 
-const COLOR_LABELS: Record<string, string> = {
+const COLOR_LABELS_ZH: Record<string, string> = {
   black: '黑色',
   white: '白色',
   gray: '灰色',
@@ -162,7 +255,27 @@ const COLOR_LABELS: Record<string, string> = {
   cream: '奶油色',
 }
 
-const STYLE_LABELS: Record<string, string> = {
+const COLOR_LABELS_EN: Record<string, string> = {
+  black: 'Black',
+  white: 'White',
+  gray: 'Gray',
+  grey: 'Gray',
+  navy: 'Navy',
+  blue: 'Blue',
+  green: 'Green',
+  red: 'Red',
+  pink: 'Pink',
+  purple: 'Purple',
+  yellow: 'Yellow',
+  orange: 'Orange',
+  brown: 'Brown',
+  beige: 'Beige',
+  khaki: 'Khaki',
+  olive: 'Olive',
+  cream: 'Cream',
+}
+
+const STYLE_LABELS_ZH: Record<string, string> = {
   minimalist: '极简',
   casual: '休闲',
   classic: '经典',
@@ -178,7 +291,23 @@ const STYLE_LABELS: Record<string, string> = {
   romantic: '浪漫',
 }
 
-const OCCASION_LABELS: Record<string, string> = {
+const STYLE_LABELS_EN: Record<string, string> = {
+  minimalist: 'Minimalist',
+  casual: 'Casual',
+  classic: 'Classic',
+  elegant: 'Elegant',
+  sporty: 'Sporty',
+  streetwear: 'Streetwear',
+  modern: 'Modern',
+  vintage: 'Vintage',
+  chic: 'Chic',
+  edgy: 'Edgy',
+  preppy: 'Preppy',
+  boho: 'Boho',
+  romantic: 'Romantic',
+}
+
+const OCCASION_LABELS_ZH: Record<string, string> = {
   casual: '休闲',
   office: '办公',
   work: '通勤',
@@ -189,12 +318,28 @@ const OCCASION_LABELS: Record<string, string> = {
   party: '聚会',
 }
 
-const ROLE_LABELS: Record<string, string> = {
+const OCCASION_LABELS_EN: Record<string, string> = {
+  casual: 'Casual',
+  office: 'Office',
+  work: 'Work',
+  formal: 'Formal',
+  date: 'Date',
+  sporty: 'Sporty',
+  outdoor: 'Outdoor',
+  party: 'Party',
+}
+
+const ROLE_LABELS_ZH: Record<string, string> = {
   admin: '管理员',
   member: '成员',
 }
 
-const CHANNEL_LABELS: Record<string, string> = {
+const ROLE_LABELS_EN: Record<string, string> = {
+  admin: 'Admin',
+  member: 'Member',
+}
+
+const CHANNEL_LABELS_ZH: Record<string, string> = {
   email: '邮箱',
   webhook: 'Webhook',
   ntfy: 'ntfy',
@@ -203,7 +348,17 @@ const CHANNEL_LABELS: Record<string, string> = {
   expo_push: 'Expo Push',
 }
 
-const WEATHER_CONDITION_LABELS: Record<string, string> = {
+const CHANNEL_LABELS_EN: Record<string, string> = {
+  email: 'Email',
+  webhook: 'Webhook',
+  ntfy: 'ntfy',
+  mattermost: 'Mattermost',
+  bark: 'Bark',
+  expo_push: 'Expo Push',
+  wechat_work: 'WeCom',
+}
+
+const WEATHER_CONDITION_LABELS_ZH: Record<string, string> = {
   clear: '晴朗',
   sunny: '晴天',
   clouds: '多云',
@@ -218,6 +373,23 @@ const WEATHER_CONDITION_LABELS: Record<string, string> = {
   mist: '薄雾',
   haze: '霾',
   windy: '大风',
+}
+
+const WEATHER_CONDITION_LABELS_EN: Record<string, string> = {
+  clear: 'Clear',
+  sunny: 'Sunny',
+  clouds: 'Cloudy',
+  cloudy: 'Cloudy',
+  overcast: 'Overcast',
+  partly_cloudy: 'Partly Cloudy',
+  rain: 'Rain',
+  drizzle: 'Drizzle',
+  thunderstorm: 'Thunderstorm',
+  snow: 'Snow',
+  fog: 'Fog',
+  mist: 'Mist',
+  haze: 'Haze',
+  windy: 'Windy',
 }
 
 function hasChinese(value: string): boolean {
@@ -238,45 +410,62 @@ function normalizeKey(value: string): string {
   return value.trim().toLowerCase().replace(/[\s_]+/g, '-')
 }
 
-export function formatItemTypeLabel(type: string | null | undefined): string {
+function resolveLocale(locale?: AppLocale): AppLocale {
+  return locale ?? useAuthStore.getState().locale ?? 'zh'
+}
+
+function labelsFor(locale: AppLocale) {
+  return {
+    itemTypes: locale === 'en' ? ITEM_TYPE_LABELS_EN : ITEM_TYPE_LABELS_ZH,
+    subtypes: locale === 'en' ? SUBTYPE_LABELS_EN : SUBTYPE_LABELS_ZH,
+    colors: locale === 'en' ? COLOR_LABELS_EN : COLOR_LABELS_ZH,
+    styles: locale === 'en' ? STYLE_LABELS_EN : STYLE_LABELS_ZH,
+    occasions: locale === 'en' ? OCCASION_LABELS_EN : OCCASION_LABELS_ZH,
+    roles: locale === 'en' ? ROLE_LABELS_EN : ROLE_LABELS_ZH,
+    channels: locale === 'en' ? CHANNEL_LABELS_EN : CHANNEL_LABELS_ZH,
+    weather: locale === 'en' ? WEATHER_CONDITION_LABELS_EN : WEATHER_CONDITION_LABELS_ZH,
+  }
+}
+
+export function formatItemTypeLabel(type: string | null | undefined, locale?: AppLocale): string {
   if (!type) return ''
   const normalized = normalizeKey(type)
-  return ITEM_TYPE_LABELS[normalized] ?? humanizeToken(type)
+  return labelsFor(resolveLocale(locale)).itemTypes[normalized] ?? humanizeToken(type)
 }
 
-export function formatSubtypeLabel(subtype: string | null | undefined): string {
+export function formatSubtypeLabel(subtype: string | null | undefined, locale?: AppLocale): string {
   if (!subtype) return ''
   const normalized = hasChinese(subtype) ? SUBTYPE_VALUE_BY_ZH[subtype] : normalizeKey(subtype)
-  return (normalized && SUBTYPE_LABELS[normalized]) ?? humanizeToken(subtype)
+  return (normalized && labelsFor(resolveLocale(locale)).subtypes[normalized]) ?? humanizeToken(subtype)
 }
 
-export function formatColorLabel(color: string | null | undefined): string {
+export function formatColorLabel(color: string | null | undefined, locale?: AppLocale): string {
   if (!color) return ''
-  return COLOR_LABELS[normalizeKey(color)] ?? humanizeToken(color)
+  return labelsFor(resolveLocale(locale)).colors[normalizeKey(color)] ?? humanizeToken(color)
 }
 
-export function formatStyleLabel(style: string | null | undefined): string {
+export function formatStyleLabel(style: string | null | undefined, locale?: AppLocale): string {
   if (!style) return ''
-  return STYLE_LABELS[normalizeKey(style)] ?? humanizeToken(style)
+  return labelsFor(resolveLocale(locale)).styles[normalizeKey(style)] ?? humanizeToken(style)
 }
 
-export function formatOccasionLabel(occasion: string | null | undefined): string {
+export function formatOccasionLabel(occasion: string | null | undefined, locale?: AppLocale): string {
   if (!occasion) return ''
-  return OCCASION_LABELS[normalizeKey(occasion)] ?? humanizeToken(occasion)
+  return labelsFor(resolveLocale(locale)).occasions[normalizeKey(occasion)] ?? humanizeToken(occasion)
 }
 
-export function formatRoleLabel(role: string | null | undefined): string {
+export function formatRoleLabel(role: string | null | undefined, locale?: AppLocale): string {
   if (!role) return ''
-  return ROLE_LABELS[normalizeKey(role)] ?? humanizeToken(role)
+  return labelsFor(resolveLocale(locale)).roles[normalizeKey(role)] ?? humanizeToken(role)
 }
 
-export function formatNotificationChannelLabel(channel: string | null | undefined): string {
+export function formatNotificationChannelLabel(channel: string | null | undefined, locale?: AppLocale): string {
   if (!channel) return ''
-  return CHANNEL_LABELS[normalizeKey(channel)] ?? humanizeToken(channel)
+  return labelsFor(resolveLocale(locale)).channels[normalizeKey(channel)] ?? humanizeToken(channel)
 }
 
-export function formatWeatherConditionLabel(condition: string | null | undefined): string {
+export function formatWeatherConditionLabel(condition: string | null | undefined, locale?: AppLocale): string {
   if (!condition) return ''
   const normalized = condition.trim().toLowerCase().replace(/[\s-]+/g, '_')
-  return WEATHER_CONDITION_LABELS[normalized] ?? humanizeToken(condition)
+  return labelsFor(resolveLocale(locale)).weather[normalized] ?? humanizeToken(condition)
 }

@@ -16,6 +16,12 @@ export default defineAppConfig({
     'pages/onboarding/index',
     'pages/invite/index',
   ],
+  permission: {
+    'scope.userLocation': {
+      desc: '用于选择当前位置并提供天气相关功能',
+    },
+  },
+  requiredPrivateInfos: ['getLocation', 'chooseLocation'],
   tabBar: {
     color: '#71717A',
     selectedColor: '#F5F5F5',

@@ -6,6 +6,8 @@ const appRoot = process.cwd()
 const repoRoot = path.resolve(appRoot, '..')
 const sharedApiRoot = path.resolve(repoRoot, 'packages', 'shared-api', 'src')
 const sharedDomainRoot = path.resolve(repoRoot, 'packages', 'shared-domain', 'src')
+const locationApiKey =
+  process.env.TARO_APP_LOCATION_APIKEY || 'JDCBZ-5ZCLZ-W3GXH-74CPW-VXVWK-WCFTR'
 
 export default defineConfig({
   projectName: 'wardrowbe-wechat-miniapp',
@@ -16,6 +18,9 @@ export default defineConfig({
     TARO_APP_API_BASE_URL: JSON.stringify(
       process.env.TARO_APP_API_BASE_URL || 'https://wardrowbe.191027.xyz'
     ),
+  },
+  defineConstants: {
+    LOCATION_APIKEY: JSON.stringify(locationApiKey),
   },
   framework: 'react',
   compiler: {

@@ -35,6 +35,7 @@ class UserProfileResponse(BaseModel):
 
 class UserProfileUpdate(BaseModel):
     display_name: str | None = None
+    avatar_url: str | None = None
     timezone: str | None = None
     location_lat: Decimal | None = None
     location_lon: Decimal | None = None

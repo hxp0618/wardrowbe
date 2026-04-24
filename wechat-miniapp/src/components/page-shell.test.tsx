@@ -52,4 +52,16 @@ describe('createPageShellHeader', () => {
       expect(pageShellModule.resolvePageShellContentPaddingTop(false, 68)).toBe('72px')
     })
   })
+
+  it('falls back to an undefined drawer key when reading the current route throws', () => {
+    return import('./page-shell').then((pageShellModule) => {
+      expect(
+        pageShellModule.resolveCurrentPath({
+          getCurrentInstance: () => {
+            throw new Error('timeout')
+          },
+        } as never)
+      ).toBeUndefined()
+    })
+  })
 })

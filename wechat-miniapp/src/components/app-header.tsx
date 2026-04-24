@@ -30,40 +30,48 @@ function getInitials(name?: string | null): string {
     .toUpperCase()
 }
 
-function getHeaderMetrics() {
-  const taroWithWindowInfo = Taro as typeof Taro & {
-    getWindowInfo?: () => {
-      statusBarHeight?: number
+export function getHeaderMetrics() {
+  try {
+    const taroWithWindowInfo = Taro as typeof Taro & {
+      getWindowInfo?: () => {
+        statusBarHeight?: number
+      }
+      getAppBaseInfo?: () => {
+        statusBarHeight?: number
+      }
     }
-    getAppBaseInfo?: () => {
-      statusBarHeight?: number
-    }
-  }
-  const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
-    | { statusBarHeight?: number }
-    | undefined
-  const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
-    | { statusBarHeight?: number }
-    | undefined
-  const statusBarHeight =
-    windowInfo?.statusBarHeight ||
-    appBaseInfo?.statusBarHeight ||
-    20
-  const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
-  const metrics = resolveHeaderMetrics({
-    statusBarHeight,
-    menuButtonRect: menuButtonRect
-      ? {
-          top: menuButtonRect.top,
-          height: menuButtonRect.height,
-        }
-      : undefined,
-  })
+    const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
+      | { statusBarHeight?: number }
+      | undefined
+    const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
+      | { statusBarHeight?: number }
+      | undefined
+    const statusBarHeight =
+      windowInfo?.statusBarHeight ||
+      appBaseInfo?.statusBarHeight ||
+      20
+    const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
+    const metrics = resolveHeaderMetrics({
+      statusBarHeight,
+      menuButtonRect: menuButtonRect
+        ? {
+            top: menuButtonRect.top,
+            height: menuButtonRect.height,
+          }
+        : undefined,
+    })
 
-  return {
-    paddingTop: `${metrics.paddingTop}px`,
-    contentHeight: `${metrics.contentHeight}px`,
-    paddingBottom: `${metrics.paddingBottom}px`,
+    return {
+      paddingTop: `${metrics.paddingTop}px`,
+      contentHeight: `${metrics.contentHeight}px`,
+      paddingBottom: `${metrics.paddingBottom}px`,
+    }
+  } catch {
+    return {
+      paddingTop: '28px',
+      contentHeight: '44px',
+      paddingBottom: '12px',
+    }
   }
 }
 
