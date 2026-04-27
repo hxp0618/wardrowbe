@@ -51,10 +51,55 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   const typeLabel = formatItemTypeLabel(item.type)
   const subtypeLabel = formatSubtypeLabel(item.subtype)
   const title = item.name || typeLabel
+  const washMethodLabels = WASH_METHODS
+  const copy = {
+    statusProcessing: '分析中',
+    statusError: '分析失败',
+    statusArchived: '已归档',
+    statusReady: '就绪',
+    favoriteRemoved: '已取消收藏',
+    favoriteAdded: '已收藏',
+    actionFailed: '操作失败',
+    washClean: '已标记干净',
+    washNeeded: '已标记需清洗',
+    reanalyzed: '已重新分析',
+    reanalyzeFailed: '重新分析失败',
+    archived: '已归档',
+    archiveFailed: '归档失败',
+    unarchived: '已取消归档',
+    deleted: '已删除',
+    deleteFailed: '删除失败',
+    wearLogged: '已记录穿着',
+    washLogged: '已记录清洗',
+    logFailed: '记录失败',
+    wearCount: '穿着次数',
+    quantity: '数量',
+    lastWorn: '上次穿着',
+    tags: '标签',
+    aiDescription: 'AI 描述',
+    notes: '备注',
+    logWear: '记录穿着',
+    occasion: '场景',
+    cancel: '取消',
+    confirm: '确认',
+    logWash: '记录清洗',
+    method: '方式',
+    favorite: '收藏',
+    favorited: '已收藏',
+    needsWash: '需清洗',
+    clean: '已干净',
+    wearAction: '记录穿着',
+    washAction: '记录清洗',
+    reanalyze: '重新分析',
+    unarchive: '取消归档',
+    archive: '归档',
+    delete: '删除',
+    deleteConfirm: '确认删除',
+  }
   const statusLabel =
-    item.status === 'processing' ? '分析中'
-    : item.status === 'error' ? '分析失败'
-    : item.status === 'archived' ? '已归档' : '就绪'
+    item.status === 'processing' ? copy.statusProcessing
+    : item.status === 'error' ? copy.statusError
+    : item.status === 'archived' ? copy.statusArchived : copy.statusReady
   const statusColor =
     item.status === 'error' ? '#EF4444'
     : item.status === 'processing' ? '#F59E0B'
@@ -63,61 +108,61 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   const handleToggleFavorite = async () => {
     try {
       await toggleFavorite.mutateAsync({ id: item.id, favorite: !item.favorite })
-      void Taro.showToast({ title: item.favorite ? '已取消收藏' : '已收藏', icon: 'success' })
-    } catch { void Taro.showToast({ title: '操作失败', icon: 'none' }) }
+      void Taro.showToast({ title: item.favorite ? copy.favoriteRemoved : copy.favoriteAdded, icon: 'success' })
+    } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
   }
 
   const handleToggleWash = async () => {
     try {
       await toggleNeedsWash.mutateAsync({ id: item.id, needsWash: !item.needs_wash })
-      void Taro.showToast({ title: item.needs_wash ? '已标记干净' : '已标记需清洗', icon: 'success' })
-    } catch { void Taro.showToast({ title: '操作失败', icon: 'none' }) }
+      void Taro.showToast({ title: item.needs_wash ? copy.washClean : copy.washNeeded, icon: 'success' })
+    } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
   }
 
   const handleReanalyze = async () => {
     try {
       await reanalyze.mutateAsync(item.id)
-      void Taro.showToast({ title: '已重新分析', icon: 'success' })
-    } catch { void Taro.showToast({ title: '重新分析失败', icon: 'none' }) }
+      void Taro.showToast({ title: copy.reanalyzed, icon: 'success' })
+    } catch { void Taro.showToast({ title: copy.reanalyzeFailed, icon: 'none' }) }
   }
 
   const handleArchive = async () => {
     try {
       await archive.mutateAsync({ id: item.id })
-      void Taro.showToast({ title: '已归档', icon: 'success' })
+      void Taro.showToast({ title: copy.archived, icon: 'success' })
       onClose()
-    } catch { void Taro.showToast({ title: '归档失败', icon: 'none' }) }
+    } catch { void Taro.showToast({ title: copy.archiveFailed, icon: 'none' }) }
   }
 
   const handleUnarchive = async () => {
     try {
       await unarchive.mutateAsync(item.id)
-      void Taro.showToast({ title: '已取消归档', icon: 'success' })
-    } catch { void Taro.showToast({ title: '操作失败', icon: 'none' }) }
+      void Taro.showToast({ title: copy.unarchived, icon: 'success' })
+    } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
   }
 
   const handleDelete = async () => {
     try {
       await deleteItem.mutateAsync(item.id)
-      void Taro.showToast({ title: '已删除', icon: 'success' })
+      void Taro.showToast({ title: copy.deleted, icon: 'success' })
       onClose()
-    } catch { void Taro.showToast({ title: '删除失败', icon: 'none' }) }
+    } catch { void Taro.showToast({ title: copy.deleteFailed, icon: 'none' }) }
   }
 
   const handleLogWear = async () => {
     try {
       await logWear.mutateAsync({ id: item.id, occasion: OCCASIONS[wearOccasionIndex] })
-      void Taro.showToast({ title: '已记录穿着', icon: 'success' })
+      void Taro.showToast({ title: copy.wearLogged, icon: 'success' })
       setShowLogWear(false)
-    } catch { void Taro.showToast({ title: '记录失败', icon: 'none' }) }
+    } catch { void Taro.showToast({ title: copy.logFailed, icon: 'none' }) }
   }
 
   const handleLogWash = async () => {
     try {
       await logWash.mutateAsync({ id: item.id, method: WASH_METHODS[washMethodIndex] })
-      void Taro.showToast({ title: '已记录清洗', icon: 'success' })
+      void Taro.showToast({ title: copy.washLogged, icon: 'success' })
       setShowLogWash(false)
-    } catch { void Taro.showToast({ title: '记录失败', icon: 'none' }) }
+    } catch { void Taro.showToast({ title: copy.logFailed, icon: 'none' }) }
   }
 
   const additionalImages = item.additional_images || []
@@ -152,22 +197,23 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
             <View style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <View style={{ padding: '10px 14px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
                 <Text style={{ fontSize: '12px', color: colors.textMuted }}>穿着次数</Text>
+                <Text style={{ fontSize: '12px', color: colors.textMuted }}>{copy.wearCount}</Text>
                 <Text style={{ display: 'block', fontSize: '20px', fontWeight: 600, color: colors.text }}>{item.wear_count}</Text>
               </View>
               <View style={{ padding: '10px 14px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
-                <Text style={{ fontSize: '12px', color: colors.textMuted }}>数量</Text>
+                <Text style={{ fontSize: '12px', color: colors.textMuted }}>{copy.quantity}</Text>
                 <Text style={{ display: 'block', fontSize: '20px', fontWeight: 600, color: colors.text }}>{item.quantity}</Text>
               </View>
               {item.last_worn_at && (
                 <View style={{ padding: '10px 14px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
-                  <Text style={{ fontSize: '12px', color: colors.textMuted }}>上次穿着</Text>
+                  <Text style={{ fontSize: '12px', color: colors.textMuted }}>{copy.lastWorn}</Text>
                   <Text style={{ display: 'block', fontSize: '13px', color: colors.text }}>{formatDate(item.last_worn_at)}</Text>
                 </View>
               )}
             </View>
             {item.tags && (
               <View style={{ marginBottom: '16px' }}>
-                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>标签</Text>
+                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>{copy.tags}</Text>
                 <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {item.tags.style?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '4px 10px', borderRadius: '999px' }}>{formatStyleLabel(s)}</Text>)}
                   {item.tags.season?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.warning, backgroundColor: 'rgba(251, 191, 36, 0.12)', padding: '4px 10px', borderRadius: '999px' }}>{s}</Text>)}
@@ -178,13 +224,13 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
             )}
             {item.ai_description && (
               <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
-                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>AI 描述</Text>
+                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>{copy.aiDescription}</Text>
                 <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>{item.ai_description}</Text>
               </View>
             )}
             {item.notes && (
               <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
-                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>备注</Text>
+                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>{copy.notes}</Text>
                 <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>{item.notes}</Text>
               </View>
             )}
@@ -192,20 +238,20 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
             {/* Log wear form */}
             {showLogWear && (
               <View style={{ marginBottom: '12px', padding: '14px', borderRadius: '14px', backgroundColor: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.22)' }}>
-                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>记录穿着</Text>
+                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>{copy.logWear}</Text>
                 <Picker mode='selector' range={OCCASIONS} value={wearOccasionIndex} onChange={(e) => setWearOccasionIndex(Number(e.detail.value))}>
                   <View style={{ ...inputStyle, marginBottom: '10px' }}>
                     <Text style={{ fontSize: '13px', color: colors.text }}>
-                      场景：{formatOccasionLabel(OCCASIONS[wearOccasionIndex])}
+                      {copy.occasion}: {formatOccasionLabel(OCCASIONS[wearOccasionIndex])}
                     </Text>
                   </View>
                 </Picker>
                 <View style={{ display: 'flex', gap: '10px' }}>
                   <View onClick={() => setShowLogWear(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
-                    <Text style={{ fontSize: '14px', color: colors.text }}>取消</Text>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
                   </View>
                   <View onClick={handleLogWear} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: '#166534' }}>
-                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>确认</Text>
+                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.confirm}</Text>
                   </View>
                 </View>
               </View>
@@ -214,18 +260,18 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
             {/* Log wash form */}
             {showLogWash && (
               <View style={{ marginBottom: '12px', padding: '14px', borderRadius: '14px', backgroundColor: colors.infoSurface, border: `1px solid ${colors.infoBorder}` }}>
-                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>记录清洗</Text>
+                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>{copy.logWash}</Text>
                 <Picker mode='selector' range={WASH_METHODS} value={washMethodIndex} onChange={(e) => setWashMethodIndex(Number(e.detail.value))}>
                   <View style={{ ...inputStyle, marginBottom: '10px' }}>
-                    <Text style={{ fontSize: '13px', color: colors.text }}>方式：{WASH_METHODS[washMethodIndex]}</Text>
+                    <Text style={{ fontSize: '13px', color: colors.text }}>{copy.method}: {washMethodLabels[washMethodIndex]}</Text>
                   </View>
                 </Picker>
                 <View style={{ display: 'flex', gap: '10px' }}>
                   <View onClick={() => setShowLogWash(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
-                    <Text style={{ fontSize: '14px', color: colors.text }}>取消</Text>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
                   </View>
                   <View onClick={handleLogWash} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: colors.infoText }}>
-                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>确认</Text>
+                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.confirm}</Text>
                   </View>
                 </View>
               </View>
@@ -235,51 +281,51 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
             <View style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
               <View style={{ display: 'flex', gap: '10px' }}>
                 <View onClick={handleToggleFavorite} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: item.favorite ? 'rgba(248, 113, 113, 0.12)' : colors.surfaceMuted, border: item.favorite ? '1px solid rgba(248, 113, 113, 0.22)' : `1px solid ${colors.border}`, textAlign: 'center' }}>
-                  <Text style={{ fontSize: '14px', color: item.favorite ? colors.danger : colors.text }}>{item.favorite ? '已收藏' : '收藏'}</Text>
+                  <Text style={{ fontSize: '14px', color: item.favorite ? colors.danger : colors.text }}>{item.favorite ? copy.favorited : copy.favorite}</Text>
                 </View>
                 <View onClick={handleToggleWash} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: item.needs_wash ? 'rgba(251, 191, 36, 0.12)' : colors.surfaceMuted, border: item.needs_wash ? '1px solid rgba(251, 191, 36, 0.22)' : `1px solid ${colors.border}`, textAlign: 'center' }}>
-                  <Text style={{ fontSize: '14px', color: item.needs_wash ? colors.warning : colors.text }}>{item.needs_wash ? '需清洗' : '已干净'}</Text>
+                  <Text style={{ fontSize: '14px', color: item.needs_wash ? colors.warning : colors.text }}>{item.needs_wash ? copy.needsWash : copy.clean}</Text>
                 </View>
               </View>
 
               {!showLogWear && !showLogWash && (
                 <View style={{ display: 'flex', gap: '10px' }}>
                   <View onClick={() => setShowLogWear(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.22)', textAlign: 'center' }}>
-                    <Text style={{ fontSize: '14px', color: colors.success }}>记录穿着</Text>
+                    <Text style={{ fontSize: '14px', color: colors.success }}>{copy.wearAction}</Text>
                   </View>
                   <View onClick={() => setShowLogWash(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: colors.infoSurface, border: `1px solid ${colors.infoBorder}`, textAlign: 'center' }}>
-                    <Text style={{ fontSize: '14px', color: colors.infoText }}>记录清洗</Text>
+                    <Text style={{ fontSize: '14px', color: colors.infoText }}>{copy.washAction}</Text>
                   </View>
                 </View>
               )}
 
               {(item.status === 'error' || item.status === 'ready') && (
                 <View onClick={handleReanalyze} style={secondaryButtonStyle}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>重新分析</Text>
+                  <Text style={{ fontSize: '14px', color: colors.text }}>{copy.reanalyze}</Text>
                 </View>
               )}
 
               {item.is_archived ? (
                 <View onClick={handleUnarchive} style={secondaryButtonStyle}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>取消归档</Text>
+                  <Text style={{ fontSize: '14px', color: colors.text }}>{copy.unarchive}</Text>
                 </View>
               ) : (
                 <View onClick={handleArchive} style={secondaryButtonStyle}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>归档</Text>
+                  <Text style={{ fontSize: '14px', color: colors.text }}>{copy.archive}</Text>
                 </View>
               )}
 
               {!showConfirmDelete ? (
                 <View onClick={() => setShowConfirmDelete(true)} style={{ ...secondaryButtonStyle, backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)' }}>
-                  <Text style={{ fontSize: '14px', color: colors.danger }}>删除</Text>
+                  <Text style={{ fontSize: '14px', color: colors.danger }}>{copy.delete}</Text>
                 </View>
               ) : (
                 <View style={{ display: 'flex', gap: '10px' }}>
                   <View onClick={() => setShowConfirmDelete(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
-                    <Text style={{ fontSize: '14px', color: colors.text }}>取消</Text>
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
                   </View>
                   <View onClick={handleDelete} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: '#dc2626' }}>
-                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>确认删除</Text>
+                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.deleteConfirm}</Text>
                   </View>
                 </View>
               )}

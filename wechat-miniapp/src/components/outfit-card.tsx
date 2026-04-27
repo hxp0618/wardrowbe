@@ -1,6 +1,6 @@
 import { Image, Text, View } from '@tarojs/components'
 
-import { formatItemTypeLabel, formatOccasionLabel } from '../lib/display'
+import { formatItemTypeLabel, formatOccasionLabel, formatOutfitSourceLabel, formatOutfitStatusLabel } from '../lib/display'
 import type { Outfit, Pairing } from '../services/types'
 import { UIBadge } from './ui-badge'
 import { colors } from './ui-theme'
@@ -8,21 +8,6 @@ import { colors } from './ui-theme'
 type OutfitCardProps = {
   outfit: Outfit | Pairing
   badge?: string
-}
-
-function formatStatus(status: string): string {
-  switch (status) {
-    case 'pending':
-      return '待确认'
-    case 'accepted':
-      return '已接受'
-    case 'rejected':
-      return '已拒绝'
-    case 'viewed':
-      return '已查看'
-    default:
-      return status
-  }
 }
 
 export function OutfitCard(props: OutfitCardProps) {
@@ -73,11 +58,11 @@ export function OutfitCard(props: OutfitCardProps) {
             color: colors.textMuted,
           }}
         >
-          {formatStatus(props.outfit.status)}
+          {formatOutfitStatusLabel(props.outfit.status)}
           {props.outfit.scheduled_for ? ` · ${props.outfit.scheduled_for}` : ''}
         </Text>
       </View>
-        <UIBadge label={props.badge || props.outfit.source} tone={badgeTone} />
+        <UIBadge label={props.badge || formatOutfitSourceLabel(props.outfit.source)} tone={badgeTone} />
       </View>
       {props.outfit.reasoning ? (
         <Text

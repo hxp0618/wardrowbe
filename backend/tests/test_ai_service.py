@@ -233,6 +233,29 @@ class TestClothingTags:
         assert tags.confidence == 0.92
 
 
+def test_init_skips_malformed_custom_endpoints(caplog):
+    with caplog.at_level(logging.WARNING, logger="app.services.ai_service"):
+        service = AIService(
+            endpoints=[
+                None,
+                "http://localhost:11434/v1",
+                {},
+                {"name": "missing-url"},
+                {
+                    "name": "custom",
+                    "url": "http://localhost:11434/v1",
+                    "vision_model": "llava",
+                    "text_model": "gemma3",
+                    "enabled": True,
+                },
+            ]
+        )
+
+    assert [endpoint.name for endpoint in service._endpoints] == ["custom", "default"]
+    assert service.base_url == "http://localhost:11434/v1"
+    assert "Skipping invalid AI endpoint config" in caplog.text
+
+
 @pytest.mark.asyncio
 async def test_call_with_fallback_logs_endpoint_context_on_transport_error(monkeypatch, caplog):
     service = AIService()

@@ -1,4 +1,4 @@
-import { useAuthStore, type AppLocale } from '../stores/auth'
+import type { AppLocale } from '../stores/auth'
 
 const messages = {
   zh: {
@@ -75,6 +75,27 @@ const messages = {
     dashboard_family_title: '👨‍👩‍👧‍👦 家庭',
     dashboard_family_browse: '浏览家庭动态',
     dashboard_insights_title: '💡 洞察',
+    dashboard_today_label: '今日',
+    dashboard_hero_ready_title: '今天可以轻松安排穿搭',
+    dashboard_hero_missing_title: '先把今日衣橱节奏定下来',
+    dashboard_hero_summary_ready: '{temp} · {condition} · 当前衣橱 {count} 件',
+    dashboard_hero_summary_missing: '还没配置位置信息，先补上天气，再让推荐更贴近今天。当前衣橱 {count} 件',
+    dashboard_weather_synced: '今日天气已同步',
+    dashboard_weather_waiting: '等待天气同步',
+    dashboard_family_connected: '可连接家庭空间',
+    dashboard_family_members: '{name} · {count} 人',
+    dashboard_stat_wardrobe: '衣橱',
+    dashboard_stat_wardrobe_hint: '已整理单品',
+    dashboard_stat_pending: '待确认',
+    dashboard_stat_pending_hint: '待确认搭配',
+    dashboard_stat_reminders: '提醒',
+    dashboard_stat_reminders_hint: '已启用提醒',
+    dashboard_quick_add_description: '继续整理单品，让推荐更完整。',
+    dashboard_quick_suggest_description: '按天气和场景快速生成一套穿搭。',
+    dashboard_family_members_summary: '{name} · {count} 位成员',
+    dashboard_toast_accept_success: '已接受',
+    dashboard_toast_reject_success: '已拒绝',
+    dashboard_toast_action_failed: '操作失败',
     outfits_loading_title: '加载中',
     outfits_loading: '正在加载穿搭...',
     outfits_empty_title: '还没有穿搭',
@@ -82,6 +103,12 @@ const messages = {
     outfits_empty_description_my_looks: '去推荐页创建你的第一套穿搭',
     outfits_get_suggestion: '去获取推荐',
     outfits_load_more: '加载更多',
+    outfits_chip_all: '全部',
+    outfits_chip_my_looks: '我的穿搭',
+    outfits_chip_worn: '已穿',
+    outfits_chip_pairings: '搭配',
+    outfits_chip_ai: 'AI 推荐',
+    outfits_total: '共 {count} 套',
     history_filters_title: '筛选',
     history_dates_title: '日期',
     history_month_label: '月份：{value}',
@@ -101,6 +128,19 @@ const messages = {
     wardrobe_empty_title: '衣橱还是空的',
     wardrobe_empty_description: '拍照上传你的第一件单品，开始智能穿搭之旅。',
     wardrobe_add_first_item: '添加第一件单品',
+    wardrobe_sort_created_desc: '最新添加',
+    wardrobe_sort_created_asc: '最早添加',
+    wardrobe_sort_last_worn: '最近穿着',
+    wardrobe_sort_wear_count_asc: '最少穿着',
+    wardrobe_sort_wear_count_desc: '最多穿着',
+    wardrobe_sort_name_asc: '名称 A-Z',
+    wardrobe_all_types: '全部类型',
+    wardrobe_all_folders: '全部文件夹',
+    wardrobe_subtitle: '共 {count} 件单品',
+    wardrobe_add_success: '单品已添加',
+    wardrobe_add_failed: '添加失败',
+    wardrobe_add_action: '添加',
+    wardrobe_load_more: '加载更多',
     login_invite_detected_title: '检测到家庭邀请',
     login_invite_detected_description: '登录后会自动继续加入家庭流程。',
     login_welcome_title: '欢迎回来',
@@ -116,6 +156,9 @@ const messages = {
     login_loading_methods: '正在检查登录方式...',
     login_failed_title: '登录失败',
     login_terms: '继续即表示你同意使用 Wardrowbe 提供的登录与穿搭服务。',
+    login_fallback_error: '登录失败，请重试',
+    login_dev_missing_fields: '请输入 dev email 和 display name',
+    login_unavailable_default: '当前后端未配置可用的小程序登录方式。',
     invite_status_title: '邀请状态',
     invite_missing_title: '未检测到邀请链接',
     invite_missing_description: '请从家庭邀请链接重新进入，或先去家庭页查看当前状态。',
@@ -258,6 +301,30 @@ const messages = {
     pairings_empty_title: '还没有搭配结果',
     pairings_empty_description: '点击上方“生成搭配”让 AI 为你推荐单品组合。',
     pairings_all_sources: '全部来源',
+    outfit_detail_highlights_title: '亮点',
+    outfit_detail_items_title: '单品',
+    outfit_detail_style_notes_title: '搭配建议',
+    outfit_detail_weather_title: '天气',
+    outfit_detail_weather_summary: '{temp} · {condition} · 降水概率 {chance}%',
+    outfit_detail_feedback_title: '我的评价',
+    outfit_detail_feedback_summary: '评分：{rating}/5{comment}',
+    outfit_detail_rate_title: '评价这套穿搭',
+    outfit_detail_rating: '评分：{rating}/5',
+    outfit_detail_comment_placeholder: '写点评价（可选）',
+    outfit_detail_cancel: '取消',
+    outfit_detail_submit: '提交',
+    outfit_detail_accept: '接受',
+    outfit_detail_reject: '拒绝',
+    outfit_detail_rate_action: '评价穿搭',
+    outfit_detail_delete_action: '删除穿搭',
+    outfit_detail_delete_confirm: '确认删除',
+    outfit_detail_toast_accepted: '已接受',
+    outfit_detail_toast_rejected: '已拒绝',
+    outfit_detail_toast_action_failed: '操作失败',
+    outfit_detail_toast_deleted: '已删除',
+    outfit_detail_toast_delete_failed: '删除失败',
+    outfit_detail_toast_feedback_submitted: '反馈已提交',
+    outfit_detail_toast_feedback_failed: '提交失败',
     family_toast_created: '家庭已创建',
     family_toast_joined: '已加入家庭',
     family_toast_invited: '邀请已发送',
@@ -398,6 +465,27 @@ const messages = {
     dashboard_family_title: '👨‍👩‍👧‍👦 Family',
     dashboard_family_browse: 'Browse family feed',
     dashboard_insights_title: '💡 Insights',
+    dashboard_today_label: 'Today',
+    dashboard_hero_ready_title: 'Today is easy to style',
+    dashboard_hero_missing_title: 'Set the pace for today’s wardrobe',
+    dashboard_hero_summary_ready: '{temp} · {condition} · {count} items in wardrobe',
+    dashboard_hero_summary_missing: 'Location is not set yet. Add weather first so suggestions match today better. {count} items in wardrobe',
+    dashboard_weather_synced: 'Weather synced',
+    dashboard_weather_waiting: 'Waiting for weather',
+    dashboard_family_connected: 'Family space available',
+    dashboard_family_members: '{name} · {count} people',
+    dashboard_stat_wardrobe: 'Wardrobe',
+    dashboard_stat_wardrobe_hint: 'Curated items',
+    dashboard_stat_pending: 'Pending',
+    dashboard_stat_pending_hint: 'Looks to review',
+    dashboard_stat_reminders: 'Reminders',
+    dashboard_stat_reminders_hint: 'Active reminders',
+    dashboard_quick_add_description: 'Keep organizing items to improve outfit suggestions.',
+    dashboard_quick_suggest_description: 'Generate a look quickly from weather and occasion.',
+    dashboard_family_members_summary: '{name} · {count} members',
+    dashboard_toast_accept_success: 'Accepted',
+    dashboard_toast_reject_success: 'Rejected',
+    dashboard_toast_action_failed: 'Action failed',
     outfits_loading_title: 'Loading',
     outfits_loading: 'Loading outfits...',
     outfits_empty_title: 'No outfits yet',
@@ -405,6 +493,12 @@ const messages = {
     outfits_empty_description_my_looks: 'Create your first outfit from suggestions.',
     outfits_get_suggestion: 'Get suggestions',
     outfits_load_more: 'Load more',
+    outfits_chip_all: 'All',
+    outfits_chip_my_looks: 'My Looks',
+    outfits_chip_worn: 'Worn',
+    outfits_chip_pairings: 'Pairings',
+    outfits_chip_ai: 'AI Suggestion',
+    outfits_total: '{count} sets',
     history_filters_title: 'Filters',
     history_dates_title: 'Dates',
     history_month_label: 'Month: {value}',
@@ -424,6 +518,19 @@ const messages = {
     wardrobe_empty_title: 'Your wardrobe is still empty',
     wardrobe_empty_description: 'Upload your first item to start building smart outfit suggestions.',
     wardrobe_add_first_item: 'Add your first item',
+    wardrobe_sort_created_desc: 'Newest first',
+    wardrobe_sort_created_asc: 'Oldest first',
+    wardrobe_sort_last_worn: 'Recently worn',
+    wardrobe_sort_wear_count_asc: 'Least worn',
+    wardrobe_sort_wear_count_desc: 'Most worn',
+    wardrobe_sort_name_asc: 'Name A-Z',
+    wardrobe_all_types: 'All types',
+    wardrobe_all_folders: 'All folders',
+    wardrobe_subtitle: '{count} items',
+    wardrobe_add_success: 'Item added',
+    wardrobe_add_failed: 'Add failed',
+    wardrobe_add_action: 'Add',
+    wardrobe_load_more: 'Load more',
     login_invite_detected_title: 'Family invite detected',
     login_invite_detected_description: 'After signing in, the family join flow will continue automatically.',
     login_welcome_title: 'Welcome back',
@@ -439,6 +546,9 @@ const messages = {
     login_loading_methods: 'Checking sign-in methods...',
     login_failed_title: 'Sign-in failed',
     login_terms: 'By continuing, you agree to use Wardrowbe for sign-in and outfit services.',
+    login_fallback_error: 'Sign-in failed. Please try again.',
+    login_dev_missing_fields: 'Enter a dev email and display name',
+    login_unavailable_default: 'No miniapp sign-in method is configured on the backend.',
     invite_status_title: 'Invite status',
     invite_missing_title: 'No invite link detected',
     invite_missing_description: 'Open the family invite link again, or visit the family page first.',
@@ -581,6 +691,30 @@ const messages = {
     pairings_empty_title: 'No pairings yet',
     pairings_empty_description: 'Tap “Generate pairings” above and let AI recommend item combinations.',
     pairings_all_sources: 'All sources',
+    outfit_detail_highlights_title: 'Highlights',
+    outfit_detail_items_title: 'Items',
+    outfit_detail_style_notes_title: 'Styling notes',
+    outfit_detail_weather_title: 'Weather',
+    outfit_detail_weather_summary: '{temp} · {condition} · Precipitation {chance}%',
+    outfit_detail_feedback_title: 'My feedback',
+    outfit_detail_feedback_summary: 'Rating: {rating}/5{comment}',
+    outfit_detail_rate_title: 'Rate this outfit',
+    outfit_detail_rating: 'Rating: {rating}/5',
+    outfit_detail_comment_placeholder: 'Add a quick note (optional)',
+    outfit_detail_cancel: 'Cancel',
+    outfit_detail_submit: 'Submit',
+    outfit_detail_accept: 'Accept',
+    outfit_detail_reject: 'Reject',
+    outfit_detail_rate_action: 'Rate outfit',
+    outfit_detail_delete_action: 'Delete outfit',
+    outfit_detail_delete_confirm: 'Confirm delete',
+    outfit_detail_toast_accepted: 'Accepted',
+    outfit_detail_toast_rejected: 'Rejected',
+    outfit_detail_toast_action_failed: 'Action failed',
+    outfit_detail_toast_deleted: 'Deleted',
+    outfit_detail_toast_delete_failed: 'Delete failed',
+    outfit_detail_toast_feedback_submitted: 'Feedback submitted',
+    outfit_detail_toast_feedback_failed: 'Submit failed',
     family_toast_created: 'Family created',
     family_toast_joined: 'Joined family',
     family_toast_invited: 'Invite sent',
@@ -651,36 +785,47 @@ const messages = {
 
 type MessageKey = keyof typeof messages.zh
 
-export function translate(locale: AppLocale, key: MessageKey): string {
-  return messages[locale][key] ?? messages.zh[key]
+export function translate(localeOrKey: AppLocale | MessageKey, maybeKey?: MessageKey): string {
+  const key = maybeKey ?? (localeOrKey as MessageKey)
+  return messages.zh[key]
 }
 
-export function formatGreeting(locale: AppLocale, name?: string | null): string {
+export function formatGreeting(localeOrName?: AppLocale | string | null, maybeName?: string | null): string {
+  const name =
+    localeOrName === 'zh' || localeOrName == null
+      ? maybeName
+      : localeOrName
   const template = name
-    ? translate(locale, 'dashboard_greeting_named')
-    : translate(locale, 'dashboard_greeting_default')
+    ? translate('dashboard_greeting_named')
+    : translate('dashboard_greeting_default')
   return template.replace('{name}', name?.split(' ')[0] ?? '')
 }
 
 export function formatMessage(
-  locale: AppLocale,
-  key: MessageKey,
-  values: Record<string, string | number>
+  localeOrKey: AppLocale | MessageKey,
+  keyOrValues: MessageKey | Record<string, string | number>,
+  maybeValues?: Record<string, string | number>
 ): string {
+  const key = (
+    typeof keyOrValues === 'string' ? keyOrValues : localeOrKey
+  ) as MessageKey
+  const values =
+    (typeof keyOrValues === 'string' ? maybeValues : keyOrValues) ?? {}
+
   return Object.entries(values).reduce(
     (message, [token, value]) => message.replace(`{${token}}`, String(value)),
-    translate(locale, key)
+    translate(key)
   )
 }
 
 export function useI18n() {
-  const locale = useAuthStore((state) => state.locale)
+  const locale = 'zh' as AppLocale
 
   return {
     locale,
-    t: (key: MessageKey) => translate(locale, key),
+    t: (key: MessageKey) => translate(key),
     tf: (key: MessageKey, values: Record<string, string | number>) =>
-      formatMessage(locale, key, values),
-    greeting: (name?: string | null) => formatGreeting(locale, name),
+      formatMessage(key, values),
+    greeting: (name?: string | null) => formatGreeting(name),
   }
 }

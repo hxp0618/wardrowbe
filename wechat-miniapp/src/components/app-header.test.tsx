@@ -1,3 +1,6 @@
+import fs from 'node:fs'
+import path from 'node:path'
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getWindowInfo = vi.fn()
@@ -28,16 +31,12 @@ vi.mock('../lib/i18n', () => ({
 
 vi.mock('../stores/auth', () => ({
   useAuthStore: (selector: (state: {
-    locale: 'zh'
     appearance: 'dark'
-    setLocale: () => void
     setAppearance: () => void
     setAccessToken: () => void
   }) => unknown) =>
     selector({
-      locale: 'zh',
       appearance: 'dark',
-      setLocale: () => undefined,
       setAppearance: () => undefined,
       setAccessToken: () => undefined,
     }),
@@ -68,5 +67,17 @@ describe('getHeaderMetrics', () => {
       contentHeight: '44px',
       paddingBottom: '12px',
     })
+  })
+
+  it('does not render locale picker or logout action in the app header source', () => {
+    const source = fs.readFileSync(
+      path.resolve('/Users/huang/R/wardrowbe/wechat-miniapp/src/components/app-header.tsx'),
+      'utf8'
+    )
+
+    expect(source).not.toContain('<Picker')
+    expect(source).not.toContain('⇥')
+    expect(source).not.toContain('setLocale')
+    expect(source).not.toContain('handleLogout')
   })
 })

@@ -1,4 +1,4 @@
-import { Picker, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 
@@ -12,12 +12,8 @@ type AppHeaderProps = {
   onMenuClick?: () => void
   title?: string
   hideMenu?: boolean
+  hideProfileBadge?: boolean
 }
-
-const LOCALE_OPTIONS = [
-  { label: '中文', value: 'zh' },
-  { label: 'English', value: 'en' },
-]
 
 function getInitials(name?: string | null): string {
   if (!name) return 'U'
@@ -76,11 +72,8 @@ export function getHeaderMetrics() {
 }
 
 export function AppHeader(props: AppHeaderProps) {
-  const locale = useAuthStore((state) => state.locale)
   const appearance = useAuthStore((state) => state.appearance)
-  const setLocale = useAuthStore((state) => state.setLocale)
   const setAppearance = useAuthStore((state) => state.setAppearance)
-  const setAccessToken = useAuthStore((state) => state.setAccessToken)
   const { data: userProfile } = useUserProfile()
   const [metrics, setMetrics] = useState(() => getHeaderMetrics())
   const { t } = useI18n()
@@ -89,21 +82,10 @@ export function AppHeader(props: AppHeaderProps) {
     setMetrics(getHeaderMetrics())
   }, [])
 
-  const localeIndex = Math.max(
-    0,
-    LOCALE_OPTIONS.findIndex((option) => option.value === locale)
-  )
-
   const handleThemeTap = () => {
     const nextAppearance = appearance === 'dark' ? 'light' : 'dark'
     setAppearance(nextAppearance)
     Taro.setStorageSync('appearance', nextAppearance)
-  }
-
-  const handleLogout = () => {
-    Taro.removeStorageSync('accessToken')
-    setAccessToken(null)
-    void Taro.redirectTo({ url: '/pages/login/index' })
   }
 
   return (
@@ -125,7 +107,7 @@ export function AppHeader(props: AppHeaderProps) {
           height: metrics.contentHeight,
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          gap: '10px',
         }}
       >
         <View
@@ -146,40 +128,14 @@ export function AppHeader(props: AppHeaderProps) {
           <Text style={{ color: colors.text, fontSize: '18px' }}>≡</Text>
         </View>
 
-        <View style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Picker
-            mode='selector'
-            range={LOCALE_OPTIONS.map((option) => option.label)}
-            value={localeIndex}
-            onChange={(event) => {
-              const nextIndex = Number(event.detail.value)
-              const nextLocale = LOCALE_OPTIONS[nextIndex]?.value
-              if (nextLocale) {
-                setLocale(nextLocale as 'zh' | 'en')
-                Taro.setStorageSync('locale', nextLocale)
-              }
-            }}
-          >
-            <View
-              style={{
-                padding: '8px 12px',
-                borderRadius: '12px',
-                backgroundColor: colors.surface,
-                border: `1px solid ${colors.border}`,
-              }}
-            >
-              <Text style={{ color: colors.text, fontSize: '12px' }}>
-                {LOCALE_OPTIONS[localeIndex]?.label || '中文'}
-              </Text>
-            </View>
-          </Picker>
-
+        <View style={{ flex: 1, minWidth: '0' }}>
           {props.title ? (
             <Text
               style={{
                 color: colors.text,
                 fontSize: '15px',
                 fontWeight: 600,
+                display: 'block',
               }}
               numberOfLines={1}
             >
@@ -188,7 +144,7 @@ export function AppHeader(props: AppHeaderProps) {
           ) : null}
         </View>
 
-        <View style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <View style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <View
             onClick={handleThemeTap}
             style={{
@@ -207,37 +163,23 @@ export function AppHeader(props: AppHeaderProps) {
             </Text>
           </View>
 
-          <View
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '999px',
-              backgroundColor: colors.avatar,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: colors.text, fontSize: '12px', fontWeight: 600 }}>
-              {getInitials(userProfile?.display_name || t('nav_settings'))}
-            </Text>
-          </View>
-
-          <View
-            onClick={handleLogout}
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '12px',
-              border: `1px solid ${colors.border}`,
-              backgroundColor: colors.surfaceMuted,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: colors.text, fontSize: '16px' }}>⇥</Text>
-          </View>
+          {!props.hideProfileBadge ? (
+            <View
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '999px',
+                backgroundColor: colors.avatar,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: '12px', fontWeight: 600 }}>
+                {getInitials(userProfile?.display_name || t('nav_settings'))}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </View>

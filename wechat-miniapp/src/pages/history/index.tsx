@@ -41,16 +41,10 @@ export default function HistoryPage() {
   const [occasionIndex, setOccasionIndex] = useState(0)
   const [statusIndex, setStatusIndex] = useState(0)
   const [selectedDate, setSelectedDate] = useState<string>(toDateString(new Date()))
-  const { t, tf, locale } = useI18n()
-  const occasionOptions =
-    locale === 'en'
-      ? ['All occasions', 'Casual', 'Office', 'Formal', 'Date', 'Sporty', 'Outdoor']
-      : ['全部场景', '休闲', '办公', '正式', '约会', '运动', '户外']
-  const statusOptions =
-    locale === 'en'
-      ? ['All statuses', 'Pending', 'Accepted', 'Rejected', 'Viewed']
-      : ['全部状态', '待确认', '已接受', '已拒绝', '已查看']
-  const loadingText = locale === 'en' ? 'Loading history...' : '正在加载历史记录...'
+  const { t, tf } = useI18n()
+  const occasionOptions = ['全部场景', '休闲', '办公', '正式', '约会', '运动', '户外']
+  const statusOptions = ['全部状态', '待确认', '已接受', '已拒绝', '已查看']
+  const loadingText = '正在加载历史记录...'
   const [year, month] = monthValue.split('-').map(Number)
   const occasion = occasionIndex === 0 ? undefined : OCCASION_VALUES[occasionIndex - 1]
   const status = statusIndex === 0 ? undefined : STATUS_VALUES[statusIndex - 1]

@@ -515,16 +515,42 @@ class AIService:
 
         if endpoints:
             for ep in endpoints:
-                if ep.get("enabled", True):
-                    self._endpoints.append(
-                        AIEndpointConfig(
-                            url=ep["url"],
-                            vision_model=ep.get("vision_model", "moondream"),
-                            text_model=ep.get("text_model", "phi3:mini"),
-                            name=ep.get("name", "custom"),
-                            enabled=True,
-                        )
+                if not isinstance(ep, dict):
+                    logger.warning("Skipping invalid AI endpoint config: %r", ep)
+                    continue
+
+                enabled = ep.get("enabled", True)
+                if isinstance(enabled, str):
+                    enabled = enabled.strip().lower() not in {"0", "false", "no", "off"}
+                if not enabled:
+                    continue
+
+                url = ep.get("url")
+                if not isinstance(url, str) or not url.strip():
+                    logger.warning("Skipping invalid AI endpoint config: %r", ep)
+                    continue
+
+                vision_model = ep.get("vision_model")
+                if not isinstance(vision_model, str) or not vision_model.strip():
+                    vision_model = "moondream"
+
+                text_model = ep.get("text_model")
+                if not isinstance(text_model, str) or not text_model.strip():
+                    text_model = "phi3:mini"
+
+                name = ep.get("name")
+                if not isinstance(name, str) or not name.strip():
+                    name = "custom"
+
+                self._endpoints.append(
+                    AIEndpointConfig(
+                        url=url.strip(),
+                        vision_model=vision_model,
+                        text_model=text_model,
+                        name=name,
+                        enabled=True,
                     )
+                )
 
         # Always add default endpoint as fallback (even if user has custom endpoints)
         # This ensures we can fall back to in-house Ollama if user endpoints are unreachable

@@ -58,7 +58,7 @@ function normalizeLocationError(error: unknown): WechatLocationError {
       (error as { errMsg: string }).errMsg) ||
     (error instanceof Error ? error.message : '')
 
-  const message = rawMessage.toLowerCase()
+  const message = String(rawMessage).toLowerCase()
 
   if (
     message.includes('auth deny') ||

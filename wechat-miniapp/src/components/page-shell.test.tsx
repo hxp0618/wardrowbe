@@ -2,6 +2,10 @@ import type { ReactElement } from 'react'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const getWindowInfo = vi.fn()
+const getAppBaseInfo = vi.fn()
+const getMenuButtonBoundingClientRect = vi.fn()
+
 vi.mock('@tarojs/components', () => ({
   Text: 'text',
   View: 'view',
@@ -9,7 +13,11 @@ vi.mock('@tarojs/components', () => ({
 }))
 
 vi.mock('@tarojs/taro', () => ({
-  default: {},
+  default: {
+    getWindowInfo,
+    getAppBaseInfo,
+    getMenuButtonBoundingClientRect,
+  },
 }))
 
 vi.mock('../hooks/use-user', () => ({
@@ -23,6 +31,9 @@ vi.mock('../stores/auth', () => ({
 describe('createPageShellHeader', () => {
   beforeEach(() => {
     vi.resetModules()
+    getWindowInfo.mockReset()
+    getAppBaseInfo.mockReset()
+    getMenuButtonBoundingClientRect.mockReset()
   })
 
   it('wires the default header menu action to the provided callback', () => {
@@ -62,6 +73,22 @@ describe('createPageShellHeader', () => {
           },
         } as never)
       ).toBeUndefined()
+    })
+  })
+
+  it('falls back to a safe top chrome height when platform APIs throw', () => {
+    getWindowInfo.mockImplementation(() => {
+      throw new Error('timeout')
+    })
+    getAppBaseInfo.mockImplementation(() => {
+      throw new Error('timeout')
+    })
+    getMenuButtonBoundingClientRect.mockImplementation(() => {
+      throw new Error('timeout')
+    })
+
+    return import('./page-shell').then((pageShellModule) => {
+      expect(pageShellModule.getPageTopChromeHeight()).toBe(70)
     })
   })
 })

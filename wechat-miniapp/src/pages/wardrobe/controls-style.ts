@@ -1,43 +1,28 @@
 import type { CSSProperties } from 'react'
 
+import {
+  getEditorialChipLabelStyle,
+  getEditorialChipStyle,
+  getEditorialCompactButtonStyle,
+  getEditorialPickerIconStyle,
+  getEditorialPickerLabelStyle,
+  getEditorialPickerTriggerStyle,
+} from '../../components/editorial-style'
+
 import { colors } from '../../components/ui-theme'
 
 type WardrobeChipTone = 'default' | 'favorite' | 'warning'
 
 export function getWardrobePickerStyle(): CSSProperties {
-  return {
-    width: '100%',
-    minHeight: '40px',
-    padding: '0 12px',
-    borderRadius: '12px',
-    backgroundColor: colors.surface,
-    border: `1px solid ${colors.border}`,
-    boxSizing: 'border-box',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '8px',
-  }
+  return getEditorialPickerTriggerStyle()
 }
 
 export function getWardrobePickerLabelStyle(): CSSProperties {
-  return {
-    flex: 1,
-    fontSize: '13px',
-    fontWeight: 600,
-    color: colors.text,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  }
+  return getEditorialPickerLabelStyle()
 }
 
 export function getWardrobePickerIconStyle(): CSSProperties {
-  return {
-    fontSize: '11px',
-    color: colors.textSoft,
-    flexShrink: 0,
-  }
+  return getEditorialPickerIconStyle()
 }
 
 export function getWardrobeChipStyle(
@@ -45,33 +30,11 @@ export function getWardrobeChipStyle(
   tone: WardrobeChipTone = 'default'
 ): CSSProperties {
   if (active && tone === 'favorite') {
-    return {
-      minHeight: '32px',
-      padding: '0 12px',
-      borderRadius: '999px',
-      backgroundColor: colors.accent,
-      color: colors.accentText,
-      border: `1px solid ${colors.accent}`,
-      boxSizing: 'border-box',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }
+    return getEditorialChipStyle(true)
   }
 
   if (active && tone === 'warning') {
-    return {
-      minHeight: '32px',
-      padding: '0 12px',
-      borderRadius: '999px',
-      backgroundColor: '#fffbeb',
-      color: '#b45309',
-      border: '1px solid #fcd34d',
-      boxSizing: 'border-box',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }
+    return getEditorialChipStyle(true, 'warning')
   }
 
   if (active) {
@@ -104,17 +67,9 @@ export function getWardrobeChipStyle(
 }
 
 export function getWardrobeChipLabelStyle(active: boolean): CSSProperties {
-  return {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: active ? 'inherit' : colors.textMuted,
-  }
+  return getEditorialChipLabelStyle(active)
 }
 
 export function getWardrobeCompactActionStyle(): CSSProperties {
-  return {
-    minHeight: '38px',
-    padding: '0 12px',
-    borderRadius: '12px',
-  }
+  return getEditorialCompactButtonStyle()
 }

@@ -33,6 +33,6 @@ export const api = createApiClient({
   basePath: API_BASE_PATH,
   bindings: {
     getAccessToken: () => useAuthStore.getState().accessToken,
-    getAcceptLanguage: () => useAuthStore.getState().locale,
+    getAcceptLanguage: () => 'zh-CN',
   },
 })

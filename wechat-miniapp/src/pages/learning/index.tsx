@@ -17,31 +17,20 @@ import { formatColorLabel, formatItemTypeLabel, formatOccasionLabel, formatStyle
 import { useI18n } from '../../lib/i18n'
 export default function LearningPage() {
   const canRender = useAuthGuard()
-  const { t, tf, locale } = useI18n()
+  const { t, tf } = useI18n()
   const { data, isLoading } = useLearning()
   const recompute = useRecomputeLearning()
   const generate = useGenerateInsights()
   const acknowledge = useAcknowledgeInsight()
-  const weatherLabels: Record<string, string> =
-    locale === 'en'
-      ? {
-          sunny: 'Sunny',
-          cloudy: 'Cloudy',
-          rainy: 'Rainy',
-          snowy: 'Snowy',
-          windy: 'Windy',
-          hot: 'Hot',
-          cold: 'Cold',
-        }
-      : {
-          sunny: '晴天',
-          cloudy: '阴天',
-          rainy: '雨天',
-          snowy: '雪天',
-          windy: '大风',
-          hot: '炎热',
-          cold: '寒冷',
-        }
+  const weatherLabels: Record<string, string> = {
+    sunny: '晴天',
+    cloudy: '阴天',
+    rainy: '雨天',
+    snowy: '雪天',
+    windy: '大风',
+    hot: '炎热',
+    cold: '寒冷',
+  }
 
   if (!canRender) {
     return null

@@ -139,15 +139,12 @@ export function listColorDistribution(): Promise<Array<{ color: string; count: n
 function buildUploadHeaders(): Record<string, string> {
   const accessToken =
     useAuthStore.getState().accessToken ?? Taro.getStorageSync<string | undefined>('accessToken')
-  const locale = useAuthStore.getState().locale
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = {
+    'Accept-Language': 'zh-CN',
+  }
 
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`
-  }
-
-  if (locale) {
-    headers['Accept-Language'] = locale
   }
 
   return headers

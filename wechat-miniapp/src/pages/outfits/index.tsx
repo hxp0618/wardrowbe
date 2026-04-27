@@ -16,14 +16,6 @@ import type { Outfit, OutfitFilters } from '../../services/types'
 
 type FilterChip = 'all' | 'my-looks' | 'worn' | 'pairings' | 'ai'
 
-const CHIPS: { key: FilterChip; label: string }[] = [
-  { key: 'all', label: '全部' },
-  { key: 'my-looks', label: '我的穿搭' },
-  { key: 'worn', label: '已穿' },
-  { key: 'pairings', label: '搭配' },
-  { key: 'ai', label: 'AI 推荐' },
-]
-
 function chipToFilters(chip: FilterChip): OutfitFilters {
   switch (chip) {
     case 'my-looks': return { is_lookbook: true }
@@ -39,7 +31,14 @@ export default function OutfitsPage() {
   const [activeChip, setActiveChip] = useState<FilterChip>('all')
   const [page, setPage] = useState(1)
   const [detailOutfit, setDetailOutfit] = useState<Outfit | null>(null)
-  const { t } = useI18n()
+  const { t, tf } = useI18n()
+  const chips: { key: FilterChip; label: string }[] = [
+    { key: 'all', label: t('outfits_chip_all') },
+    { key: 'my-looks', label: t('outfits_chip_my_looks') },
+    { key: 'worn', label: t('outfits_chip_worn') },
+    { key: 'pairings', label: t('outfits_chip_pairings') },
+    { key: 'ai', label: t('outfits_chip_ai') },
+  ]
   const filters = chipToFilters(activeChip)
   const { data, isLoading } = useOutfits(filters, page, 20)
 
@@ -51,7 +50,7 @@ export default function OutfitsPage() {
     <PageShell title={t('page_outfits_title')} subtitle={t('page_outfits_subtitle')} navKey='outfits' useBuiltInTabBar>
       {/* Filter chips */}
       <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '4px' }}>
-        {CHIPS.map((chip) => (
+        {chips.map((chip) => (
           <View
             key={chip.key}
             onClick={() => { setActiveChip(chip.key); setPage(1) }}
@@ -73,7 +72,7 @@ export default function OutfitsPage() {
         ))}
         {data && (
           <Text style={{ fontSize: '12px', color: colors.textMuted, alignSelf: 'center', marginLeft: 'auto' }}>
-            共 {data.total} 套
+            {tf('outfits_total', { count: data.total })}
           </Text>
         )}
       </View>

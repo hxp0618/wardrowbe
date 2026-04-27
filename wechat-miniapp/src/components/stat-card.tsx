@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 import { Text, View } from '@tarojs/components'
 
 import { cardStyle, colors } from './ui-theme'
@@ -6,6 +8,7 @@ type StatCardProps = {
   label: string
   value: string
   hint?: string
+  style?: CSSProperties
 }
 
 export function StatCard(props: StatCardProps) {
@@ -16,6 +19,7 @@ export function StatCard(props: StatCardProps) {
         flex: 1,
         minWidth: '120px',
         padding: '16px',
+        ...props.style,
       }}
     >
       <Text

@@ -15,16 +15,14 @@ describe('AppProvider auth restore', () => {
     const { useAuthStore } = await import('../stores/auth')
     useAuthStore.setState({
       accessToken: null,
-      locale: 'zh',
       appearance: 'dark',
       hydrated: false,
     })
   })
 
-  it('restores access token, locale and appearance from local storage into the auth store', async () => {
+  it('restores access token and appearance from local storage into the auth store', async () => {
     getStorageSync.mockImplementation((key: string) => {
       if (key === 'accessToken') return 'persisted-token'
-      if (key === 'locale') return 'en'
       if (key === 'appearance') return 'light'
       return undefined
     })
@@ -34,20 +32,32 @@ describe('AppProvider auth restore', () => {
 
     expect(restoreAccessTokenSession()).toBe('persisted-token')
     expect(getStorageSync).toHaveBeenCalledWith('accessToken')
-    expect(getStorageSync).toHaveBeenCalledWith('locale')
     expect(getStorageSync).toHaveBeenCalledWith('appearance')
     expect(useAuthStore.getState()).toMatchObject({
       accessToken: 'persisted-token',
-      locale: 'en',
       appearance: 'light',
       hydrated: true,
     })
   })
 
+  it('does not depend on locale storage anymore', async () => {
+    getStorageSync.mockImplementation((key: string) => {
+      if (key === 'accessToken') return 'persisted-token'
+      if (key === 'appearance') return 'light'
+      return undefined
+    })
+
+    const { restoreAccessTokenSession } = await import('./app-provider')
+
+    expect(restoreAccessTokenSession()).toBe('persisted-token')
+    expect(getStorageSync).toHaveBeenCalledWith('accessToken')
+    expect(getStorageSync).toHaveBeenCalledWith('appearance')
+    expect(getStorageSync).not.toHaveBeenCalledWith('locale')
+  })
+
   it('defaults to light appearance when no stored preference exists', async () => {
     getStorageSync.mockImplementation((key: string) => {
       if (key === 'accessToken') return 'persisted-token'
-      if (key === 'locale') return 'zh'
       if (key === 'appearance') return undefined
       return undefined
     })
@@ -58,7 +68,6 @@ describe('AppProvider auth restore', () => {
     expect(restoreAccessTokenSession()).toBe('persisted-token')
     expect(useAuthStore.getState()).toMatchObject({
       accessToken: 'persisted-token',
-      locale: 'zh',
       appearance: 'light',
       hydrated: true,
     })
@@ -75,7 +84,6 @@ describe('AppProvider auth restore', () => {
     expect(restoreAccessTokenSession()).toBeNull()
     expect(useAuthStore.getState()).toMatchObject({
       accessToken: null,
-      locale: 'zh',
       appearance: 'light',
       hydrated: true,
     })

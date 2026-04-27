@@ -40,6 +40,7 @@ export function MobileTabBar(props: MobileTabBarProps) {
         display: 'flex',
         padding: '8px',
         boxSizing: 'border-box',
+        boxShadow: '0 10px 24px rgba(82, 62, 40, 0.08)',
       }}
     >
       {TAB_ITEMS.map((item) => {
@@ -57,7 +58,7 @@ export function MobileTabBar(props: MobileTabBarProps) {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '4px',
-              backgroundColor: active ? colors.surfaceMuted : 'transparent',
+              backgroundColor: active ? colors.surfaceRaised : 'transparent',
             }}
           >
             <Text style={{ color: active ? colors.text : colors.textSoft, fontSize: '16px' }}>

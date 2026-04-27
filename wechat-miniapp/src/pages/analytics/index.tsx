@@ -17,8 +17,8 @@ const DAY_VALUES = [30, 60, 90]
 export default function AnalyticsPage() {
   const canRender = useAuthGuard()
   const [dayIndex, setDayIndex] = useState(1)
-  const { t, tf, locale } = useI18n()
-  const dayOptions = locale === 'en' ? ['30 days', '60 days', '90 days'] : DAY_OPTIONS
+  const { t, tf } = useI18n()
+  const dayOptions = DAY_OPTIONS
   const days = DAY_VALUES[dayIndex]
   const { data, isLoading } = useAnalytics(days)
 

@@ -60,7 +60,7 @@ describe('chooseWechatLocation', () => {
 
     const { chooseWechatLocation, WechatLocationError } = await import('./wechat-location')
 
-    await expect(chooseWechatLocation()).rejects.toMatchObject<WechatLocationError>({
+    await expect(chooseWechatLocation()).rejects.toMatchObject({
       code: 'permission-denied',
     })
 
@@ -80,7 +80,7 @@ describe('chooseWechatLocation', () => {
 
     const { chooseWechatLocation, WechatLocationError } = await import('./wechat-location')
 
-    await expect(chooseWechatLocation()).rejects.toMatchObject<WechatLocationError>({
+    await expect(chooseWechatLocation()).rejects.toMatchObject({
       code: 'canceled',
     })
   })

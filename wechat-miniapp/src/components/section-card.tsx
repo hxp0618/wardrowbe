@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 import { Text, View } from '@tarojs/components'
 
@@ -8,6 +8,8 @@ type SectionCardProps = {
   title: string
   extra?: ReactNode
   children: ReactNode
+  style?: CSSProperties
+  contentStyle?: CSSProperties
 }
 
 export function SectionCard(props: SectionCardProps) {
@@ -16,6 +18,7 @@ export function SectionCard(props: SectionCardProps) {
       style={{
         ...cardStyle,
         padding: '20px',
+        ...props.style,
       }}
     >
       <View
@@ -30,7 +33,7 @@ export function SectionCard(props: SectionCardProps) {
         <Text style={sectionTitleStyle}>{props.title}</Text>
         {props.extra ? <View>{props.extra}</View> : null}
       </View>
-      <View style={{ color: colors.text }}>{props.children}</View>
+      <View style={{ color: colors.text, ...props.contentStyle }}>{props.children}</View>
     </View>
   )
 }

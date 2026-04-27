@@ -2,10 +2,22 @@ import { useState, useEffect } from 'react'
 import { Image, Picker, Slider, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
-import { EmptyState } from '../../components/empty-state'
+import {
+  getEditorialCardStyle,
+  getEditorialChipLabelStyle,
+  getEditorialChipStyle,
+  getEditorialCompactButtonStyle,
+  getEditorialFeatureCardStyle,
+  getEditorialMetricTileStyle,
+  getEditorialPickerIconStyle,
+  getEditorialPickerLabelStyle,
+  getEditorialPickerTriggerStyle,
+  getEditorialRaisedPanelStyle,
+  getEditorialTintedPanelStyle,
+} from '../../components/editorial-style'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
-import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
+import { colors, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import {
   useAcceptOutfit,
@@ -67,6 +79,39 @@ function getForecastDaysForTargetDate(targetDate: string): number {
   return diff > 0 ? diff + 1 : 0
 }
 
+function EditorialPicker(props: {
+  value: string
+  mode: 'selector' | 'date'
+  range?: string[]
+  index?: number
+  onChange: (value: string) => void
+}) {
+  if (props.mode === 'date') {
+    return (
+      <Picker mode='date' value={props.value} onChange={(event) => props.onChange(event.detail.value)}>
+        <View style={getEditorialPickerTriggerStyle()}>
+          <Text style={getEditorialPickerLabelStyle()}>{props.value}</Text>
+          <Text style={getEditorialPickerIconStyle()}>▾</Text>
+        </View>
+      </Picker>
+    )
+  }
+
+  return (
+    <Picker
+      mode='selector'
+      range={props.range!}
+      value={props.index}
+      onChange={(event) => props.onChange(String(event.detail.value))}
+    >
+      <View style={getEditorialPickerTriggerStyle()}>
+        <Text style={getEditorialPickerLabelStyle()}>{props.value}</Text>
+        <Text style={getEditorialPickerIconStyle()}>▾</Text>
+      </View>
+    </Picker>
+  )
+}
+
 export default function SuggestPage() {
   const canRender = useAuthGuard()
   const { data: weather, isLoading: weatherLoading } = useWeather()
@@ -87,107 +132,51 @@ export default function SuggestPage() {
     forecastDays,
     forecastDays > 0
   )
-  const { t, locale } = useI18n()
-  const occasionOptions =
-    locale === 'en'
-      ? [
-          { label: 'Casual', value: 'casual' },
-          { label: 'Office', value: 'office' },
-          { label: 'Formal', value: 'formal' },
-          { label: 'Date', value: 'date' },
-          { label: 'Sporty', value: 'sporty' },
-          { label: 'Outdoor', value: 'outdoor' },
-        ]
-      : OCCASIONS
-  const weatherConditionOptions =
-    locale === 'en'
-      ? [
-          { label: '☀️ Sunny', value: 'sunny' },
-          { label: '☁️ Cloudy', value: 'cloudy' },
-          { label: '🌧️ Rainy', value: 'rainy' },
-        ]
-      : WEATHER_CONDITIONS
-  const datePresets =
-    locale === 'en'
-      ? [
-          { label: 'Today', offset: 0 },
-          { label: 'Tomorrow', offset: 1 },
-          { label: 'In 3 days', offset: 3 },
-          { label: 'In 1 week', offset: 7 },
-        ]
-      : DATE_PRESETS
-  const text =
-    locale === 'en'
-      ? {
-          hintRain: 'Bring an umbrella or add a water-resistant layer today.',
-          hintCold: 'It is cold, so add a coat or knit layer.',
-          hintCool: 'It is cool, so a light outer layer or layering works better.',
-          hintHot: 'It is hot, so prioritize light and breathable pieces.',
-          hintWindy: 'Wind is noticeable, so consider a windproof layer.',
-          hintDefault: 'Weather is stable, so you can prioritize style for the occasion.',
-          suggestFailed: 'Suggestion failed',
-          accepted: 'Accepted',
-          actionFailed: 'Action failed',
-          restart: 'Start over',
-          resultWeatherTitle: 'Weather',
-          resultRecommendationTitle: '✨ Recommended for you',
-          tryAnother: 'Try another',
-          wearThis: 'Wear this',
-          reject: 'Reject',
-          targetWeatherTitle: 'Target date weather',
-          currentWeatherTitle: 'Current weather',
-          weatherLoading: 'Loading weather...',
-          weatherLow: (value: string) => `Low ${value}`,
-          weatherFeelsLike: (value: string) => `Feels like ${value}`,
-          weatherWind: (value: number) => `Wind ${Math.round(value)} km/h`,
-          weatherPrecipitation: (value: number) => `Precipitation ${value}%`,
-          weatherSkip: 'Location not set. Weather will be skipped.',
-          errorTitle: 'Error',
-          chooseOccasion: 'Choose an occasion',
-          wearDate: 'Wear date',
-          weatherOverride: 'Weather override',
-          collapse: 'Collapse',
-          expand: 'Expand',
-          weatherOverrideHint: 'Optionally set weather conditions manually',
-          temperature: (value: string) => `Temperature: ${value}`,
-          generating: 'Generating...',
-          generate: 'Generate suggestion',
-        }
-      : {
-          hintRain: '今天更适合带伞或准备防水层。',
-          hintCold: '气温偏低，建议增加外套或针织层。',
-          hintCool: '偏凉，轻薄外套或叠穿会更稳妥。',
-          hintHot: '偏热，优先轻薄透气单品。',
-          hintWindy: '风比较明显，建议考虑防风层。',
-          hintDefault: '天气条件平稳，可以按场景优先考虑风格。',
-          suggestFailed: '推荐失败',
-          accepted: '已接受',
-          actionFailed: '操作失败',
-          restart: '重新开始',
-          resultWeatherTitle: '天气',
-          resultRecommendationTitle: '✨ 为你推荐',
-          tryAnother: '换一套',
-          wearThis: '就穿它',
-          reject: '拒绝',
-          targetWeatherTitle: '目标日期天气',
-          currentWeatherTitle: '当前天气',
-          weatherLoading: '加载天气中...',
-          weatherLow: (value: string) => `最低 ${value}`,
-          weatherFeelsLike: (value: string) => `体感 ${value}`,
-          weatherWind: (value: number) => `风速 ${Math.round(value)}km/h`,
-          weatherPrecipitation: (value: number) => `降水 ${value}%`,
-          weatherSkip: '未设置位置，将跳过天气',
-          errorTitle: '错误',
-          chooseOccasion: '选择场景',
-          wearDate: '穿着日期',
-          weatherOverride: '天气覆盖',
-          collapse: '收起',
-          expand: '展开',
-          weatherOverrideHint: '手动设置天气条件（可选）',
-          temperature: (value: string) => `温度：${value}`,
-          generating: '生成中...',
-          generate: '生成推荐',
-        }
+  const { t } = useI18n()
+  const occasionOptions = OCCASIONS
+  const weatherConditionOptions = WEATHER_CONDITIONS
+  const datePresets = DATE_PRESETS
+  const text = {
+    hintRain: '今天更适合带伞或准备防水层。',
+    hintCold: '气温偏低，建议增加外套或针织层。',
+    hintCool: '偏凉，轻薄外套或叠穿会更稳妥。',
+    hintHot: '偏热，优先轻薄透气单品。',
+    hintWindy: '风比较明显，建议考虑防风层。',
+    hintDefault: '天气条件平稳，可以按场景优先考虑风格。',
+    suggestFailed: '推荐失败',
+    accepted: '已接受',
+    actionFailed: '操作失败',
+    restart: '重新开始',
+    resultWeatherTitle: '天气',
+    resultRecommendationTitle: '✨ 为你推荐',
+    tryAnother: '换一套',
+    wearThis: '就穿它',
+    reject: '拒绝',
+    targetWeatherTitle: '目标日期天气',
+    currentWeatherTitle: '当前天气',
+    weatherLoading: '加载天气中...',
+    weatherLow: (value: string) => `最低 ${value}`,
+    weatherFeelsLike: (value: string) => `体感 ${value}`,
+    weatherWind: (value: number) => `风速 ${Math.round(value)}km/h`,
+    weatherPrecipitation: (value: number) => `降水 ${value}%`,
+    weatherSkip: '未设置位置，将跳过天气',
+    errorTitle: '错误',
+    chooseOccasion: '选择场景',
+    wearDate: '穿着日期',
+    weatherOverride: '天气覆盖',
+    collapse: '收起',
+    expand: '展开',
+    weatherOverrideHint: '手动设置天气条件（可选）',
+    temperature: (value: string) => `温度：${value}`,
+    generating: '生成中...',
+    generate: '生成推荐',
+    resultHeroTitle: '已生成今日推荐',
+    resultHeroDescription: '基于场景、天气和衣橱内容生成，可继续微调或直接接受。',
+    resultPrecipitation: (value: number) => `降水 ${value}%`,
+    formHeroTitle: '按天气和场景生成穿搭',
+    formHeroDescription: '先选场景，再定日期，系统会结合天气和衣橱内容给你一套更贴近当天状态的推荐。',
+    weatherPending: '待同步',
+  }
 
   useEffect(() => {
     if (prefs?.default_occasion && !selectedOccasion) {
@@ -274,11 +263,45 @@ export default function SuggestPage() {
   }
 
   // Show result
-    if (outfit) {
+  if (outfit) {
     return (
       <PageShell title={t('page_suggest_result_title')} navKey='suggest' useBuiltInTabBar>
+        <View
+          style={{
+            ...getEditorialFeatureCardStyle(),
+            padding: '18px',
+            marginBottom: '2px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <Text style={{ display: 'block', fontSize: '12px', color: colors.textSoft }}>OUTFIT READY</Text>
+          <Text style={{ display: 'block', marginTop: '6px', fontSize: '22px', fontWeight: 700, color: colors.text }}>
+            {text.resultHeroTitle}
+          </Text>
+          <Text style={{ display: 'block', marginTop: '8px', fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
+            {text.resultHeroDescription}
+          </Text>
+          <View style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <View style={{ ...getEditorialMetricTileStyle('sand'), flex: 1, minWidth: '110px' }}>
+              <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>OCCASION</Text>
+              <Text style={{ display: 'block', marginTop: '6px', fontSize: '15px', fontWeight: 700, color: colors.text }}>
+                {formatOccasionLabel(outfit.occasion)}
+              </Text>
+            </View>
+            <View style={{ ...getEditorialMetricTileStyle('sky'), flex: 1, minWidth: '110px' }}>
+              <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>DATE</Text>
+              <Text style={{ display: 'block', marginTop: '6px', fontSize: '15px', fontWeight: 700, color: colors.text }}>
+                {outfit.scheduled_for || targetDate}
+              </Text>
+            </View>
+          </View>
+        </View>
         <View style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <Text style={{ fontSize: '12px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '4px 10px', borderRadius: '999px' }}>{formatOccasionLabel(outfit.occasion)}</Text>
+          <View style={getEditorialChipStyle(true)}>
+            <Text style={getEditorialChipLabelStyle(true)}>{formatOccasionLabel(outfit.occasion)}</Text>
+          </View>
           {outfit.scheduled_for && <Text style={{ fontSize: '12px', color: colors.textMuted }}>{outfit.scheduled_for}</Text>}
           <View onClick={handleNewRequest} style={{ marginLeft: 'auto' }}>
             <Text style={{ fontSize: '12px', color: colors.textMuted }}>{text.restart}</Text>
@@ -286,14 +309,19 @@ export default function SuggestPage() {
         </View>
 
         {outfit.weather && (
-          <SectionCard title={text.resultWeatherTitle}>
-              <Text style={{ fontSize: '14px', color: colors.textMuted }}>
-              {displayTemp(outfit.weather.temperature, unit)} · {formatWeatherConditionLabel(outfit.weather.condition)} · 降水 {outfit.weather.precipitation_chance}%
-            </Text>
+          <SectionCard title={text.resultWeatherTitle} style={getEditorialCardStyle()}>
+            <View style={{ ...getEditorialTintedPanelStyle('sky'), padding: '16px' }}>
+              <Text style={{ display: 'block', fontSize: '28px', fontWeight: 700, color: colors.text }}>
+                {displayTemp(outfit.weather.temperature, unit)}
+              </Text>
+              <Text style={{ display: 'block', marginTop: '6px', fontSize: '14px', color: colors.textMuted }}>
+                {formatWeatherConditionLabel(outfit.weather.condition)} · {text.resultPrecipitation(outfit.weather.precipitation_chance)}
+              </Text>
+            </View>
           </SectionCard>
         )}
 
-        <SectionCard title={text.resultRecommendationTitle}>
+        <SectionCard title={text.resultRecommendationTitle} style={getEditorialRaisedPanelStyle()}>
           {outfit.reasoning && (
             <Text style={{ display: 'block', fontSize: '16px', fontWeight: 600, color: colors.text, marginBottom: '12px' }}>{outfit.reasoning}</Text>
           )}
@@ -308,16 +336,16 @@ export default function SuggestPage() {
             {outfit.items.map((item) => {
               const imgUrl = item.thumbnail_url || item.image_url
               return (
-                <View key={item.id} style={{ width: '140px' }}>
+                <View key={item.id} style={{ width: '140px', ...getEditorialCardStyle(), padding: '10px' }}>
                   {imgUrl ? (
-                    <Image src={imgUrl} mode='aspectFill' style={{ width: '140px', height: '140px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }} />
+                    <Image src={imgUrl} mode='aspectFill' style={{ width: '120px', height: '132px', borderRadius: '16px', backgroundColor: colors.surfaceMuted }} />
                   ) : (
-                    <View style={{ width: '140px', height: '140px', borderRadius: '14px', backgroundColor: colors.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={{ width: '120px', height: '132px', borderRadius: '16px', backgroundColor: colors.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Text style={{ fontSize: '13px', color: colors.textMuted }}>{formatItemTypeLabel(item.type)}</Text>
                     </View>
                   )}
                   <Text style={{ display: 'block', fontSize: '13px', color: colors.text, marginTop: '6px' }} numberOfLines={1}>{item.name || formatItemTypeLabel(item.type)}</Text>
-                  {item.layer_type && <Text style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '2px 8px', borderRadius: '999px' }}>{item.layer_type}</Text>}
+                  {item.layer_type && <Text style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '2px 8px', borderRadius: '999px', marginTop: '4px', display: 'inline-flex' }}>{item.layer_type}</Text>}
                 </View>
               )
             })}
@@ -330,13 +358,13 @@ export default function SuggestPage() {
         </SectionCard>
 
         <View style={{ display: 'flex', gap: '10px' }}>
-          <View onClick={handleTryAnother} style={{ ...secondaryButtonStyle, flex: 1 }}>
+          <View onClick={handleTryAnother} style={{ ...secondaryButtonStyle, ...getEditorialCompactButtonStyle(), flex: 1 }}>
             <Text style={{ fontSize: '14px', color: colors.text }}>{text.tryAnother}</Text>
           </View>
-          <View onClick={handleAccept} style={{ ...primaryButtonStyle, flex: 1 }}>
+          <View onClick={handleAccept} style={{ ...primaryButtonStyle, ...getEditorialCompactButtonStyle(), flex: 1 }}>
             <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{text.wearThis}</Text>
           </View>
-          <View onClick={handleReject} style={{ ...secondaryButtonStyle, minWidth: '64px' }}>
+          <View onClick={handleReject} style={{ ...secondaryButtonStyle, ...getEditorialCompactButtonStyle(), minWidth: '64px' }}>
             <Text style={{ fontSize: '14px', color: colors.textMuted }}>{text.reject}</Text>
           </View>
         </View>
@@ -347,11 +375,75 @@ export default function SuggestPage() {
   // Show request form
   return (
     <PageShell title={t('page_suggest_title')} subtitle={t('page_suggest_subtitle')} navKey='suggest' useBuiltInTabBar>
-      <SectionCard title={forecastDay ? text.targetWeatherTitle : text.currentWeatherTitle}>
+      <View
+        style={{
+          ...getEditorialFeatureCardStyle(),
+          padding: '18px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}
+      >
+        <View>
+          <Text style={{ display: 'block', fontSize: '12px', color: colors.textSoft }}>STYLE STUDIO</Text>
+          <Text style={{ display: 'block', marginTop: '6px', fontSize: '22px', fontWeight: 700, color: colors.text }}>
+            {text.formHeroTitle}
+          </Text>
+          <Text style={{ display: 'block', marginTop: '8px', fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
+            {text.formHeroDescription}
+          </Text>
+        </View>
+        <View style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <View
+            style={{
+              ...getEditorialMetricTileStyle('sand'),
+              flex: 1,
+              minWidth: '110px',
+              border: 'none',
+              borderRadius: '0',
+            }}
+          >
+            <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>OCCASION</Text>
+            <Text style={{ display: 'block', marginTop: '6px', fontSize: '15px', fontWeight: 700, color: colors.text }}>
+              {selectedOccasion ? formatOccasionLabel(selectedOccasion) : text.chooseOccasion}
+            </Text>
+          </View>
+          <View
+            style={{
+              ...getEditorialMetricTileStyle('sky'),
+              flex: 1,
+              minWidth: '110px',
+              border: 'none',
+              borderRadius: '0',
+            }}
+          >
+            <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>DATE</Text>
+            <Text style={{ display: 'block', marginTop: '6px', fontSize: '15px', fontWeight: 700, color: colors.text }}>
+              {targetDate}
+            </Text>
+          </View>
+          <View
+            style={{
+              ...getEditorialMetricTileStyle('sage'),
+              flex: 1,
+              minWidth: '110px',
+              border: 'none',
+              borderRadius: '0',
+            }}
+          >
+            <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>WEATHER</Text>
+            <Text style={{ display: 'block', marginTop: '6px', fontSize: '15px', fontWeight: 700, color: colors.text }}>
+              {weatherSummary ? formatWeatherConditionLabel(weatherSummary.condition) : text.weatherPending}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <SectionCard title={forecastDay ? text.targetWeatherTitle : text.currentWeatherTitle} style={getEditorialCardStyle()}>
         {weatherLoading || forecastLoading ? (
           <Text style={{ fontSize: '14px', color: colors.textMuted }}>{text.weatherLoading}</Text>
         ) : weatherSummary ? (
-          <View>
+          <View style={{ ...getEditorialTintedPanelStyle('sky'), padding: '16px' }}>
             <View style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px' }}>
               <View style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                 <Text style={{ fontSize: '34px', fontWeight: 700, color: colors.text }}>
@@ -381,36 +473,40 @@ export default function SuggestPage() {
             ) : null}
           </View>
         ) : (
-          <Text style={{ fontSize: '13px', color: colors.textMuted }}>{text.weatherSkip}</Text>
+          <View
+            style={{
+              ...getEditorialTintedPanelStyle('rose'),
+              padding: '16px',
+              border: 'none',
+              borderRadius: '0',
+            }}
+          >
+            <Text style={{ fontSize: '13px', color: colors.textMuted }}>{text.weatherSkip}</Text>
+          </View>
         )}
       </SectionCard>
 
       {error && (
-        <SectionCard title={text.errorTitle}>
+        <SectionCard title={text.errorTitle} style={getEditorialCardStyle()}>
           <Text style={{ fontSize: '13px', color: colors.danger }}>{error}</Text>
         </SectionCard>
       )}
 
-      <SectionCard title={text.chooseOccasion}>
+      <SectionCard title={text.chooseOccasion} style={getEditorialRaisedPanelStyle()}>
         <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
           {occasionOptions.map((o) => (
             <View
               key={o.value}
               onClick={() => setSelectedOccasion(o.value)}
-              style={{
-                padding: '10px 18px',
-                borderRadius: '999px',
-                border: selectedOccasion === o.value ? `2px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                backgroundColor: selectedOccasion === o.value ? colors.surfaceSelected : colors.surfaceMuted,
-              }}
+              style={getEditorialChipStyle(selectedOccasion === o.value)}
             >
-              <Text style={{ fontSize: '13px', color: selectedOccasion === o.value ? colors.text : colors.textMuted, fontWeight: selectedOccasion === o.value ? 600 : 400 }}>{o.label}</Text>
+              <Text style={getEditorialChipLabelStyle(selectedOccasion === o.value)}>{o.label}</Text>
             </View>
           ))}
         </View>
       </SectionCard>
 
-      <SectionCard title={text.wearDate}>
+      <SectionCard title={text.wearDate} style={getEditorialCardStyle()}>
         <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
           {datePresets.map((preset) => {
             const value = toLocalISODate(addDays(new Date(), preset.offset))
@@ -420,29 +516,18 @@ export default function SuggestPage() {
               <View
                 key={preset.label}
                 onClick={() => setTargetDate(value)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '999px',
-                  border: active ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                  backgroundColor: active ? colors.surfaceSelected : colors.surfaceMuted,
-                }}
+                style={getEditorialChipStyle(active)}
               >
-                <Text style={{ fontSize: '12px', color: active ? colors.text : colors.textMuted }}>
-                  {preset.label}
-                </Text>
+                <Text style={getEditorialChipLabelStyle(active)}>{preset.label}</Text>
               </View>
             )
           })}
         </View>
-        <Picker mode='date' value={targetDate} onChange={(e) => setTargetDate(e.detail.value)}>
-          <View style={inputStyle}>
-            <Text style={{ fontSize: '14px', color: colors.text }}>{targetDate}</Text>
-          </View>
-        </Picker>
+        <EditorialPicker mode='date' value={targetDate} onChange={setTargetDate} />
       </SectionCard>
 
       {/* Weather override */}
-      <SectionCard title={text.weatherOverride} extra={
+      <SectionCard title={text.weatherOverride} style={getEditorialCardStyle()} extra={
         <View onClick={() => setShowWeatherOverride(!showWeatherOverride)}>
           <Text style={{ fontSize: '12px', color: colors.textMuted }}>{showWeatherOverride ? text.collapse : text.expand}</Text>
         </View>
@@ -454,16 +539,9 @@ export default function SuggestPage() {
                 <View
                   key={c.value}
                   onClick={() => setOverrideConditionIndex(overrideConditionIndex === i ? -1 : i)}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '12px',
-                    border: overrideConditionIndex === i ? `2px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                    backgroundColor: overrideConditionIndex === i ? colors.surfaceSelected : colors.surfaceMuted,
-                    textAlign: 'center',
-                  }}
+                  style={{ flex: 1, ...getEditorialChipStyle(overrideConditionIndex === i) }}
                 >
-                  <Text style={{ fontSize: '13px', color: colors.text }}>{c.label}</Text>
+                  <Text style={getEditorialChipLabelStyle(overrideConditionIndex === i)}>{c.label}</Text>
                 </View>
               ))}
             </View>
@@ -484,6 +562,7 @@ export default function SuggestPage() {
         onClick={handleGenerate}
         style={{
           ...primaryButtonStyle,
+          ...getEditorialCompactButtonStyle(),
           backgroundColor: !selectedOccasion || isGenerating ? colors.disabledSurface : colors.accent,
           opacity: !selectedOccasion || isGenerating ? 0.6 : 1,
         }}

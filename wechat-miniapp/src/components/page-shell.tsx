@@ -16,6 +16,7 @@ type PageShellProps = {
   subtitle?: string
   actions?: ReactNode
   header?: ReactNode | null
+  hideHeaderProfileBadge?: boolean
   navKey?: MobileTabKey
   useBuiltInTabBar?: boolean
   children: ReactNode
@@ -24,47 +25,52 @@ type PageShellProps = {
 const DEFAULT_PAGE_SECTION_GAP = 18
 const NO_HEADER_TOP_CHROME_GAP = 4
 
-function getPageTopChromeHeight() {
-  const taroWithWindowInfo = Taro as typeof Taro & {
-    getWindowInfo?: () => {
-      statusBarHeight?: number
+export function getPageTopChromeHeight() {
+  try {
+    const taroWithWindowInfo = Taro as typeof Taro & {
+      getWindowInfo?: () => {
+        statusBarHeight?: number
+      }
+      getAppBaseInfo?: () => {
+        statusBarHeight?: number
+      }
     }
-    getAppBaseInfo?: () => {
-      statusBarHeight?: number
-    }
+
+    const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
+      | { statusBarHeight?: number }
+      | undefined
+    const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
+      | { statusBarHeight?: number }
+      | undefined
+    const statusBarHeight =
+      windowInfo?.statusBarHeight ||
+      appBaseInfo?.statusBarHeight ||
+      20
+    const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
+
+    return getHeaderChromeHeight(
+      resolveHeaderMetrics({
+        statusBarHeight,
+        menuButtonRect: menuButtonRect
+          ? {
+              top: menuButtonRect.top,
+              height: menuButtonRect.height,
+            }
+          : undefined,
+      })
+    )
+  } catch {
+    return getHeaderChromeHeight(resolveHeaderMetrics())
   }
-
-  const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
-    | { statusBarHeight?: number }
-    | undefined
-  const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
-    | { statusBarHeight?: number }
-    | undefined
-  const statusBarHeight =
-    windowInfo?.statusBarHeight ||
-    appBaseInfo?.statusBarHeight ||
-    20
-  const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
-
-  return getHeaderChromeHeight(
-    resolveHeaderMetrics({
-      statusBarHeight,
-      menuButtonRect: menuButtonRect
-        ? {
-            top: menuButtonRect.top,
-            height: menuButtonRect.height,
-          }
-        : undefined,
-    })
-  )
 }
 
 export function createPageShellHeader(
   header: ReactNode | null | undefined,
-  onOpenMenu: () => void
+  onOpenMenu: () => void,
+  hideProfileBadge?: boolean
 ) {
   if (header === undefined) {
-    return <AppHeader onMenuClick={onOpenMenu} />
+    return <AppHeader onMenuClick={onOpenMenu} hideProfileBadge={hideProfileBadge} />
   }
   return header
 }
@@ -94,7 +100,11 @@ export function PageShell(props: PageShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [topChromeHeight, setTopChromeHeight] = useState(() => getPageTopChromeHeight())
   const appearance = useAuthStore((state) => state.appearance)
-  const header = createPageShellHeader(props.header, () => setMenuOpen(true))
+  const header = createPageShellHeader(
+    props.header,
+    () => setMenuOpen(true),
+    props.hideHeaderProfileBadge
+  )
   const showMobileTabBar = !!props.navKey && !props.useBuiltInTabBar
   const currentPath = resolveCurrentPath()
   const activeDrawerKey = resolveMobileDrawerKey(currentPath)
@@ -134,9 +144,9 @@ export function PageShell(props: PageShellProps) {
         <View
           style={{
             display: 'flex',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '16px',
+            gap: '12px',
           }}
         >
           <View style={{ flex: 1 }}>
@@ -145,7 +155,7 @@ export function PageShell(props: PageShellProps) {
               <Text style={subtitleTextStyle}>{props.subtitle}</Text>
             ) : null}
           </View>
-          {props.actions ? <View>{props.actions}</View> : null}
+          {props.actions ? <View style={{ display: 'flex', alignItems: 'center' }}>{props.actions}</View> : null}
         </View>
         {props.children}
       </View>

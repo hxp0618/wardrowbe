@@ -72,25 +72,17 @@ export default function SettingsPage() {
   const [occasionIndex, setOccasionIndex] = useState(0)
   const [tempUnitIndex, setTempUnitIndex] = useState(0)
   const [timezoneIndex, setTimezoneIndex] = useState(0)
-  const { t, tf, locale } = useI18n()
-  const tempUnitLabels: Record<string, string> =
-    locale === 'en'
-      ? { celsius: 'Celsius', fahrenheit: 'Fahrenheit' }
-      : { celsius: '摄氏', fahrenheit: '华氏' }
-  const occasionOptions =
-    locale === 'en'
-      ? ['Casual', 'Office', 'Formal', 'Date', 'Sporty', 'Outdoor']
-      : ['休闲', '办公', '正式', '约会', '运动', '户外']
-  const timezoneOptions = TIMEZONE_OPTIONS.map((timezone) =>
-    locale === 'en' ? timezone.en : timezone.zh
-  )
+  const { t, tf } = useI18n()
+  const tempUnitLabels: Record<string, string> = { celsius: '摄氏', fahrenheit: '华氏' }
+  const occasionOptions = ['休闲', '办公', '正式', '约会', '运动', '户外']
+  const timezoneOptions = TIMEZONE_OPTIONS.map((timezone) => timezone.zh)
   const selectedTimezoneLabel =
     timezoneOptions[timezoneIndex] ||
     (() => {
       const rawValue = userProfile?.timezone || TIMEZONE_OPTIONS[timezoneIndex]?.value || 'UTC'
       const matched = TIMEZONE_OPTIONS.find((timezone) => timezone.value === rawValue)
       if (matched) {
-        return locale === 'en' ? matched.en : matched.zh
+        return matched.zh
       }
       return rawValue
     })()

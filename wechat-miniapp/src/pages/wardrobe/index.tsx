@@ -11,6 +11,7 @@ import { colors, primaryButtonStyle, secondaryButtonStyle } from '../../componen
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useFolders } from '../../hooks/use-folders'
 import { useCreateItemWithImages, useItems, useItemTypes } from '../../hooks/use-items'
+import { formatItemTypeLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
 import {
   getWardrobeChipLabelStyle,
@@ -20,17 +21,13 @@ import {
   getWardrobePickerLabelStyle,
   getWardrobePickerStyle,
 } from './controls-style'
+import {
+  getWardrobeFilterPanelStyle,
+  getWardrobeItemCardShellStyle,
+  getWardrobeSectionCardStyle,
+} from './look-and-feel'
 
 import type { Item, ItemFilter } from '../../services/types'
-
-const SORT_OPTIONS = [
-  { label: '最新添加', value: 'created_at', order: 'desc' as const },
-  { label: '最早添加', value: 'created_at', order: 'asc' as const },
-  { label: '最近穿着', value: 'last_worn', order: 'desc' as const },
-  { label: '最少穿着', value: 'wear_count', order: 'asc' as const },
-  { label: '最多穿着', value: 'wear_count', order: 'desc' as const },
-  { label: '名称 A-Z', value: 'name', order: 'asc' as const },
-]
 
 function WardrobePickerControl(props: {
   value: string
@@ -63,15 +60,32 @@ export default function WardrobePage() {
   const [showArchived, setShowArchived] = useState(false)
   const [folderIndex, setFolderIndex] = useState(0)
   const [detailItem, setDetailItem] = useState<Item | null>(null)
-  const { t } = useI18n()
+  const { t, tf } = useI18n()
   const { data: itemTypes } = useItemTypes()
   const { data: folders } = useFolders()
   const createItem = useCreateItemWithImages()
 
-  const typeOptions = ['全部类型', ...(itemTypes ?? []).map((t) => t.type)]
-  const typeFilter = typeIndex === 0 ? undefined : typeOptions[typeIndex]
-  const sortOption = SORT_OPTIONS[sortIndex]
-  const folderOptions = ['全部文件夹', ...(folders ?? []).map((f) => f.name)]
+  const sortOptions = [
+    { label: t('wardrobe_sort_created_desc'), value: 'created_at', order: 'desc' as const },
+    { label: t('wardrobe_sort_created_asc'), value: 'created_at', order: 'asc' as const },
+    { label: t('wardrobe_sort_last_worn'), value: 'last_worn', order: 'desc' as const },
+    { label: t('wardrobe_sort_wear_count_asc'), value: 'wear_count', order: 'asc' as const },
+    { label: t('wardrobe_sort_wear_count_desc'), value: 'wear_count', order: 'desc' as const },
+    { label: t('wardrobe_sort_name_asc'), value: 'name', order: 'asc' as const },
+  ]
+  const typeOptions = [
+    { label: t('wardrobe_all_types'), value: '' },
+    ...((itemTypes ?? []).map((itemType) => ({
+      label: formatItemTypeLabel(itemType.type),
+      value: itemType.type,
+    }))),
+  ]
+  const typeFilter = typeIndex === 0 ? undefined : typeOptions[typeIndex]?.value
+  const sortOption = sortOptions[sortIndex]
+  const folderOptions = [
+    { label: t('wardrobe_all_folders'), value: '' },
+    ...((folders ?? []).map((folder) => ({ label: folder.name, value: folder.id }))),
+  ]
   const folderFilter = folderIndex === 0 ? undefined : folders?.[folderIndex - 1]?.id
 
   const filters: ItemFilter = {
@@ -95,9 +109,9 @@ export default function WardrobePage() {
       const result = await Taro.chooseImage({ count: 5, sizeType: ['compressed'] })
       if (result.tempFilePaths.length === 0) return
       await createItem.mutateAsync({ filePaths: result.tempFilePaths })
-      void Taro.showToast({ title: '单品已添加', icon: 'success' })
+      void Taro.showToast({ title: t('wardrobe_add_success'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '添加失败'
+      const message = error instanceof Error ? error.message : t('wardrobe_add_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -105,7 +119,7 @@ export default function WardrobePage() {
   return (
     <PageShell
       title={t('page_wardrobe_title')}
-      subtitle={`共 ${total} 件单品`}
+      subtitle={tf('wardrobe_subtitle', { count: total })}
       navKey='wardrobe'
       useBuiltInTabBar
       actions={
@@ -113,19 +127,22 @@ export default function WardrobePage() {
           onClick={handleChooseImage}
           style={{ ...primaryButtonStyle, ...getWardrobeCompactActionStyle() }}
         >
-          <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>添加</Text>
+          <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{t('wardrobe_add_action')}</Text>
         </View>
       }
     >
       {/* Filters */}
-      <SectionCard title={t('wardrobe_filter_sort_title')}>
+      <SectionCard
+        title={t('wardrobe_filter_sort_title')}
+        style={getWardrobeFilterPanelStyle()}
+      >
         <View style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <View style={{ display: 'flex', gap: '10px' }}>
             <View style={{ flex: 1 }}>
               <WardrobePickerControl
-                range={typeOptions}
+                range={typeOptions.map((option) => option.label)}
                 index={typeIndex}
-                value={typeOptions[typeIndex]}
+                value={typeOptions[typeIndex]?.label || typeOptions[0].label}
                 onChange={(nextIndex) => {
                   setTypeIndex(nextIndex)
                   setPage(1)
@@ -134,9 +151,9 @@ export default function WardrobePage() {
             </View>
             <View style={{ flex: 1 }}>
               <WardrobePickerControl
-                range={SORT_OPTIONS.map((option) => option.label)}
+                range={sortOptions.map((option) => option.label)}
                 index={sortIndex}
-                value={SORT_OPTIONS[sortIndex].label}
+                value={sortOptions[sortIndex].label}
                 onChange={(nextIndex) => {
                   setSortIndex(nextIndex)
                   setPage(1)
@@ -181,9 +198,9 @@ export default function WardrobePage() {
           </View>
           {folders && folders.length > 0 && (
             <WardrobePickerControl
-              range={folderOptions}
+              range={folderOptions.map((option) => option.label)}
               index={folderIndex}
-              value={folderOptions[folderIndex]}
+              value={folderOptions[folderIndex]?.label || folderOptions[0].label}
               onChange={(nextIndex) => {
                 setFolderIndex(nextIndex)
                 setPage(1)
@@ -195,7 +212,10 @@ export default function WardrobePage() {
 
       {/* Items grid */}
       {isLoading ? (
-        <SectionCard title={t('wardrobe_loading_title')}>
+        <SectionCard
+          title={t('wardrobe_loading_title')}
+          style={getWardrobeSectionCardStyle()}
+        >
           <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('wardrobe_loading')}</Text>
         </SectionCard>
       ) : items.length === 0 ? (
@@ -214,12 +234,16 @@ export default function WardrobePage() {
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {items.map((item) => (
             <View key={item.id} onClick={() => setDetailItem(item)}>
-              <ItemCard item={item} />
+              <ItemCard
+                item={item}
+                variant='wardrobe'
+                style={getWardrobeItemCardShellStyle()}
+              />
             </View>
           ))}
           {data?.has_more && (
             <View onClick={() => setPage((p) => p + 1)} style={secondaryButtonStyle}>
-              <Text style={{ fontSize: '14px', color: colors.text }}>加载更多</Text>
+              <Text style={{ fontSize: '14px', color: colors.text }}>{t('wardrobe_load_more')}</Text>
             </View>
           )}
         </View>

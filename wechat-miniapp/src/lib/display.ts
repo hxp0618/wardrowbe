@@ -1,4 +1,4 @@
-import { useAuthStore, type AppLocale } from '../stores/auth'
+import type { AppLocale } from '../stores/auth'
 
 const ITEM_TYPE_LABELS_ZH: Record<string, string> = {
   tops: '上装',
@@ -392,6 +392,36 @@ const WEATHER_CONDITION_LABELS_EN: Record<string, string> = {
   windy: 'Windy',
 }
 
+const OUTFIT_STATUS_LABELS_ZH: Record<string, string> = {
+  pending: '待确认',
+  accepted: '已接受',
+  rejected: '已拒绝',
+  viewed: '已查看',
+  expired: '已过期',
+}
+
+const OUTFIT_STATUS_LABELS_EN: Record<string, string> = {
+  pending: 'Pending',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  viewed: 'Viewed',
+  expired: 'Expired',
+}
+
+const OUTFIT_SOURCE_LABELS_ZH: Record<string, string> = {
+  scheduled: '定时推荐',
+  on_demand: 'AI 推荐',
+  manual: '手动创建',
+  pairing: '搭配推荐',
+}
+
+const OUTFIT_SOURCE_LABELS_EN: Record<string, string> = {
+  scheduled: 'Scheduled',
+  on_demand: 'AI Suggestion',
+  manual: 'Manual',
+  pairing: 'Pairing',
+}
+
 function hasChinese(value: string): boolean {
   return /[\u4e00-\u9fff]/.test(value)
 }
@@ -410,62 +440,71 @@ function normalizeKey(value: string): string {
   return value.trim().toLowerCase().replace(/[\s_]+/g, '-')
 }
 
-function resolveLocale(locale?: AppLocale): AppLocale {
-  return locale ?? useAuthStore.getState().locale ?? 'zh'
-}
-
-function labelsFor(locale: AppLocale) {
+function labelsFor(_locale?: AppLocale) {
   return {
-    itemTypes: locale === 'en' ? ITEM_TYPE_LABELS_EN : ITEM_TYPE_LABELS_ZH,
-    subtypes: locale === 'en' ? SUBTYPE_LABELS_EN : SUBTYPE_LABELS_ZH,
-    colors: locale === 'en' ? COLOR_LABELS_EN : COLOR_LABELS_ZH,
-    styles: locale === 'en' ? STYLE_LABELS_EN : STYLE_LABELS_ZH,
-    occasions: locale === 'en' ? OCCASION_LABELS_EN : OCCASION_LABELS_ZH,
-    roles: locale === 'en' ? ROLE_LABELS_EN : ROLE_LABELS_ZH,
-    channels: locale === 'en' ? CHANNEL_LABELS_EN : CHANNEL_LABELS_ZH,
-    weather: locale === 'en' ? WEATHER_CONDITION_LABELS_EN : WEATHER_CONDITION_LABELS_ZH,
+    itemTypes: ITEM_TYPE_LABELS_ZH,
+    subtypes: SUBTYPE_LABELS_ZH,
+    colors: COLOR_LABELS_ZH,
+    styles: STYLE_LABELS_ZH,
+    occasions: OCCASION_LABELS_ZH,
+    roles: ROLE_LABELS_ZH,
+    channels: CHANNEL_LABELS_ZH,
+    weather: WEATHER_CONDITION_LABELS_ZH,
+    outfitStatuses: OUTFIT_STATUS_LABELS_ZH,
+    outfitSources: OUTFIT_SOURCE_LABELS_ZH,
   }
 }
 
 export function formatItemTypeLabel(type: string | null | undefined, locale?: AppLocale): string {
   if (!type) return ''
   const normalized = normalizeKey(type)
-  return labelsFor(resolveLocale(locale)).itemTypes[normalized] ?? humanizeToken(type)
+  return labelsFor(locale).itemTypes[normalized] ?? humanizeToken(type)
 }
 
 export function formatSubtypeLabel(subtype: string | null | undefined, locale?: AppLocale): string {
   if (!subtype) return ''
   const normalized = hasChinese(subtype) ? SUBTYPE_VALUE_BY_ZH[subtype] : normalizeKey(subtype)
-  return (normalized && labelsFor(resolveLocale(locale)).subtypes[normalized]) ?? humanizeToken(subtype)
+  return (normalized && labelsFor(locale).subtypes[normalized]) ?? humanizeToken(subtype)
 }
 
 export function formatColorLabel(color: string | null | undefined, locale?: AppLocale): string {
   if (!color) return ''
-  return labelsFor(resolveLocale(locale)).colors[normalizeKey(color)] ?? humanizeToken(color)
+  return labelsFor(locale).colors[normalizeKey(color)] ?? humanizeToken(color)
 }
 
 export function formatStyleLabel(style: string | null | undefined, locale?: AppLocale): string {
   if (!style) return ''
-  return labelsFor(resolveLocale(locale)).styles[normalizeKey(style)] ?? humanizeToken(style)
+  return labelsFor(locale).styles[normalizeKey(style)] ?? humanizeToken(style)
 }
 
 export function formatOccasionLabel(occasion: string | null | undefined, locale?: AppLocale): string {
   if (!occasion) return ''
-  return labelsFor(resolveLocale(locale)).occasions[normalizeKey(occasion)] ?? humanizeToken(occasion)
+  return labelsFor(locale).occasions[normalizeKey(occasion)] ?? humanizeToken(occasion)
 }
 
 export function formatRoleLabel(role: string | null | undefined, locale?: AppLocale): string {
   if (!role) return ''
-  return labelsFor(resolveLocale(locale)).roles[normalizeKey(role)] ?? humanizeToken(role)
+  return labelsFor(locale).roles[normalizeKey(role)] ?? humanizeToken(role)
 }
 
 export function formatNotificationChannelLabel(channel: string | null | undefined, locale?: AppLocale): string {
   if (!channel) return ''
-  return labelsFor(resolveLocale(locale)).channels[normalizeKey(channel)] ?? humanizeToken(channel)
+  return labelsFor(locale).channels[normalizeKey(channel)] ?? humanizeToken(channel)
 }
 
 export function formatWeatherConditionLabel(condition: string | null | undefined, locale?: AppLocale): string {
   if (!condition) return ''
   const normalized = condition.trim().toLowerCase().replace(/[\s-]+/g, '_')
-  return labelsFor(resolveLocale(locale)).weather[normalized] ?? humanizeToken(condition)
+  return labelsFor(locale).weather[normalized] ?? humanizeToken(condition)
+}
+
+export function formatOutfitStatusLabel(status: string | null | undefined, locale?: AppLocale): string {
+  if (!status) return ''
+  return labelsFor(locale).outfitStatuses[normalizeKey(status)] ?? humanizeToken(status)
+}
+
+export function formatOutfitSourceLabel(source: string | null | undefined, locale?: AppLocale): string {
+  if (!source) return ''
+  const normalized = source.trim().toLowerCase().replace(/[\s-]+/g, '_')
+  return labelsFor(locale).outfitSources[normalized] ?? humanizeToken(source)
 }
