@@ -1,12 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactElement } from 'react'
 
 const getCurrentInstance = vi.fn()
+const useEffect = vi.fn()
+const setState = vi.fn()
 
 vi.mock('@tarojs/components', () => ({
   Input: 'input',
   Text: 'text',
   View: 'view',
 }))
+
+vi.mock('react', async () => {
+  const actual = await vi.importActual<typeof import('react')>('react')
+
+  return {
+    ...actual,
+    useEffect,
+    useState: (initialValue: unknown) => [initialValue, setState],
+  }
+})
 
 vi.mock('@tarojs/taro', () => ({
   default: {
@@ -66,6 +79,8 @@ describe('login page helpers', () => {
   beforeEach(() => {
     vi.resetModules()
     getCurrentInstance.mockReset()
+    useEffect.mockReset()
+    setState.mockReset()
   })
 
   it('returns an undefined invite token when reading the current route throws', async () => {
@@ -76,5 +91,16 @@ describe('login page helpers', () => {
     const { resolveInviteToken } = await import('./index')
 
     expect(resolveInviteToken()).toBeUndefined()
+  })
+
+  it('renders the normal login shell instead of the debug placeholder', async () => {
+    getCurrentInstance.mockReturnValue({ router: { params: {} } })
+
+    const { default: LoginPage } = await import('./index')
+    const page = LoginPage() as ReactElement
+
+    expect(page.type).toBe('page-shell')
+    expect(page.props.title).toBe('page_login_title')
+    expect(JSON.stringify(page)).not.toContain('Wardrowbe Login Debug')
   })
 })

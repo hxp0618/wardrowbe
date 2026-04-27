@@ -1,5 +1,4 @@
 import fs from 'node:fs'
-import path from 'node:path'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -70,10 +69,7 @@ describe('getHeaderMetrics', () => {
   })
 
   it('does not render locale picker or logout action in the app header source', () => {
-    const source = fs.readFileSync(
-      path.resolve('/Users/huang/R/wardrowbe/wechat-miniapp/src/components/app-header.tsx'),
-      'utf8'
-    )
+    const source = fs.readFileSync(new URL('./app-header.tsx', import.meta.url), 'utf8')
 
     expect(source).not.toContain('<Picker')
     expect(source).not.toContain('⇥')
