@@ -28,6 +28,7 @@ ALLOWED_MIME_TYPES = {
     "image/heic",
     "image/heif",
 }
+GENERIC_UPLOAD_MIME_TYPES = {"application/octet-stream"}
 
 
 class ImageService:
@@ -164,7 +165,7 @@ class ImageService:
     def validate_image(self, image_data: bytes, content_type: str) -> bool:
         """Validate image data and content type."""
         # Check content type
-        if content_type not in ALLOWED_MIME_TYPES:
+        if content_type not in ALLOWED_MIME_TYPES and content_type not in GENERIC_UPLOAD_MIME_TYPES:
             return False
 
         # Check file size (max 20MB)
