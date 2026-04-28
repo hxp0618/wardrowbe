@@ -7,10 +7,27 @@ import { useAuthStore } from '../stores/auth'
 
 const API_BASE_PATH = '/api/v1'
 const DEFAULT_API_ORIGIN = 'https://wardrowbe.191027.xyz'
+const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
 
 export function resolveApiOrigin(): string {
   const rawBaseUrl = process.env.TARO_APP_API_BASE_URL?.trim() || DEFAULT_API_ORIGIN
   return rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl
+}
+
+export function resolveAccessToken(
+  storage: Pick<typeof Taro, 'getStorageSync'> = Taro
+): string | null {
+  const inMemoryToken = useAuthStore.getState().accessToken
+  if (inMemoryToken) {
+    return inMemoryToken
+  }
+
+  try {
+    const storedToken = storage.getStorageSync<string | undefined>(ACCESS_TOKEN_STORAGE_KEY)
+    return typeof storedToken === 'string' && storedToken.length > 0 ? storedToken : null
+  } catch {
+    return null
+  }
 }
 
 const adapter = async (request: ApiTransportRequest) => {
@@ -32,7 +49,7 @@ export const api = createApiClient({
   adapter,
   basePath: API_BASE_PATH,
   bindings: {
-    getAccessToken: () => useAuthStore.getState().accessToken,
+    getAccessToken: () => resolveAccessToken(),
     getAcceptLanguage: () => 'zh-CN',
   },
 })

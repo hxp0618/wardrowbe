@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Picker, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
@@ -25,7 +25,11 @@ import {
   getWardrobeFilterPanelStyle,
   getWardrobeItemCardShellStyle,
   getWardrobeSectionCardStyle,
+  getWardrobeUploadedItemAnchor,
+  getWardrobeUploadedItemStyle,
+  WARDROBE_UPLOADED_ITEM_HIGHLIGHT_MS,
 } from './look-and-feel'
+import { isChooseImageCanceled } from './choose-image'
 
 import type { Item, ItemFilter } from '../../services/types'
 
@@ -60,6 +64,9 @@ export default function WardrobePage() {
   const [showArchived, setShowArchived] = useState(false)
   const [folderIndex, setFolderIndex] = useState(0)
   const [detailItem, setDetailItem] = useState<Item | null>(null)
+  const [uploadedItemId, setUploadedItemId] = useState<string | null>(null)
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
+  const lastScrolledItemIdRef = useRef<string | null>(null)
   const { t, tf } = useI18n()
   const { data: itemTypes } = useItemTypes()
   const { data: folders } = useFolders()
@@ -102,15 +109,73 @@ export default function WardrobePage() {
   const items = data?.items || []
   const total = data?.total || 0
 
+  const scrollToUploadedItem = (itemId: string) =>
+    new Promise<void>((resolve) => {
+      const anchorId = `#${getWardrobeUploadedItemAnchor(itemId)}`
+      const query = Taro.createSelectorQuery()
+      let scrollTop = 0
+      let top: number | undefined
+
+      query.selectViewport().scrollOffset((result) => {
+        scrollTop = result?.scrollTop ?? 0
+      })
+      query.select(anchorId).boundingClientRect((result) => {
+        const rect = Array.isArray(result) ? result[0] : result
+        top = rect?.top
+      })
+      query.exec(async () => {
+        if (typeof top !== 'number') {
+          resolve()
+          return
+        }
+
+        try {
+          await Taro.pageScrollTo({
+            scrollTop: Math.max(scrollTop + top - 108, 0),
+            duration: 280,
+          })
+        } catch {
+          // Ignore scroll failures so upload success still completes.
+        }
+
+        resolve()
+      })
+    })
+
+  useEffect(() => {
+    if (!uploadedItemId || isLoading || lastScrolledItemIdRef.current === uploadedItemId) return
+    if (!items.some((item) => item.id === uploadedItemId)) return
+
+    lastScrolledItemIdRef.current = uploadedItemId
+    void scrollToUploadedItem(uploadedItemId).finally(() => {
+      setUploadedItemId((current) => (current === uploadedItemId ? null : current))
+    })
+  }, [uploadedItemId, isLoading, items])
+
+  useEffect(() => {
+    if (!highlightedItemId) return
+
+    const timeoutId = setTimeout(() => {
+      setHighlightedItemId((current) => (current === highlightedItemId ? null : current))
+    }, WARDROBE_UPLOADED_ITEM_HIGHLIGHT_MS)
+
+    return () => clearTimeout(timeoutId)
+  }, [highlightedItemId])
+
   if (!canRender) return null
 
   const handleChooseImage = async () => {
     try {
       const result = await Taro.chooseImage({ count: 5, sizeType: ['compressed'] })
       if (result.tempFilePaths.length === 0) return
-      await createItem.mutateAsync({ filePaths: result.tempFilePaths })
+      const createdItem = await createItem.mutateAsync({ filePaths: result.tempFilePaths })
+      setPage(1)
+      setUploadedItemId(createdItem.id)
+      setHighlightedItemId(createdItem.id)
+      lastScrolledItemIdRef.current = null
       void Taro.showToast({ title: t('wardrobe_add_success'), icon: 'success' })
     } catch (error) {
+      if (isChooseImageCanceled(error)) return
       const message = error instanceof Error ? error.message : t('wardrobe_add_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
@@ -233,11 +298,18 @@ export default function WardrobePage() {
       ) : (
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {items.map((item) => (
-            <View key={item.id} onClick={() => setDetailItem(item)}>
+            <View
+              key={item.id}
+              id={getWardrobeUploadedItemAnchor(item.id)}
+              onClick={() => setDetailItem(item)}
+            >
               <ItemCard
                 item={item}
                 variant='wardrobe'
-                style={getWardrobeItemCardShellStyle()}
+                style={{
+                  ...getWardrobeItemCardShellStyle(),
+                  ...getWardrobeUploadedItemStyle(highlightedItemId === item.id),
+                }}
               />
             </View>
           ))}
