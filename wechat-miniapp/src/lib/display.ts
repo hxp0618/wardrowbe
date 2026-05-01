@@ -12,6 +12,7 @@ const ITEM_TYPE_LABELS_ZH: Record<string, string> = {
   top: '上衣',
   polo: 'Polo 衫',
   blouse: '女式衬衫',
+  shirt: '衬衫',
   'tank-top': '背心',
   sweater: '毛衣',
   hoodie: '连帽衫',
@@ -50,6 +51,7 @@ const ITEM_TYPE_LABELS_EN: Record<string, string> = {
   top: 'Top',
   polo: 'Polo Shirt',
   blouse: 'Blouse',
+  shirt: 'Shirt',
   'tank-top': 'Tank Top',
   sweater: 'Sweater',
   hoodie: 'Hoodie',
@@ -249,6 +251,7 @@ const COLOR_LABELS_ZH: Record<string, string> = {
   yellow: '黄色',
   orange: '橙色',
   brown: '棕色',
+  tan: '棕褐色',
   beige: '米色',
   khaki: '卡其色',
   olive: '橄榄绿',
@@ -269,6 +272,7 @@ const COLOR_LABELS_EN: Record<string, string> = {
   yellow: 'Yellow',
   orange: 'Orange',
   brown: 'Brown',
+  tan: 'Tan',
   beige: 'Beige',
   khaki: 'Khaki',
   olive: 'Olive',
@@ -346,6 +350,9 @@ const CHANNEL_LABELS_ZH: Record<string, string> = {
   mattermost: 'Mattermost',
   bark: 'Bark',
   expo_push: 'Expo Push',
+  'expo-push': 'Expo Push',
+  wechat_work: '企业微信',
+  'wechat-work': '企业微信',
 }
 
 const CHANNEL_LABELS_EN: Record<string, string> = {
@@ -355,41 +362,81 @@ const CHANNEL_LABELS_EN: Record<string, string> = {
   mattermost: 'Mattermost',
   bark: 'Bark',
   expo_push: 'Expo Push',
+  'expo-push': 'Expo Push',
   wechat_work: 'WeCom',
+  'wechat-work': 'WeCom',
 }
 
 const WEATHER_CONDITION_LABELS_ZH: Record<string, string> = {
   clear: '晴朗',
   sunny: '晴天',
+  mostly_sunny: '晴间多云',
   clouds: '多云',
   cloudy: '阴天',
   overcast: '阴',
   partly_cloudy: '局部多云',
+  rainy: '雨',
   rain: '雨',
+  light_rain: '小雨',
+  heavy_rain: '大雨',
+  freezing_rain: '冻雨',
   drizzle: '小雨',
+  light_drizzle: '毛毛雨',
+  heavy_drizzle: '大毛毛雨',
+  freezing_drizzle: '冻毛毛雨',
   thunderstorm: '雷暴',
+  thunderstorm_with_hail: '雷暴伴冰雹',
   snow: '雪',
+  light_snow: '小雪',
+  heavy_snow: '大雪',
+  snow_grains: '雪粒',
+  showers: '阵雨',
+  light_showers: '小阵雨',
+  heavy_showers: '强阵雨',
+  snow_showers: '阵雪',
+  light_snow_showers: '小阵雪',
   fog: '雾',
+  foggy: '雾',
   mist: '薄雾',
   haze: '霾',
   windy: '大风',
+  unknown: '未知',
 }
 
 const WEATHER_CONDITION_LABELS_EN: Record<string, string> = {
   clear: 'Clear',
   sunny: 'Sunny',
+  mostly_sunny: 'Mostly Sunny',
   clouds: 'Cloudy',
   cloudy: 'Cloudy',
   overcast: 'Overcast',
   partly_cloudy: 'Partly Cloudy',
+  rainy: 'Rain',
   rain: 'Rain',
+  light_rain: 'Light Rain',
+  heavy_rain: 'Heavy Rain',
+  freezing_rain: 'Freezing Rain',
   drizzle: 'Drizzle',
+  light_drizzle: 'Light Drizzle',
+  heavy_drizzle: 'Heavy Drizzle',
+  freezing_drizzle: 'Freezing Drizzle',
   thunderstorm: 'Thunderstorm',
+  thunderstorm_with_hail: 'Thunderstorm With Hail',
   snow: 'Snow',
+  light_snow: 'Light Snow',
+  heavy_snow: 'Heavy Snow',
+  snow_grains: 'Snow Grains',
+  showers: 'Showers',
+  light_showers: 'Light Showers',
+  heavy_showers: 'Heavy Showers',
+  snow_showers: 'Snow Showers',
+  light_snow_showers: 'Light Snow Showers',
   fog: 'Fog',
+  foggy: 'Fog',
   mist: 'Mist',
   haze: 'Haze',
   windy: 'Windy',
+  unknown: 'Unknown',
 }
 
 const OUTFIT_STATUS_LABELS_ZH: Record<string, string> = {
@@ -440,7 +487,22 @@ function normalizeKey(value: string): string {
   return value.trim().toLowerCase().replace(/[\s_]+/g, '-')
 }
 
-function labelsFor(_locale?: AppLocale) {
+function labelsFor(locale?: AppLocale) {
+  if (locale === 'en') {
+    return {
+      itemTypes: ITEM_TYPE_LABELS_EN,
+      subtypes: SUBTYPE_LABELS_EN,
+      colors: COLOR_LABELS_EN,
+      styles: STYLE_LABELS_EN,
+      occasions: OCCASION_LABELS_EN,
+      roles: ROLE_LABELS_EN,
+      channels: CHANNEL_LABELS_EN,
+      weather: WEATHER_CONDITION_LABELS_EN,
+      outfitStatuses: OUTFIT_STATUS_LABELS_EN,
+      outfitSources: OUTFIT_SOURCE_LABELS_EN,
+    }
+  }
+
   return {
     itemTypes: ITEM_TYPE_LABELS_ZH,
     subtypes: SUBTYPE_LABELS_ZH,

@@ -1,7 +1,5 @@
-import Taro from '@tarojs/taro'
-
-import { api, resolveApiOrigin } from '../lib/api'
-import { useAuthStore } from '../stores/auth'
+import { api } from '../lib/api'
+import { uploadApiFile } from '../lib/api-upload'
 
 import type {
   CreateItemInput,
@@ -136,32 +134,6 @@ export function listColorDistribution(): Promise<Array<{ color: string; count: n
   return api.get<Array<{ color: string; count: number }>>('/items/colors')
 }
 
-function buildUploadHeaders(): Record<string, string> {
-  const accessToken =
-    useAuthStore.getState().accessToken ?? Taro.getStorageSync<string | undefined>('accessToken')
-  const headers: Record<string, string> = {
-    'Accept-Language': 'zh-CN',
-  }
-
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`
-  }
-
-  return headers
-}
-
-function normalizeUploadResponse<T>(response: { statusCode: number; data: unknown }): T {
-  if (response.statusCode < 200 || response.statusCode >= 300) {
-    throw new Error('上传失败，请稍后重试')
-  }
-
-  if (typeof response.data === 'string') {
-    return JSON.parse(response.data) as T
-  }
-
-  return response.data as T
-}
-
 function buildPrimaryFormData(fields: CreateItemInput): Record<string, string> {
   const formData: Record<string, string> = {}
 
@@ -189,26 +161,19 @@ export async function createItemWithImages(
   }
 
   const [primaryImage, ...additionalImages] = filePaths
-  const origin = resolveApiOrigin()
-  const headers = buildUploadHeaders()
-
-  const primaryResponse = await Taro.uploadFile({
-    url: `${origin}/api/v1/items`,
+  const item = await uploadApiFile<Item>({
+    endpoint: '/items',
     filePath: primaryImage,
     name: 'image',
-    header: headers,
     formData: buildPrimaryFormData(fields),
   })
-  const item = normalizeUploadResponse<Item>(primaryResponse)
 
   for (const filePath of additionalImages) {
-    const extraResponse = await Taro.uploadFile({
-      url: `${origin}/api/v1/items/${item.id}/images`,
+    await uploadApiFile({
+      endpoint: `/items/${item.id}/images`,
       filePath,
       name: 'image',
-      header: headers,
     })
-    normalizeUploadResponse(extraResponse)
   }
 
   return item

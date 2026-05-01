@@ -9,7 +9,6 @@ import {
   getEditorialChipStyle,
   getEditorialCompactButtonStyle,
   getEditorialFeatureCardStyle,
-  getEditorialTintedPanelStyle,
 } from '../../components/editorial-style'
 import { colors, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
@@ -21,6 +20,11 @@ import { useUserProfile } from '../../hooks/use-user'
 import { usePreferences } from '../../hooks/use-preferences'
 import { formatNotificationChannelLabel, formatOccasionLabel, formatWeatherConditionLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
+import {
+  getWeatherErrorMessage,
+  hasWeatherCoordinates,
+  resolveWeatherPanelState,
+} from '../../lib/weather-status'
 
 function displayTemp(celsius: number, unit: string): string {
   if (unit === 'fahrenheit') return `${Math.round(celsius * 9 / 5 + 32)}°F`
@@ -37,9 +41,15 @@ function getWeekdayLabel(dayOfWeek: number): string {
 
 export default function DashboardPage() {
   const canRender = useAuthGuard()
-  const { data: userProfile } = useUserProfile()
+  const { data: userProfile, isLoading: userProfileLoading } = useUserProfile()
   const { data: prefs } = usePreferences()
-  const { data: weather, isLoading: weatherLoading } = useWeather()
+  const hasSavedWeatherLocation = hasWeatherCoordinates(userProfile)
+  const {
+    data: weather,
+    error: weatherError,
+    isLoading: weatherQueryLoading,
+    refetch: refetchWeather,
+  } = useWeather(userProfile, !!userProfile)
   const { data: pendingData, isLoading: pendingLoading } = usePendingOutfits(3)
   const { data: analytics } = useAnalytics()
   const { data: schedules } = useSchedules()
@@ -54,6 +64,18 @@ export default function DashboardPage() {
 
   const pendingOutfits = pendingData?.outfits || []
   const totalItems = analytics?.wardrobe.total_items ?? 0
+  const weatherErrorMessage = getWeatherErrorMessage(
+    weatherError,
+    t('dashboard_weather_error_fallback')
+  )
+  const weatherLoading = hasSavedWeatherLocation && weatherQueryLoading
+  const weatherPanelState = resolveWeatherPanelState({
+    profileLoading: userProfileLoading,
+    weatherLoading,
+    hasLocation: hasSavedWeatherLocation,
+    hasWeather: !!weather,
+    error: weatherError,
+  })
 
   // Next schedule
   const enabledSchedules = (schedules || []).filter((s) => s.enabled)
@@ -91,7 +113,11 @@ export default function DashboardPage() {
         <View>
           <Text style={{ display: 'block', fontSize: '12px', color: colors.textSoft }}>{t('dashboard_today_label')}</Text>
           <Text style={{ display: 'block', marginTop: '6px', fontSize: '24px', fontWeight: 700, color: colors.text }}>
-            {weather ? t('dashboard_hero_ready_title') : t('dashboard_hero_missing_title')}
+            {weather
+              ? t('dashboard_hero_ready_title')
+              : weatherPanelState === 'error'
+                ? t('dashboard_weather_error_status')
+                : t('dashboard_hero_missing_title')}
           </Text>
           <Text style={{ display: 'block', marginTop: '8px', fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
             {weather
@@ -100,13 +126,24 @@ export default function DashboardPage() {
                   condition: formatWeatherConditionLabel(weather.condition),
                   count: totalItems,
                 })
+              : weatherPanelState === 'error'
+                ? tf('dashboard_hero_summary_weather_error', {
+                    message: weatherErrorMessage,
+                    count: totalItems,
+                  })
               : tf('dashboard_hero_summary_missing', { count: totalItems })}
           </Text>
         </View>
         <View style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <View style={getEditorialChipStyle(true)}>
             <Text style={getEditorialChipLabelStyle(true)}>
-              {weather ? t('dashboard_weather_synced') : t('dashboard_weather_waiting')}
+              {weather
+                ? t('dashboard_weather_synced')
+                : weatherPanelState === 'loading'
+                  ? t('dashboard_weather_loading')
+                  : weatherPanelState === 'error'
+                    ? t('dashboard_weather_error_status')
+                    : t('dashboard_weather_waiting')}
             </Text>
           </View>
           <View style={getEditorialChipStyle(false, 'warning')}>
@@ -188,7 +225,7 @@ export default function DashboardPage() {
 
       {/* Weather */}
       <SectionCard title={t('dashboard_weather_title')} style={getEditorialCardStyle()}>
-        {weatherLoading ? (
+        {weatherPanelState === 'loading' ? (
           <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('dashboard_weather_loading')}</Text>
         ) : weather ? (
           <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -207,6 +244,18 @@ export default function DashboardPage() {
               style={{ ...primaryButtonStyle, ...getEditorialCompactButtonStyle(), marginTop: '14px' }}
             >
               <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{t('dashboard_get_suggestion')}</Text>
+            </View>
+          </View>
+        ) : weatherPanelState === 'error' ? (
+          <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <Text style={{ display: 'block', fontSize: '14px', color: colors.danger, marginBottom: '4px' }}>
+              {tf('dashboard_weather_error', { message: weatherErrorMessage })}
+            </Text>
+            <View
+              onClick={() => void refetchWeather()}
+              style={{ ...secondaryButtonStyle, ...getEditorialCompactButtonStyle() }}
+            >
+              <Text style={{ fontSize: '14px', color: colors.text }}>{t('dashboard_weather_retry')}</Text>
             </View>
           </View>
         ) : (

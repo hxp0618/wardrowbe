@@ -19,6 +19,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { usePreferences, useUpdatePreferences, useResetPreferences, useTestAIEndpoint } from '@/lib/hooks/use-preferences';
 import { useUserProfile, useUpdateUserProfile } from '@/lib/hooks/use-user';
+import { geocodeWeatherLocation } from '@/lib/hooks/use-weather';
 import { CLOTHING_COLORS, OCCASIONS, Preferences, StyleProfile, AIEndpoint } from '@/lib/types';
 import { toF, toCelsius } from '@/lib/temperature';
 import { toast } from 'sonner';
@@ -293,8 +294,32 @@ export default function SettingsPage() {
   };
 
   const handleSaveLocation = async () => {
-    const lat = parseFloat(locationLat);
-    const lon = parseFloat(locationLon);
+    const trimmedLocationName = locationName.trim();
+    const savedLocationName = userProfile?.location_name?.trim() || '';
+    const savedLocationLat = userProfile?.location_lat?.toString() || '';
+    const savedLocationLon = userProfile?.location_lon?.toString() || '';
+    const locationNameChanged = trimmedLocationName !== savedLocationName;
+    const coordinatesUnchanged = locationLat === savedLocationLat && locationLon === savedLocationLon;
+    const coordinatesEmpty = !locationLat.trim() && !locationLon.trim();
+
+    let nextLocationName = trimmedLocationName;
+    let lat = parseFloat(locationLat);
+    let lon = parseFloat(locationLon);
+
+    if (trimmedLocationName && (coordinatesEmpty || (locationNameChanged && coordinatesUnchanged))) {
+      try {
+        const resolvedLocation = await geocodeWeatherLocation(trimmedLocationName);
+        nextLocationName = resolvedLocation.name || resolvedLocation.address || trimmedLocationName;
+        lat = resolvedLocation.latitude;
+        lon = resolvedLocation.longitude;
+        setLocationName(nextLocationName);
+        setLocationLat(String(lat));
+        setLocationLon(String(lon));
+      } catch {
+        toast.error(t('location.locationSaveFailed'));
+        return;
+      }
+    }
 
     if (isNaN(lat) || isNaN(lon)) {
       toast.error(t('location.invalidCoordinates'));
@@ -315,7 +340,7 @@ export default function SettingsPage() {
       await updateUserProfile.mutateAsync({
         location_lat: lat,
         location_lon: lon,
-        location_name: locationName || undefined,
+        location_name: nextLocationName || undefined,
         timezone: timezone,
       });
       toast.success(t('location.locationSaved'));

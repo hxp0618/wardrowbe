@@ -55,6 +55,7 @@ class Settings(BaseSettings):
 
     # Weather
     openmeteo_url: str = Field(default="https://api.open-meteo.com/v1")
+    openmeteo_geocoding_url: str = Field(default="https://geocoding-api.open-meteo.com/v1")
 
     # Notifications - default ntfy channel (used when user has none configured)
     ntfy_server: str | None = None

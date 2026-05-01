@@ -57,8 +57,13 @@ export function useUpdateUserProfile() {
       }
       return api.patch<UserProfile>('/users/me', data);
     },
-    onSuccess: () => {
+    onSuccess: (userProfile) => {
+      queryClient.setQueryData(['user-profile'], userProfile);
+      queryClient.setQueryData(['auth-user'], userProfile);
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['auth-user'] });
+      queryClient.invalidateQueries({ queryKey: ['weather'] });
+      queryClient.invalidateQueries({ queryKey: ['weather-forecast'] });
     },
   });
 }

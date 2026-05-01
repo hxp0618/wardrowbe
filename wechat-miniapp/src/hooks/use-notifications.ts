@@ -15,10 +15,13 @@ import {
   updateSchedule,
 } from '../services/notifications'
 
+import { useAuthQueryEnabled } from './auth-query'
+
 export function useNotificationSettings() {
   return useQuery({
     queryKey: ['miniapp', 'notification-settings'],
     queryFn: getNotificationSettings,
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -26,6 +29,7 @@ export function useNtfyDefaults() {
   return useQuery({
     queryKey: ['miniapp', 'notification-defaults', 'ntfy'],
     queryFn: getNtfyDefaults,
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -33,6 +37,7 @@ export function useBarkDefaults() {
   return useQuery({
     queryKey: ['miniapp', 'notification-defaults', 'bark'],
     queryFn: getBarkDefaults,
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -40,6 +45,7 @@ export function useSchedules() {
   return useQuery({
     queryKey: ['miniapp', 'schedules'],
     queryFn: getSchedules,
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -47,6 +53,7 @@ export function useNotificationHistory(limit = 20) {
   return useQuery({
     queryKey: ['miniapp', 'notification-history', limit],
     queryFn: () => getNotificationHistory(limit),
+    enabled: useAuthQueryEnabled(),
   })
 }
 

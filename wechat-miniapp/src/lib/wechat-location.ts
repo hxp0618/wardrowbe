@@ -1,5 +1,7 @@
 import Taro from '@tarojs/taro'
 
+declare const LOCATION_APIKEY: string | undefined
+
 type LocationErrorCode = 'permission-denied' | 'canceled' | 'unavailable'
 
 export class WechatLocationError extends Error {
@@ -22,6 +24,19 @@ type MiniProgramChooseLocationResult = {
 type MiniProgramGetLocationResult = {
   latitude: number
   longitude: number
+}
+
+type TencentGeocoderResponse = {
+  status: number
+  message?: string
+  result?: {
+    title?: string
+    address?: string
+    location?: {
+      lat?: number
+      lng?: number
+    }
+  }
 }
 
 type MiniProgramApi = {
@@ -76,6 +91,10 @@ function normalizeLocationError(error: unknown): WechatLocationError {
   return new WechatLocationError('unavailable')
 }
 
+function resolveLocationApiKey(): string {
+  return typeof LOCATION_APIKEY === 'string' ? LOCATION_APIKEY.trim() : ''
+}
+
 export async function chooseWechatLocation() {
   const miniProgramApi = resolveMiniProgramApi()
 
@@ -97,6 +116,53 @@ export async function chooseWechatLocation() {
       latitude: currentLocation.latitude,
       longitude: currentLocation.longitude,
     })
+  } catch (error) {
+    if (error instanceof WechatLocationError) {
+      throw error
+    }
+
+    throw normalizeLocationError(error)
+  }
+}
+
+export async function resolveWechatLocationName(locationName: string) {
+  const address = locationName.trim()
+  const key = resolveLocationApiKey()
+
+  if (!address || !key) {
+    throw new WechatLocationError('unavailable')
+  }
+
+  try {
+    const response = await Taro.request({
+      url: 'https://apis.map.qq.com/ws/geocoder/v1/',
+      method: 'GET',
+      data: {
+        address,
+        key,
+      },
+    })
+    const data = response.data as TencentGeocoderResponse
+    const location = data.result?.location
+    const latitude = location?.lat
+    const longitude = location?.lng
+
+    if (
+      data.status !== 0 ||
+      typeof latitude !== 'number' ||
+      typeof longitude !== 'number' ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      throw new WechatLocationError('unavailable', data.message)
+    }
+
+    return {
+      name: data.result?.title || address,
+      address: data.result?.address || address,
+      latitude,
+      longitude,
+    }
   } catch (error) {
     if (error instanceof WechatLocationError) {
       throw error

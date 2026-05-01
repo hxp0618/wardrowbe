@@ -17,10 +17,13 @@ import {
   updateMemberRole,
 } from '../services/family'
 
+import { useAuthQueryEnabled } from './auth-query'
+
 export function useFamily() {
   return useQuery({
     queryKey: ['miniapp', 'family'],
     queryFn: getFamily,
+    enabled: useAuthQueryEnabled(),
     retry: false,
   })
 }
@@ -140,7 +143,7 @@ export function useFamilyRatings(outfitId: string | undefined) {
   return useQuery({
     queryKey: ['miniapp', 'family-ratings', outfitId],
     queryFn: () => getFamilyRatings(outfitId!),
-    enabled: !!outfitId,
+    enabled: useAuthQueryEnabled(!!outfitId),
   })
 }
 

@@ -1,5 +1,9 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import AsyncClient
+
+from app.services.weather_service import GeocodedLocation
 
 
 class TestUserMe:
@@ -59,6 +63,72 @@ class TestUserUpdate:
         # Check coordinates are stored (may be string or float depending on serialization)
         assert float(data["location_lat"]) == pytest.approx(40.7128, rel=1e-4)
         assert float(data["location_lon"]) == pytest.approx(-74.0060, rel=1e-4)
+
+    @pytest.mark.asyncio
+    async def test_update_user_location_name_geocodes_missing_coordinates(
+        self, client: AsyncClient, test_user, auth_headers
+    ):
+        """Test updating user location by city name only."""
+        geocoded = GeocodedLocation(
+            name="Shanghai",
+            address="Shanghai, China",
+            latitude=31.2304,
+            longitude=121.4737,
+        )
+
+        with patch(
+            "app.services.weather_service.WeatherService.geocode_location",
+            new_callable=AsyncMock,
+            return_value=geocoded,
+        ) as mock_geocode:
+            response = await client.patch(
+                "/api/v1/users/me",
+                json={
+                    "location_name": " Shanghai ",
+                },
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location_name"] == "Shanghai"
+        assert float(data["location_lat"]) == pytest.approx(31.2304, rel=1e-4)
+        assert float(data["location_lon"]) == pytest.approx(121.4737, rel=1e-4)
+        mock_geocode.assert_awaited_once_with("Shanghai")
+
+    @pytest.mark.asyncio
+    async def test_update_user_location_name_geocodes_null_coordinates(
+        self, client: AsyncClient, test_user, auth_headers
+    ):
+        """Test city name updates still resolve coordinates when clients send nulls."""
+        geocoded = GeocodedLocation(
+            name="Beijing",
+            address="Beijing, China",
+            latitude=39.9075,
+            longitude=116.39723,
+        )
+
+        with patch(
+            "app.services.weather_service.WeatherService.geocode_location",
+            new_callable=AsyncMock,
+            return_value=geocoded,
+        ) as mock_geocode:
+            response = await client.patch(
+                "/api/v1/users/me",
+                json={
+                    "location_name": "Beijing",
+                    "location_lat": None,
+                    "location_lon": None,
+                },
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location_name"] == "Beijing"
+        assert float(data["location_lat"]) == pytest.approx(39.9075, rel=1e-4)
+        assert float(data["location_lon"]) == pytest.approx(116.39723, rel=1e-4)
+        mock_geocode.assert_awaited_once_with("Beijing")
 
     @pytest.mark.asyncio
     async def test_update_user_avatar_url(self, client: AsyncClient, test_user, auth_headers):

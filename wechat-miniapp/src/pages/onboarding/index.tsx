@@ -15,10 +15,12 @@ import {
   applyManualLocationName,
   buildUserProfileUpdate,
   hasResolvedLocation,
+  resolveLocationDraftForSave,
   toResolvedLocationDraft,
 } from '../../lib/location-form'
 import { getEditableWechatDisplayName } from '../../lib/wechat-user'
 import { chooseWechatLocation, WechatLocationError } from '../../lib/wechat-location'
+import { geocodeWeatherLocation } from '../../services/outfits'
 
 const DASHBOARD_PAGE_URL = '/pages/dashboard/index'
 const TOTAL_STEPS = 5
@@ -326,19 +328,22 @@ export default function OnboardingPage() {
 
   const handleSaveLocation = async () => {
     if (!locationName.trim()) return
-    if (!hasResolvedLocation({ locationName, locationLat, locationLon })) {
-      void Taro.showToast({ title: '请先选择当前位置', icon: 'none' })
-      return
-    }
 
     try {
+      const resolvedLocation = await resolveLocationDraftForSave(
+        {
+          locationName,
+          locationLat,
+          locationLon,
+        },
+        geocodeWeatherLocation
+      )
+      setLocationName(resolvedLocation.locationName)
+      setLocationLat(resolvedLocation.locationLat)
+      setLocationLon(resolvedLocation.locationLon)
       await updateUserProfile.mutateAsync(
         buildUserProfileUpdate({
-          location: {
-            locationName,
-            locationLat,
-            locationLon,
-          },
+          location: resolvedLocation,
         })
       )
       void Taro.showToast({ title: '位置已保存', icon: 'success' })
@@ -556,7 +561,7 @@ export default function OnboardingPage() {
                 </Text>
               ) : locationName.trim() ? (
                 <Text style={{ fontSize: '12px', color: colors.warning }}>
-                  手动修改位置名称后，请重新选择当前位置以保存天气坐标。
+                  保存时会自动解析天气坐标；解析失败时可以改用当前位置。
                 </Text>
               ) : null}
             </View>

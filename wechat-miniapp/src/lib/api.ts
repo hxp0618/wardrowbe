@@ -5,14 +5,10 @@ import type { ApiTransportRequest } from '@wardrowbe/shared-api'
 
 import { useAuthStore } from '../stores/auth'
 
-const API_BASE_PATH = '/api/v1'
-const DEFAULT_API_ORIGIN = 'https://wardrowbe.191027.xyz'
+import { API_BASE_PATH, normalizeBusinessApiResourceUrls, resolveApiOrigin } from './app-config'
 const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
 
-export function resolveApiOrigin(): string {
-  const rawBaseUrl = process.env.TARO_APP_API_BASE_URL?.trim() || DEFAULT_API_ORIGIN
-  return rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl
-}
+export { resolveApiOrigin }
 
 export function resolveAccessToken(
   storage: Pick<typeof Taro, 'getStorageSync'> = Taro
@@ -41,7 +37,7 @@ const adapter = async (request: ApiTransportRequest) => {
   return {
     ok: response.statusCode >= 200 && response.statusCode < 300,
     status: response.statusCode,
-    json: async () => response.data,
+    json: async () => normalizeBusinessApiResourceUrls(response.data),
   }
 }
 

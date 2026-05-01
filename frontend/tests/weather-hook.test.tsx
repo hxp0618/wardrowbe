@@ -47,6 +47,16 @@ function createWrapper() {
   return TestQueryClientWrapper
 }
 
+function getFetchUrl(callIndex = 0) {
+  const input = vi.mocked(global.fetch).mock.calls[callIndex]?.[0]
+
+  if (typeof input === 'string') return input
+  if (input instanceof URL) return input.toString()
+  if (input instanceof Request) return input.url
+
+  return String(input)
+}
+
 describe('useWeather', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -101,6 +111,9 @@ describe('useWeather', () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
+    expect(getFetchUrl()).toContain('/api/v1/weather/current?')
+    expect(getFetchUrl()).toContain('latitude=31.2304')
+    expect(getFetchUrl()).toContain('longitude=121.4737')
 
     await waitFor(() => {
       expect(result.current.data?.temperature).toBe(22)
@@ -163,6 +176,10 @@ describe('useWeatherForecast', () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
+    expect(getFetchUrl()).toContain('/api/v1/weather/forecast?')
+    expect(getFetchUrl()).toContain('days=4')
+    expect(getFetchUrl()).toContain('latitude=31.2304')
+    expect(getFetchUrl()).toContain('longitude=121.4737')
 
     await waitFor(() => {
       expect(result.current.data?.forecast[0].date).toBe('2026-04-20')

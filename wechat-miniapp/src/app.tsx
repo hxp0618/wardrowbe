@@ -1,9 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { PropsWithChildren } from 'react'
 
-import { AppProvider } from './providers/app-provider'
+import { AppProvider, configureMiniappQueryRuntime } from './providers/app-provider'
 
-const queryClient = new QueryClient()
+configureMiniappQueryRuntime()
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      networkMode: 'always',
+    },
+  },
+})
 
 export default function App(props: PropsWithChildren) {
   return (

@@ -44,10 +44,48 @@ class ForecastResponse(BaseModel):
     forecast: list[ForecastDayResponse]
 
 
+class GeocodedLocationResponse(BaseModel):
+    name: str
+    address: str
+    latitude: float
+    longitude: float
+
+
 class WeatherOverride(BaseModel):
     temperature: float = Field(description="Temperature in Celsius")
     condition: str = Field(default="unknown", description="Weather condition")
     precipitation_chance: int = Field(default=0, ge=0, le=100)
+
+
+@router.get("/geocode", response_model=GeocodedLocationResponse)
+async def geocode_location(
+    http_request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    name: str = Query(..., min_length=1, max_length=120),
+) -> GeocodedLocationResponse:
+    _ = current_user
+    weather_service = WeatherService()
+
+    try:
+        location = await weather_service.geocode_location(name)
+    except ApiUserError as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail=translate_request(http_request, e.message_key, **e.params),
+        ) from None
+    except WeatherServiceError as e:
+        logger.error(f"Weather geocoding service error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=translate_request(http_request, "error.weather_service_unavailable"),
+        ) from None
+
+    return GeocodedLocationResponse(
+        name=location.name,
+        address=location.address,
+        latitude=location.latitude,
+        longitude=location.longitude,
+    )
 
 
 @router.get("/current", response_model=WeatherResponse)

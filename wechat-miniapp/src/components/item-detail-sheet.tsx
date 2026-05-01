@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Image, Picker, ScrollView, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import {
@@ -30,7 +30,7 @@ function formatDate(dateStr: string): string {
 const OCCASIONS = ['casual', 'office', 'formal', 'date', 'sporty', 'outdoor']
 const WASH_METHODS = ['手洗', '机洗', '干洗', '免洗']
 export function ItemDetailSheet(props: ItemDetailSheetProps) {
-  const { item, visible, onClose } = props
+  const { item: initialItem, visible, onClose } = props
   const toggleFavorite = useToggleFavorite()
   const toggleNeedsWash = useToggleNeedsWash()
   const reanalyze = useReanalyzeItem()
@@ -44,9 +44,20 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   const [showLogWash, setShowLogWash] = useState(false)
   const [wearOccasionIndex, setWearOccasionIndex] = useState(0)
   const [washMethodIndex, setWashMethodIndex] = useState(0)
+  const [currentItem, setCurrentItem] = useState<Item | null>(initialItem)
 
-  if (!visible || !item) return null
+  useEffect(() => {
+    setCurrentItem(initialItem)
+    setShowConfirmDelete(false)
+    setShowLogWear(false)
+    setShowLogWash(false)
+    setWearOccasionIndex(0)
+    setWashMethodIndex(0)
+  }, [initialItem, visible])
 
+  if (!visible || !currentItem) return null
+
+  const item = currentItem
   const imageUrl = item.medium_url || item.thumbnail_url || item.image_url
   const typeLabel = formatItemTypeLabel(item.type)
   const subtypeLabel = formatSubtypeLabel(item.subtype)
@@ -107,21 +118,24 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
 
   const handleToggleFavorite = async () => {
     try {
-      await toggleFavorite.mutateAsync({ id: item.id, favorite: !item.favorite })
+      const updated = await toggleFavorite.mutateAsync({ id: item.id, favorite: !item.favorite })
+      setCurrentItem(updated)
       void Taro.showToast({ title: item.favorite ? copy.favoriteRemoved : copy.favoriteAdded, icon: 'success' })
     } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
   }
 
   const handleToggleWash = async () => {
     try {
-      await toggleNeedsWash.mutateAsync({ id: item.id, needsWash: !item.needs_wash })
+      const updated = await toggleNeedsWash.mutateAsync({ id: item.id, needsWash: !item.needs_wash })
+      setCurrentItem(updated)
       void Taro.showToast({ title: item.needs_wash ? copy.washClean : copy.washNeeded, icon: 'success' })
     } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
   }
 
   const handleReanalyze = async () => {
     try {
-      await reanalyze.mutateAsync(item.id)
+      const updated = await reanalyze.mutateAsync(item.id)
+      setCurrentItem(updated)
       void Taro.showToast({ title: copy.reanalyzed, icon: 'success' })
     } catch { void Taro.showToast({ title: copy.reanalyzeFailed, icon: 'none' }) }
   }
@@ -136,7 +150,8 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
 
   const handleUnarchive = async () => {
     try {
-      await unarchive.mutateAsync(item.id)
+      const updated = await unarchive.mutateAsync(item.id)
+      setCurrentItem(updated)
       void Taro.showToast({ title: copy.unarchived, icon: 'success' })
     } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
   }
@@ -151,7 +166,8 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
 
   const handleLogWear = async () => {
     try {
-      await logWear.mutateAsync({ id: item.id, occasion: OCCASIONS[wearOccasionIndex] })
+      const updated = await logWear.mutateAsync({ id: item.id, occasion: OCCASIONS[wearOccasionIndex] })
+      setCurrentItem(updated)
       void Taro.showToast({ title: copy.wearLogged, icon: 'success' })
       setShowLogWear(false)
     } catch { void Taro.showToast({ title: copy.logFailed, icon: 'none' }) }
@@ -159,7 +175,8 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
 
   const handleLogWash = async () => {
     try {
-      await logWash.mutateAsync({ id: item.id, method: WASH_METHODS[washMethodIndex] })
+      const updated = await logWash.mutateAsync({ id: item.id, method: WASH_METHODS[washMethodIndex] })
+      setCurrentItem(updated)
       void Taro.showToast({ title: copy.washLogged, icon: 'success' })
       setShowLogWash(false)
     } catch { void Taro.showToast({ title: copy.logFailed, icon: 'none' }) }

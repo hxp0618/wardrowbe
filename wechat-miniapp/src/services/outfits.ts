@@ -2,6 +2,7 @@ import { api } from '../lib/api'
 
 import type {
   ForecastResponse,
+  GeocodedLocation,
   ManualOutfitRequest,
   Outfit,
   OutfitFeedbackRequest,
@@ -10,6 +11,20 @@ import type {
   SuggestRequest,
   Weather,
 } from './types'
+
+export type WeatherCoordinates = {
+  latitude: number
+  longitude: number
+}
+
+function buildWeatherCoordinateParams(
+  coordinates: WeatherCoordinates
+): Record<string, string> {
+  return {
+    latitude: String(coordinates.latitude),
+    longitude: String(coordinates.longitude),
+  }
+}
 
 function buildOutfitParams(
   filters: OutfitFilters,
@@ -93,12 +108,32 @@ export function cloneOutfit(outfitId: string): Promise<Outfit> {
   return api.post<Outfit>(`/outfits/${outfitId}/clone`)
 }
 
-export function listCurrentWeather(): Promise<Weather> {
-  return api.get<Weather>('/weather/current')
+export function listCurrentWeather(coordinates?: WeatherCoordinates): Promise<Weather> {
+  if (!coordinates) {
+    return api.get<Weather>('/weather/current')
+  }
+
+  return api.get<Weather>('/weather/current', {
+    params: buildWeatherCoordinateParams(coordinates),
+  })
 }
 
-export function listWeatherForecast(days: number): Promise<ForecastResponse> {
+export function geocodeWeatherLocation(locationName: string): Promise<GeocodedLocation> {
+  return api.get<GeocodedLocation>('/weather/geocode', {
+    params: {
+      name: locationName.trim(),
+    },
+  })
+}
+
+export function listWeatherForecast(
+  days: number,
+  coordinates?: WeatherCoordinates
+): Promise<ForecastResponse> {
   return api.get<ForecastResponse>('/weather/forecast', {
-    params: { days: String(days) },
+    params: {
+      days: String(days),
+      ...(coordinates ? buildWeatherCoordinateParams(coordinates) : {}),
+    },
   })
 }

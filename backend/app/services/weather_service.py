@@ -73,6 +73,14 @@ class DailyForecast:
         )
 
 
+@dataclass
+class GeocodedLocation:
+    name: str
+    address: str
+    latitude: float
+    longitude: float
+
+
 # WMO Weather interpretation codes
 # https://open-meteo.com/en/docs
 WMO_CODES = {
@@ -114,6 +122,7 @@ CACHE_PREFIX = "weather:"
 class WeatherService:
     def __init__(self):
         self.base_url = settings.openmeteo_url
+        self.geocoding_url = settings.openmeteo_geocoding_url
 
     @staticmethod
     def _cache_key(lat: float, lon: float) -> str:
@@ -154,6 +163,61 @@ class WeatherService:
     def _interpret_weather_code(self, code: int) -> str:
         """Convert WMO weather code to human-readable condition."""
         return WMO_CODES.get(code, "unknown")
+
+    async def geocode_location(self, location_name: str) -> GeocodedLocation:
+        """Resolve a human-readable location name to coordinates."""
+        query = location_name.strip()
+        if not query:
+            raise ApiUserError("error.weather_location_required")
+
+        params = {
+            "name": query,
+            "count": 1,
+            "language": "zh",
+            "format": "json",
+        }
+
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            try:
+                response = await client.get(f"{self.geocoding_url}/search", params=params)
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPError as e:
+                logger.error(f"Weather geocoding API error: {e}")
+                raise WeatherServiceError(f"Failed to geocode location: {e}") from None
+
+        results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(results, list) or not results:
+            raise ApiUserError(
+                "error.weather_location_not_found",
+                status_code=404,
+                location=query,
+            )
+
+        result = results[0]
+        latitude = result.get("latitude") if isinstance(result, dict) else None
+        longitude = result.get("longitude") if isinstance(result, dict) else None
+        if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
+            raise WeatherServiceError("Failed to geocode location: invalid response")
+
+        latitude = float(latitude)
+        longitude = float(longitude)
+        self._validate_coordinates(latitude, longitude)
+
+        name = str(result.get("name") or query)
+        address_parts = [
+            str(part).strip()
+            for part in (result.get("admin1"), result.get("country"))
+            if part
+        ]
+        address = ", ".join(address_parts) or name
+
+        return GeocodedLocation(
+            name=name,
+            address=address,
+            latitude=latitude,
+            longitude=longitude,
+        )
 
     async def get_current_weather(
         self, latitude: float, longitude: float, use_cache: bool = True

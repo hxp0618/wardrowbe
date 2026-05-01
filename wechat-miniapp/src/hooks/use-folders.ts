@@ -11,10 +11,15 @@ import {
 
 import type { FolderMutationPayload } from '../services/folders'
 
+import { useAuthQueryEnabled } from './auth-query'
+
 export function useFolders() {
+  const authQueryEnabled = useAuthQueryEnabled()
+
   return useQuery({
     queryKey: ['miniapp', 'folders'],
     queryFn: listFolders,
+    enabled: authQueryEnabled,
   })
 }
 

@@ -12,6 +12,13 @@ export type LocationDraft = {
   locationLon: number | undefined
 }
 
+export type ResolvedLocation = {
+  name?: string
+  address?: string
+  latitude: number
+  longitude: number
+}
+
 export function toResolvedLocationDraft(source?: LocationSource | null): LocationDraft {
   return {
     locationName: source?.location_name || '',
@@ -37,6 +44,37 @@ export function applyManualLocationName(
 
 export function hasResolvedLocation(location: LocationDraft): boolean {
   return location.locationLat != null && location.locationLon != null
+}
+
+export async function resolveLocationDraftForSave(
+  location: LocationDraft,
+  geocodeLocationName: (locationName: string) => Promise<ResolvedLocation>
+): Promise<LocationDraft> {
+  const locationName = location.locationName.trim()
+
+  if (hasResolvedLocation(location)) {
+    return {
+      locationName,
+      locationLat: location.locationLat,
+      locationLon: location.locationLon,
+    }
+  }
+
+  if (!locationName) {
+    return {
+      locationName: '',
+      locationLat: undefined,
+      locationLon: undefined,
+    }
+  }
+
+  const resolvedLocation = await geocodeLocationName(locationName)
+
+  return {
+    locationName: resolvedLocation.name || resolvedLocation.address || locationName,
+    locationLat: resolvedLocation.latitude,
+    locationLon: resolvedLocation.longitude,
+  }
 }
 
 export function buildUserProfileUpdate(input: {

@@ -41,15 +41,41 @@ export interface ForecastResponse {
   forecast: ForecastDay[];
 }
 
+export interface GeocodedLocation {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
+function buildWeatherCoordinateParams(latitude: number, longitude: number) {
+  return {
+    latitude: String(latitude),
+    longitude: String(longitude),
+  };
+}
+
+export function geocodeWeatherLocation(locationName: string) {
+  return api.get<GeocodedLocation>('/weather/geocode', {
+    params: {
+      name: locationName.trim(),
+    },
+  });
+}
+
 export function useWeather() {
   const { status } = useSession();
   const { user, isAuthenticated, isLoading } = useAuth();
   useSetTokenIfAvailable();
-  const hasLocation = user?.location_lat != null && user?.location_lon != null;
+  const latitude = user?.location_lat ?? null;
+  const longitude = user?.location_lon ?? null;
+  const hasLocation = latitude != null && longitude != null;
 
   return useQuery({
-    queryKey: ['weather', user?.id ?? null, user?.location_lat ?? null, user?.location_lon ?? null],
-    queryFn: () => api.get<Weather>('/weather/current'),
+    queryKey: ['weather', user?.id ?? null, latitude, longitude],
+    queryFn: () => api.get<Weather>('/weather/current', {
+      params: buildWeatherCoordinateParams(latitude!, longitude!),
+    }),
     enabled: status === 'authenticated' && isAuthenticated && !isLoading && hasLocation,
     staleTime: 1000 * 60 * 15, // 15 minutes - weather doesn't change that fast
     retry: false, // Don't retry if location not set
@@ -60,11 +86,18 @@ export function useWeatherForecast(days: number) {
   const { status } = useSession();
   const { user, isAuthenticated, isLoading } = useAuth();
   useSetTokenIfAvailable();
-  const hasLocation = user?.location_lat != null && user?.location_lon != null;
+  const latitude = user?.location_lat ?? null;
+  const longitude = user?.location_lon ?? null;
+  const hasLocation = latitude != null && longitude != null;
 
   return useQuery({
-    queryKey: ['weather-forecast', user?.id ?? null, user?.location_lat ?? null, user?.location_lon ?? null, days],
-    queryFn: () => api.get<ForecastResponse>('/weather/forecast', { params: { days: String(days) } }),
+    queryKey: ['weather-forecast', user?.id ?? null, latitude, longitude, days],
+    queryFn: () => api.get<ForecastResponse>('/weather/forecast', {
+      params: {
+        days: String(days),
+        ...buildWeatherCoordinateParams(latitude!, longitude!),
+      },
+    }),
     enabled: status === 'authenticated' && isAuthenticated && !isLoading && hasLocation && days > 0,
     staleTime: 1000 * 60 * 30,
     retry: false,

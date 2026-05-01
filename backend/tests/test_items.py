@@ -1,3 +1,4 @@
+from base64 import b64decode
 from uuid import uuid4
 
 import pytest
@@ -104,6 +105,27 @@ class TestItemCRUD:
     """Tests for item CRUD operations."""
 
     @pytest.mark.asyncio
+    async def test_create_item_accepts_octet_stream_image_upload(
+        self, client: AsyncClient, test_user, auth_headers
+    ):
+        """Test miniapp-style uploads when the file part uses a generic content type."""
+        image_bytes = b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
+
+        response = await client.post(
+            "/api/v1/items",
+            files={"image": ("first-item.png", image_bytes, "application/octet-stream")},
+            data={"type": "shirt", "name": "First item"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201, response.json()
+        data = response.json()
+        assert data["name"] == "First item"
+        assert data["type"] == "shirt"
+
+    @pytest.mark.asyncio
     async def test_get_item_not_found(self, client: AsyncClient, test_user, auth_headers):
         """Test getting a non-existent item."""
         response = await client.get(f"/api/v1/items/{uuid4()}", headers=auth_headers)
@@ -156,6 +178,32 @@ class TestItemCRUD:
         data = response.json()
         assert data["name"] == "New Name"
         assert data["brand"] == "Test Brand"
+
+    @pytest.mark.asyncio
+    async def test_update_item_needs_wash(
+        self, client: AsyncClient, test_user, auth_headers, db_session: AsyncSession
+    ):
+        """Test manually marking an item as needing wash."""
+        item = ClothingItem(
+            user_id=test_user.id,
+            type="shirt",
+            image_path="test/item.jpg",
+            status=ItemStatus.ready,
+            needs_wash=False,
+        )
+        db_session.add(item)
+        await db_session.commit()
+        await db_session.refresh(item)
+
+        response = await client.patch(
+            f"/api/v1/items/{item.id}",
+            json={"needs_wash": True},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200, f"Unexpected error: {response.json()}"
+        data = response.json()
+        assert data["needs_wash"] is True
 
     @pytest.mark.asyncio
     async def test_update_item_not_found(self, client: AsyncClient, test_user, auth_headers):

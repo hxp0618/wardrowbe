@@ -151,6 +151,13 @@ export interface Weather {
   timestamp: string
 }
 
+export interface GeocodedLocation {
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+}
+
 export interface ForecastDay {
   date: string
   temp_min: number

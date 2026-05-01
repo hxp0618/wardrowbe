@@ -1,0 +1,4 @@
+{
+  "apiBasePath": "/api/v1",
+  "defaultApiOrigin": "http://127.0.0.1:8000"
+}

@@ -66,6 +66,7 @@ class ItemUpdate(BaseModel):
     purchase_date: date | None = None
     purchase_price: Decimal | None = Field(None, ge=0)
     favorite: bool | None = None
+    needs_wash: bool | None = None
     tags: ItemTags | None = None
     colors: list[str] | None = None
     primary_color: str | None = None

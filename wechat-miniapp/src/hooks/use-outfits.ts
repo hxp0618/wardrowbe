@@ -16,11 +16,38 @@ import {
 } from '../services/outfits'
 
 import type { OutfitFeedbackRequest, OutfitFilters, SuggestRequest } from '../services/types'
+import type { WeatherCoordinates } from '../services/outfits'
+
+import { useAuthQueryEnabled } from './auth-query'
+
+type WeatherLocationSource = {
+  location_lat?: number | null
+  location_lon?: number | null
+} | null | undefined
+
+function resolveWeatherCoordinates(
+  location: WeatherLocationSource
+): WeatherCoordinates | null {
+  const latitude = location?.location_lat
+  const longitude = location?.location_lon
+
+  if (
+    typeof latitude !== 'number' ||
+    typeof longitude !== 'number' ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    return null
+  }
+
+  return { latitude, longitude }
+}
 
 export function useOutfits(filters: OutfitFilters = {}, page = 1, pageSize = 20) {
   return useQuery({
     queryKey: ['miniapp', 'outfits', filters, page, pageSize],
     queryFn: () => listOutfits(filters, page, pageSize),
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -28,7 +55,7 @@ export function useOutfit(id: string) {
   return useQuery({
     queryKey: ['miniapp', 'outfit', id],
     queryFn: () => getOutfit(id),
-    enabled: !!id,
+    enabled: useAuthQueryEnabled(!!id),
   })
 }
 
@@ -43,7 +70,7 @@ export function useFamilyOutfits(memberId: string | undefined, page = 1, pageSiz
         page,
         pageSize
       ),
-    enabled: !!memberId,
+    enabled: useAuthQueryEnabled(!!memberId),
   })
 }
 
@@ -68,6 +95,7 @@ export function useCalendarOutfits(
         1,
         100
       ),
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -75,22 +103,48 @@ export function usePendingOutfits(limit = 3) {
   return useQuery({
     queryKey: ['miniapp', 'pending-outfits', limit],
     queryFn: () => listPendingOutfits(limit),
+    enabled: useAuthQueryEnabled(),
   })
 }
 
-export function useWeather() {
+export function useWeather(location?: WeatherLocationSource, enabled = true) {
+  const coordinates = resolveWeatherCoordinates(location)
+  const latitude = coordinates?.latitude ?? null
+  const longitude = coordinates?.longitude ?? null
+
   return useQuery({
-    queryKey: ['miniapp', 'weather'],
-    queryFn: listCurrentWeather,
+    queryKey: ['miniapp', 'weather', latitude, longitude],
+    queryFn: () => {
+      if (!coordinates) {
+        throw new Error('Location coordinates are required before loading weather.')
+      }
+
+      return listCurrentWeather(coordinates)
+    },
+    enabled: useAuthQueryEnabled(enabled && coordinates !== null),
     retry: false,
   })
 }
 
-export function useWeatherForecast(days: number, enabled = true) {
+export function useWeatherForecast(
+  days: number,
+  enabled = true,
+  location?: WeatherLocationSource
+) {
+  const coordinates = resolveWeatherCoordinates(location)
+  const latitude = coordinates?.latitude ?? null
+  const longitude = coordinates?.longitude ?? null
+
   return useQuery({
-    queryKey: ['miniapp', 'weather-forecast', days],
-    queryFn: () => listWeatherForecast(days),
-    enabled: enabled && days > 0,
+    queryKey: ['miniapp', 'weather-forecast', days, latitude, longitude],
+    queryFn: () => {
+      if (!coordinates) {
+        throw new Error('Location coordinates are required before loading weather.')
+      }
+
+      return listWeatherForecast(days, coordinates)
+    },
+    enabled: useAuthQueryEnabled(enabled && days > 0 && coordinates !== null),
     retry: false,
   })
 }

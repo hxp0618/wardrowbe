@@ -12,12 +12,15 @@ import { useUpdatePreferences, usePreferences } from '../../hooks/use-preference
 import { useUpdateUserProfile, useUserProfile } from '../../hooks/use-user'
 import { formatOccasionLabel, formatRoleLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
+import { geocodeWeatherLocation } from '../../services/outfits'
 import {
   applyManualLocationName,
   buildUserProfileUpdate,
   hasResolvedLocation,
+  resolveLocationDraftForSave,
   toResolvedLocationDraft,
 } from '../../lib/location-form'
+import { clearStoredAccessToken } from '../../lib/storage'
 import { chooseWechatLocation, WechatLocationError } from '../../lib/wechat-location'
 import { useAuthStore } from '../../stores/auth'
 import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
@@ -74,7 +77,7 @@ export default function SettingsPage() {
   const [timezoneIndex, setTimezoneIndex] = useState(0)
   const { t, tf } = useI18n()
   const tempUnitLabels: Record<string, string> = { celsius: '摄氏', fahrenheit: '华氏' }
-  const occasionOptions = ['休闲', '办公', '正式', '约会', '运动', '户外']
+  const occasionOptions = OCCASIONS.map((occasion) => formatOccasionLabel(occasion))
   const timezoneOptions = TIMEZONE_OPTIONS.map((timezone) => timezone.zh)
   const selectedTimezoneLabel =
     timezoneOptions[timezoneIndex] ||
@@ -116,26 +119,33 @@ export default function SettingsPage() {
   const enabledNotificationCount = notificationSettings?.filter((setting) => setting.enabled).length ?? 0
 
   const handleSaveProfile = async () => {
-    if (locationName.trim() && !hasResolvedLocation({ locationName, locationLat, locationLon })) {
-      void Taro.showToast({ title: t('settings_location_select_required'), icon: 'none' })
-      return
-    }
-
     try {
+      const resolvedLocation = await resolveLocationDraftForSave(
+        {
+          locationName,
+          locationLat,
+          locationLon,
+        },
+        geocodeWeatherLocation
+      )
+      setLocationName(resolvedLocation.locationName)
+      setLocationLat(resolvedLocation.locationLat)
+      setLocationLon(resolvedLocation.locationLon)
       await updateProfile.mutateAsync(
         buildUserProfileUpdate({
           displayName,
           timezone: TIMEZONE_OPTIONS[timezoneIndex]?.value || 'UTC',
-          location: {
-            locationName,
-            locationLat,
-            locationLon,
-          },
+          location: resolvedLocation,
         })
       )
       void Taro.showToast({ title: t('settings_toast_profile_updated'), icon: 'success' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : t('settings_toast_update_failed')
+      const message =
+        error instanceof WechatLocationError
+          ? t('settings_location_select_required')
+          : error instanceof Error
+            ? error.message
+            : t('settings_toast_update_failed')
       void Taro.showToast({ title: message, icon: 'none' })
     }
   }
@@ -176,7 +186,7 @@ export default function SettingsPage() {
   }
 
   const handleLogout = () => {
-    Taro.removeStorageSync('accessToken')
+    clearStoredAccessToken()
     setAccessToken(null)
     void Taro.redirectTo({ url: '/pages/login/index' })
   }

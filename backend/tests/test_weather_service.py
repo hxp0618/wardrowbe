@@ -47,6 +47,18 @@ SAMPLE_FORECAST_RESPONSE = {
     },
 }
 
+SAMPLE_GEOCODE_RESPONSE = {
+    "results": [
+        {
+            "name": "Shanghai",
+            "admin1": "Shanghai",
+            "country": "China",
+            "latitude": 31.2304,
+            "longitude": 121.4737,
+        }
+    ]
+}
+
 
 def _make_weather_data(**overrides) -> WeatherData:
     defaults = {
@@ -325,6 +337,22 @@ class TestCheckHealth:
         ):
             result = await weather_service.check_health()
         assert result["status"] == "unhealthy"
+
+
+class TestLocationGeocoding:
+    @pytest.mark.asyncio
+    async def test_geocodes_location_name(self, weather_service):
+        mock_response = _mock_response(json_data=SAMPLE_GEOCODE_RESPONSE)
+
+        with patch("httpx.AsyncClient.get", return_value=mock_response) as mock_get:
+            result = await weather_service.geocode_location(" Shanghai ")
+
+        assert result.name == "Shanghai"
+        assert result.address == "Shanghai, China"
+        assert result.latitude == pytest.approx(31.2304)
+        assert result.longitude == pytest.approx(121.4737)
+        mock_get.assert_called_once()
+        assert mock_get.call_args.kwargs["params"]["name"] == "Shanghai"
 
 
 class TestWeatherDataSerialization:

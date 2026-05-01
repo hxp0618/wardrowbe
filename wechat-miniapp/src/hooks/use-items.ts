@@ -22,10 +22,13 @@ import {
 
 import type { CreateItemInput, ItemFilter, UpdateItemInput } from '../services/types'
 
+import { useAuthQueryEnabled } from './auth-query'
+
 export function useItems(filters: ItemFilter = {}, page = 1, pageSize = 20) {
   return useQuery({
     queryKey: ['miniapp', 'items', filters, page, pageSize],
     queryFn: () => listItems(filters, page, pageSize),
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -33,7 +36,7 @@ export function useItem(id: string) {
   return useQuery({
     queryKey: ['miniapp', 'item', id],
     queryFn: () => getItem(id),
-    enabled: !!id,
+    enabled: useAuthQueryEnabled(!!id),
   })
 }
 
@@ -41,6 +44,7 @@ export function useItemTypes() {
   return useQuery({
     queryKey: ['miniapp', 'item-types'],
     queryFn: listItemTypes,
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -172,7 +176,7 @@ export function useWashHistory(itemId: string) {
   return useQuery({
     queryKey: ['miniapp', 'wash-history', itemId],
     queryFn: () => getWashHistory(itemId),
-    enabled: !!itemId,
+    enabled: useAuthQueryEnabled(!!itemId),
   })
 }
 
@@ -180,7 +184,7 @@ export function useWearStats(itemId: string) {
   return useQuery({
     queryKey: ['miniapp', 'wear-stats', itemId],
     queryFn: () => getWearStats(itemId),
-    enabled: !!itemId,
+    enabled: useAuthQueryEnabled(!!itemId),
   })
 }
 
@@ -188,7 +192,7 @@ export function useWearHistory(itemId: string, limit = 10) {
   return useQuery({
     queryKey: ['miniapp', 'wear-history', itemId],
     queryFn: () => getWearHistory(itemId, limit),
-    enabled: !!itemId,
+    enabled: useAuthQueryEnabled(!!itemId),
   })
 }
 
@@ -196,5 +200,6 @@ export function useColorDistribution() {
   return useQuery({
     queryKey: ['miniapp', 'color-distribution'],
     queryFn: listColorDistribution,
+    enabled: useAuthQueryEnabled(),
   })
 }

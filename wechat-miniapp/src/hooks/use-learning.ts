@@ -8,10 +8,13 @@ import {
   recomputeLearning,
 } from '../services/learning'
 
+import { useAuthQueryEnabled } from './auth-query'
+
 export function useLearning() {
   return useQuery({
     queryKey: ['miniapp', 'learning'],
     queryFn: getLearning,
+    enabled: useAuthQueryEnabled(),
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -53,7 +56,7 @@ export function useItemPairSuggestions(itemId: string, limit = 5) {
   return useQuery({
     queryKey: ['miniapp', 'learning', 'item-pairs', itemId, limit],
     queryFn: () => getItemPairSuggestions(itemId, limit),
-    enabled: !!itemId,
+    enabled: useAuthQueryEnabled(!!itemId),
     staleTime: 5 * 60 * 1000,
   })
 }

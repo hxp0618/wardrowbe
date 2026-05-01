@@ -6,10 +6,15 @@ import {
   updatePreferences,
 } from '../services/preferences'
 
+import { useAuthQueryEnabled } from './auth-query'
+
 export function usePreferences() {
+  const authQueryEnabled = useAuthQueryEnabled()
+
   return useQuery({
     queryKey: ['miniapp', 'preferences'],
     queryFn: getPreferences,
+    enabled: authQueryEnabled,
   })
 }
 

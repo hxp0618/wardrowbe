@@ -27,6 +27,7 @@ import {
   useWeatherForecast,
 } from '../../hooks/use-outfits'
 import { usePreferences } from '../../hooks/use-preferences'
+import { useUserProfile } from '../../hooks/use-user'
 import { formatItemTypeLabel, formatOccasionLabel, formatWeatherConditionLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
 
@@ -114,7 +115,11 @@ function EditorialPicker(props: {
 
 export default function SuggestPage() {
   const canRender = useAuthGuard()
-  const { data: weather, isLoading: weatherLoading } = useWeather()
+  const { data: userProfile, isLoading: userProfileLoading } = useUserProfile()
+  const { data: weather, isLoading: currentWeatherLoading } = useWeather(
+    userProfile,
+    !!userProfile
+  )
   const { data: prefs } = usePreferences()
   const suggestOutfit = useSuggestOutfit()
   const acceptOutfit = useAcceptOutfit()
@@ -128,10 +133,13 @@ export default function SuggestPage() {
   const [outfit, setOutfit] = useState<Outfit | null>(null)
   const [error, setError] = useState<string | null>(null)
   const forecastDays = getForecastDaysForTargetDate(targetDate)
-  const { data: forecastData, isLoading: forecastLoading } = useWeatherForecast(
+  const { data: forecastData, isLoading: forecastQueryLoading } = useWeatherForecast(
     forecastDays,
-    forecastDays > 0
+    forecastDays > 0 && !!userProfile,
+    userProfile
   )
+  const weatherLoading = userProfileLoading || currentWeatherLoading
+  const forecastLoading = forecastDays > 0 && (userProfileLoading || forecastQueryLoading)
   const { t } = useI18n()
   const occasionOptions = OCCASIONS
   const weatherConditionOptions = WEATHER_CONDITIONS

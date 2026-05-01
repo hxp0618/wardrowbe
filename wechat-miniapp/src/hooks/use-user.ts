@@ -6,10 +6,15 @@ import {
   updateUserProfile,
 } from '../services/user'
 
+import { useAuthQueryEnabled } from './auth-query'
+
 export function useUserProfile() {
+  const authQueryEnabled = useAuthQueryEnabled()
+
   return useQuery({
     queryKey: ['miniapp', 'user-profile'],
     queryFn: getUserProfile,
+    enabled: authQueryEnabled,
   })
 }
 

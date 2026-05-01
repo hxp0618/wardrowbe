@@ -4,7 +4,6 @@ import ipaddress
 import socket
 from urllib.parse import urlparse
 
-
 _BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain"}
 _BLOCKED_IPS = {
     ipaddress.ip_address("169.254.169.254"),  # Common cloud metadata target
@@ -30,7 +29,7 @@ def _resolve_host_ips(host: str, port: int) -> list[ipaddress._BaseAddress]:
     try:
         resolved = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except socket.gaierror as exc:
-        raise ValueE1rror(_OUTBOUND_BLOCK_MESSAGE) from exc
+        raise ValueError(_OUTBOUND_BLOCK_MESSAGE) from exc
 
     candidates: list[ipaddress._BaseAddress] = []
     for _, _, _, _, sockaddr in resolved:
@@ -38,7 +37,9 @@ def _resolve_host_ips(host: str, port: int) -> list[ipaddress._BaseAddress]:
     return candidates
 
 
-def is_private_hostname_or_ip(host: str, *, port: int | None = None, resolve_dns: bool = True) -> bool:
+def is_private_hostname_or_ip(
+    host: str, *, port: int | None = None, resolve_dns: bool = True
+) -> bool:
     normalized_host = host.strip().lower()
     if not normalized_host:
         raise ValueError("Outbound URL is missing a host")
@@ -53,7 +54,9 @@ def is_private_hostname_or_ip(host: str, *, port: int | None = None, resolve_dns
             return False
 
     resolved_port = port or 80
-    return any(_is_blocked_ip(candidate) for candidate in _resolve_host_ips(normalized_host, resolved_port))
+    return any(
+        _is_blocked_ip(candidate) for candidate in _resolve_host_ips(normalized_host, resolved_port)
+    )
 
 
 def validate_outbound_url(

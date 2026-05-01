@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 
 import { Input, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 
 import { EmptyState } from '../../components/empty-state'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
 import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
 import { useI18n } from '../../lib/i18n'
+import { setStoredAccessToken } from '../../lib/storage'
 import {
   getMiniappAuthAvailability,
   loginWithDev,
@@ -15,9 +18,9 @@ import {
   type AuthSession,
   type MiniappAuthAvailability,
 } from '../../services/auth'
+import { bootstrapMiniappSession } from '../../services/session-bootstrap'
 import { useAuthStore } from '../../stores/auth'
 
-const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
 const DASHBOARD_PAGE_URL = '/pages/dashboard/index'
 const ONBOARDING_PAGE_URL = '/pages/onboarding/index'
 
@@ -51,9 +54,33 @@ async function navigateAfterLogin(options: {
   await Taro.redirectTo({ url: ONBOARDING_PAGE_URL })
 }
 
+type LoginQueryClient = Pick<QueryClient, 'fetchQuery' | 'prefetchQuery' | 'removeQueries'>
+
+export async function completeAuthenticatedLogin(options: {
+  session: AuthSession
+  queryClient: LoginQueryClient
+  inviteToken?: string
+  setAccessToken: (accessToken: string | null) => void
+  setHydrated: (hydrated: boolean) => void
+}) {
+  setStoredAccessToken(options.session.accessToken)
+  options.setAccessToken(options.session.accessToken)
+  options.setHydrated(true)
+  options.queryClient.removeQueries({ queryKey: ['miniapp'] })
+
+  const profile = await bootstrapMiniappSession(options.queryClient)
+
+  await navigateAfterLogin({
+    inviteToken: options.inviteToken,
+    onboardingCompleted:
+      profile?.onboarding_completed ?? options.session.onboardingCompleted,
+  })
+}
+
 export default function LoginPage() {
   const inviteToken = resolveInviteToken()
   const { t } = useI18n()
+  const queryClient = useQueryClient()
   const setAccessToken = useAuthStore((state) => state.setAccessToken)
   const setHydrated = useAuthStore((state) => state.setHydrated)
   const [email, setEmail] = useState('dev@wardrobe.local')
@@ -92,12 +119,12 @@ export default function LoginPage() {
 
     try {
       const session = await action()
-      Taro.setStorageSync(ACCESS_TOKEN_STORAGE_KEY, session.accessToken)
-      setAccessToken(session.accessToken)
-      setHydrated(true)
-      await navigateAfterLogin({
+      await completeAuthenticatedLogin({
+        session,
         inviteToken,
-        onboardingCompleted: session.onboardingCompleted,
+        queryClient,
+        setAccessToken,
+        setHydrated,
       })
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('login_fallback_error'))

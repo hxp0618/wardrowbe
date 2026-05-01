@@ -4,10 +4,13 @@ import { deletePairing, generatePairings, listItemPairings, listPairings } from 
 
 import type { GeneratePairingsRequest } from '../services/types'
 
+import { useAuthQueryEnabled } from './auth-query'
+
 export function usePairings(page = 1, pageSize = 20, sourceType?: string) {
   return useQuery({
     queryKey: ['miniapp', 'pairings', page, pageSize, sourceType],
     queryFn: () => listPairings(page, pageSize, sourceType),
+    enabled: useAuthQueryEnabled(),
   })
 }
 
@@ -37,6 +40,6 @@ export function useItemPairings(itemId: string, page = 1, pageSize = 20) {
   return useQuery({
     queryKey: ['miniapp', 'pairings', 'item', itemId, page, pageSize],
     queryFn: () => listItemPairings(itemId, page, pageSize),
-    enabled: !!itemId,
+    enabled: useAuthQueryEnabled(!!itemId),
   })
 }

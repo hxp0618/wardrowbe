@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { useUserProfile } from '../hooks/use-user'
 import { useI18n } from '../lib/i18n'
+import { setStoredAppearance } from '../lib/storage'
 import { useAuthStore } from '../stores/auth'
 import { colors } from './ui-theme'
 import { resolveHeaderMetrics } from './header-metrics'
@@ -85,7 +86,7 @@ export function AppHeader(props: AppHeaderProps) {
   const handleThemeTap = () => {
     const nextAppearance = appearance === 'dark' ? 'light' : 'dark'
     setAppearance(nextAppearance)
-    Taro.setStorageSync('appearance', nextAppearance)
+    setStoredAppearance(nextAppearance)
   }
 
   return (
