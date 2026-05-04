@@ -8,16 +8,25 @@ type SectionCardProps = {
   title: string
   extra?: ReactNode
   children: ReactNode
+  compact?: boolean
+  onClick?: () => void
+  ariaLabel?: string
   style?: CSSProperties
   contentStyle?: CSSProperties
 }
 
 export function SectionCard(props: SectionCardProps) {
+  const compact = props.compact ?? false
+
   return (
     <View
+      ariaRole={props.onClick ? 'button' : undefined}
+      ariaLabel={props.onClick ? props.ariaLabel ?? props.title : props.ariaLabel}
+      onClick={props.onClick}
       style={{
         ...cardStyle,
-        padding: '20px',
+        minHeight: props.onClick ? '44px' : undefined,
+        padding: compact ? '12px' : '16px',
         ...props.style,
       }}
     >
@@ -27,7 +36,7 @@ export function SectionCard(props: SectionCardProps) {
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '12px',
-          marginBottom: '16px',
+          marginBottom: compact ? '8px' : '12px',
         }}
       >
         <Text style={sectionTitleStyle}>{props.title}</Text>

@@ -8,17 +8,28 @@ type StatCardProps = {
   label: string
   value: string
   hint?: string
+  compact?: boolean
+  onClick?: () => void
   style?: CSSProperties
 }
 
 export function StatCard(props: StatCardProps) {
+  const compact = props.compact ?? false
+  const accessibleLabel = [props.label, props.value, props.hint]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <View
+      ariaRole={props.onClick ? 'button' : undefined}
+      ariaLabel={props.onClick ? accessibleLabel : undefined}
+      onClick={props.onClick}
       style={{
         ...cardStyle,
         flex: 1,
-        minWidth: '120px',
-        padding: '16px',
+        minHeight: props.onClick ? '44px' : undefined,
+        minWidth: compact ? '96px' : '120px',
+        padding: compact ? '12px' : '16px',
         ...props.style,
       }}
     >
@@ -34,8 +45,8 @@ export function StatCard(props: StatCardProps) {
       <Text
         style={{
           display: 'block',
-          marginTop: '10px',
-          fontSize: '28px',
+          marginTop: compact ? '6px' : '10px',
+          fontSize: compact ? '22px' : '28px',
           fontWeight: 700,
           color: colors.text,
         }}
@@ -46,7 +57,7 @@ export function StatCard(props: StatCardProps) {
         <Text
           style={{
             display: 'block',
-            marginTop: '8px',
+            marginTop: compact ? '4px' : '8px',
             fontSize: '12px',
             color: colors.textSoft,
           }}

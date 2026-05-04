@@ -4,6 +4,8 @@ import {
   formatColorLabel,
   formatItemTypeLabel,
   formatNotificationChannelLabel,
+  formatOutfitDetailLabel,
+  formatTemperature,
   formatWeatherConditionLabel,
 } from './display'
 
@@ -29,5 +31,16 @@ describe('display label formatting', () => {
     expect(formatWeatherConditionLabel('Light Rain')).toBe('小雨')
     expect(formatWeatherConditionLabel('mostly sunny')).toBe('晴间多云')
     expect(formatWeatherConditionLabel('thunderstorm with hail')).toBe('雷暴伴冰雹')
+  })
+
+  it('formats outfit detail action labels from outfit names or occasions', () => {
+    expect(formatOutfitDetailLabel({ name: '周末穿搭', occasion: 'casual' })).toBe('查看周末穿搭详情')
+    expect(formatOutfitDetailLabel({ name: null, occasion: 'office' })).toBe('查看办公详情')
+  })
+
+  it('formats temperatures for the selected unit', () => {
+    expect(formatTemperature(20.4, 'celsius')).toBe('20°C')
+    expect(formatTemperature(20.4, 'fahrenheit')).toBe('69°F')
+    expect(formatTemperature(20.4, undefined)).toBe('20°C')
   })
 })

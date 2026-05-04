@@ -12,7 +12,7 @@ from app.models.item import ClothingItem, ItemStatus
 from app.models.outfit import Outfit, OutfitStatus, UserFeedback
 from app.models.user import User
 from app.utils.auth import get_current_user
-from app.utils.i18n import resolve_locale, translate_request
+from app.utils.i18n import resolve_locale, translate_domain_value, translate_request
 from app.utils.signed_urls import sign_image_url
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -342,11 +342,14 @@ async def get_analytics(
         if color_distribution:
             top_color = color_distribution[0].color
             if color_distribution[0].percentage > 40:
+                top_color_label = translate_domain_value(
+                    resolve_locale(http_request), "color", top_color
+                )
                 insights.append(
                     translate_request(
                         http_request,
                         "analytics.insight.heavy_color",
-                        color=top_color,
+                        color=top_color_label,
                         pct=f"{color_distribution[0].percentage:.1f}",
                     )
                 )

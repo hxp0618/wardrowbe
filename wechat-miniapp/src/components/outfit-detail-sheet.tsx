@@ -1,11 +1,29 @@
 import { useEffect, useState } from 'react'
-import { Image, ScrollView, Slider, Text, Textarea, View } from '@tarojs/components'
+import { Slider, Text, Textarea, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useAcceptOutfit, useDeleteOutfit, useRejectOutfit, useSubmitOutfitFeedback } from '../hooks/use-outfits'
 import { formatItemTypeLabel, formatOccasionLabel, formatOutfitSourceLabel, formatOutfitStatusLabel, formatWeatherConditionLabel } from '../lib/display'
 import { useI18n } from '../lib/i18n'
 import type { Outfit } from '../services/types'
-import { colors, primaryButtonStyle, secondaryButtonStyle } from './ui-theme'
+import {
+  actionRowStyle,
+  actionStackStyle,
+  getActionButtonStyle,
+  getEnabledActionHandler,
+} from './action-style'
+import { OutfitImageGrid } from './outfit-image-grid'
+import {
+  flatActionFormStyle,
+  flatDetailBlockStyle,
+  sheetBackdropStyle,
+  sheetContentStyle,
+  sheetHandleStyle,
+  sheetHandleTrackStyle,
+  sheetOverlayStyle,
+  sheetPanelStyle,
+  sheetScrollBodyStyle,
+} from './sheet-style'
+import { colors } from './ui-theme'
 
 type OutfitDetailSheetProps = {
   outfit: Outfit | null
@@ -34,9 +52,25 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
     setComment('')
   }, [outfit, visible])
 
+  useEffect(() => {
+    if (!visible) return undefined
+
+    void Taro.hideTabBar({ animation: false }).catch(() => undefined)
+
+    return () => {
+      void Taro.showTabBar({ animation: false }).catch(() => undefined)
+    }
+  }, [visible])
+
   if (!visible || !currentOutfit) return null
 
+  const statusActionPending = acceptOutfit.isPending || rejectOutfit.isPending
+  const deletePending = deleteOutfitMutation.isPending
+  const feedbackPending = submitFeedback.isPending
+
   const handleAccept = async () => {
+    if (statusActionPending) return
+
     try {
       const updated = await acceptOutfit.mutateAsync(currentOutfit.id)
       setCurrentOutfit(updated)
@@ -45,6 +79,8 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
   }
 
   const handleReject = async () => {
+    if (statusActionPending) return
+
     try {
       const updated = await rejectOutfit.mutateAsync(currentOutfit.id)
       setCurrentOutfit(updated)
@@ -53,6 +89,8 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
   }
 
   const handleDelete = async () => {
+    if (deletePending) return
+
     try {
       await deleteOutfitMutation.mutateAsync(currentOutfit.id)
       void Taro.showToast({ title: t('outfit_detail_toast_deleted'), icon: 'success' })
@@ -61,6 +99,8 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
   }
 
   const handleSubmitFeedback = async () => {
+    if (feedbackPending) return
+
     try {
       const updated = await submitFeedback.mutateAsync({
         outfitId: currentOutfit.id,
@@ -68,6 +108,7 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
           rating,
           comment: comment.trim() || undefined,
           actually_worn: true,
+          worn: true,
         },
       })
       setCurrentOutfit(updated)
@@ -77,17 +118,17 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
   }
 
   return (
-    <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>
-      <View onClick={onClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '85vh', backgroundColor: colors.surface, borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column', borderTop: `1px solid ${colors.border}` }}>
-        <View style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-          <View style={{ width: '40px', height: '4px', borderRadius: '2px', backgroundColor: colors.sheetHandle }} />
+    <View catchMove style={sheetOverlayStyle}>
+      <View ariaRole='button' ariaLabel={t('outfit_detail_close')} catchMove onClick={onClose} style={sheetBackdropStyle} />
+      <View catchMove style={sheetPanelStyle}>
+        <View style={sheetHandleTrackStyle}>
+          <View style={sheetHandleStyle} />
         </View>
-        <ScrollView scrollY style={{ flex: 1 }}>
-          <View style={{ padding: '0 20px 40px' }}>
+        <View catchMove style={sheetScrollBodyStyle}>
+          <View style={sheetContentStyle}>
             {/* Header */}
-            <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <Text style={{ fontSize: '20px', fontWeight: 600, color: colors.text }}>
+            <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '10px' }}>
+              <Text style={{ fontSize: '18px', fontWeight: 600, color: colors.text }}>
                 {currentOutfit.name || formatOccasionLabel(currentOutfit.occasion)}
               </Text>
               <View style={{ display: 'flex', gap: '8px' }}>
@@ -102,58 +143,49 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
 
             {/* Date */}
             {currentOutfit.scheduled_for && (
-              <Text style={{ display: 'block', fontSize: '13px', color: colors.textMuted, marginBottom: '12px' }}>
-                📅 {currentOutfit.scheduled_for}
+              <Text style={{ display: 'block', fontSize: '13px', color: colors.textMuted, marginBottom: '10px' }}>
+                {currentOutfit.scheduled_for}
               </Text>
             )}
 
+            {/* Items */}
+            <View style={{ marginBottom: '12px' }}>
+              <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>{t('outfit_detail_items_title')}</Text>
+              <OutfitImageGrid items={currentOutfit.items} />
+              <View style={{ borderTop: `1px solid ${colors.border}`, marginTop: '10px' }}>
+                {currentOutfit.items.map((item) => (
+                  <View key={item.id} style={{ minHeight: '38px', padding: '8px 0', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <Text style={{ flex: 1, fontSize: '13px', color: colors.text }} numberOfLines={1}>
+                      {item.name || formatItemTypeLabel(item.type)}
+                    </Text>
+                    {item.layer_type ? (
+                      <Text style={{ fontSize: '11px', color: colors.textMuted }}>{item.layer_type}</Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            </View>
+
             {/* Reasoning */}
             {currentOutfit.reasoning && (
-              <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.22)' }}>
+              <View style={flatDetailBlockStyle}>
                 <Text style={{ fontSize: '13px', color: colors.success, lineHeight: 1.5 }}>{currentOutfit.reasoning}</Text>
               </View>
             )}
 
             {/* Highlights */}
             {currentOutfit.highlights && currentOutfit.highlights.length > 0 && (
-              <View style={{ marginBottom: '16px' }}>
+              <View style={{ marginBottom: '12px' }}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>{t('outfit_detail_highlights_title')}</Text>
                 {currentOutfit.highlights.map((h, i) => (
-                  <Text key={i} style={{ display: 'block', fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>• {h}</Text>
+                  <Text key={i} style={{ display: 'block', fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>{h}</Text>
                 ))}
               </View>
             )}
 
-            {/* Items */}
-            <View style={{ marginBottom: '16px' }}>
-              <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>{t('outfit_detail_items_title')}</Text>
-              <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {currentOutfit.items.map((item) => {
-                  const imgUrl = item.thumbnail_url || item.image_url
-                  return (
-                    <View key={item.id} style={{ width: '120px' }}>
-                      {imgUrl ? (
-                        <Image src={imgUrl} mode='aspectFill' style={{ width: '120px', height: '120px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }} />
-                      ) : (
-                        <View style={{ width: '120px', height: '120px', borderRadius: '14px', backgroundColor: colors.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ fontSize: '12px', color: colors.textMuted }}>{formatItemTypeLabel(item.type)}</Text>
-                        </View>
-                      )}
-                      <Text style={{ display: 'block', fontSize: '13px', color: colors.text, marginTop: '6px' }} numberOfLines={1}>
-                        {item.name || formatItemTypeLabel(item.type)}
-                      </Text>
-                      {item.layer_type && (
-                        <Text style={{ fontSize: '11px', color: colors.textMuted }}>{item.layer_type}</Text>
-                      )}
-                    </View>
-                  )
-                })}
-              </View>
-            </View>
-
             {/* Style notes */}
             {currentOutfit.style_notes && (
-              <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
+              <View style={flatDetailBlockStyle}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>{t('outfit_detail_style_notes_title')}</Text>
                 <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>{currentOutfit.style_notes}</Text>
               </View>
@@ -161,7 +193,7 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
 
             {/* Weather */}
             {currentOutfit.weather && (
-              <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
+              <View style={flatDetailBlockStyle}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>{t('outfit_detail_weather_title')}</Text>
                 <Text style={{ fontSize: '13px', color: colors.textMuted }}>
                   {tf('outfit_detail_weather_summary', {
@@ -175,7 +207,7 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
 
             {/* Existing feedback */}
             {currentOutfit.feedback && currentOutfit.feedback.rating != null && (
-              <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.22)' }}>
+              <View style={flatDetailBlockStyle}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>{t('outfit_detail_feedback_title')}</Text>
                 <Text style={{ fontSize: '13px', color: colors.textMuted }}>
                   {tf('outfit_detail_feedback_summary', {
@@ -188,9 +220,9 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
 
             {/* Feedback form */}
             {showFeedback && (
-              <View style={{ marginBottom: '16px', padding: '16px', borderRadius: '14px', backgroundColor: colors.surfaceMuted, border: `1px solid ${colors.border}` }}>
-                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '12px' }}>{t('outfit_detail_rate_title')}</Text>
-                <View style={{ marginBottom: '12px' }}>
+              <View style={flatActionFormStyle}>
+                <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>{t('outfit_detail_rate_title')}</Text>
+                <View style={{ marginBottom: '10px' }}>
                   <Text style={{ fontSize: '13px', color: colors.textMuted, marginBottom: '8px' }}>{tf('outfit_detail_rating', { rating })}</Text>
                   <Slider min={1} max={5} step={1} value={rating} onChange={(e) => setRating(e.detail.value)} activeColor={colors.accent} backgroundColor={colors.surfaceSelected} />
                 </View>
@@ -198,13 +230,18 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
                   value={comment}
                   placeholder={t('outfit_detail_comment_placeholder')}
                   onInput={(e) => setComment(e.detail.value)}
-                  style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '10px', border: `1px solid ${colors.border}`, backgroundColor: colors.surface, color: colors.text, boxSizing: 'border-box', fontSize: '13px' }}
+                  style={{ width: '100%', height: '72px', padding: '10px', borderRadius: '10px', border: `1px solid ${colors.border}`, backgroundColor: colors.surface, color: colors.text, boxSizing: 'border-box', fontSize: '13px' }}
                 />
-                <View style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-                  <View onClick={() => setShowFeedback(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
+                <View style={{ ...actionRowStyle, marginTop: '10px' }}>
+                  <View ariaRole='button' ariaLabel={t('outfit_detail_cancel')} onClick={() => setShowFeedback(false)} style={getActionButtonStyle({ flex: 1 })}>
                     <Text style={{ fontSize: '14px', color: colors.text }}>{t('outfit_detail_cancel')}</Text>
                   </View>
-                  <View onClick={handleSubmitFeedback} style={{ ...primaryButtonStyle, flex: 1 }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={t('outfit_detail_submit')}
+                    onClick={getEnabledActionHandler(feedbackPending, handleSubmitFeedback)}
+                    style={getActionButtonStyle({ variant: 'primary', flex: 1, disabled: feedbackPending })}
+                  >
                     <Text style={{ fontSize: '14px', color: colors.accentText }}>{t('outfit_detail_submit')}</Text>
                   </View>
                 </View>
@@ -212,41 +249,61 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
             )}
 
             {/* Actions */}
-            <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <View style={actionStackStyle}>
               {currentOutfit.status === 'pending' && (
-                <View style={{ display: 'flex', gap: '10px' }}>
-                  <View onClick={handleAccept} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.22)', textAlign: 'center' }}>
+                <View style={actionRowStyle}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={t('outfit_detail_accept')}
+                    onClick={getEnabledActionHandler(statusActionPending, handleAccept)}
+                    style={{ ...getActionButtonStyle({ variant: 'plain', tone: 'success', flex: 1, disabled: statusActionPending }), textAlign: 'center' }}
+                  >
                     <Text style={{ fontSize: '14px', color: colors.success }}>{t('outfit_detail_accept')}</Text>
                   </View>
-                  <View onClick={handleReject} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)', textAlign: 'center' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={t('outfit_detail_reject')}
+                    onClick={getEnabledActionHandler(statusActionPending, handleReject)}
+                    style={{ ...getActionButtonStyle({ variant: 'plain', tone: 'danger', flex: 1, disabled: statusActionPending }), textAlign: 'center' }}
+                  >
                     <Text style={{ fontSize: '14px', color: colors.danger }}>{t('outfit_detail_reject')}</Text>
                   </View>
                 </View>
               )}
 
               {currentOutfit.status === 'accepted' && !showFeedback && (
-                <View onClick={() => setShowFeedback(true)} style={secondaryButtonStyle}>
+                <View ariaRole='button' ariaLabel={t('outfit_detail_rate_action')} onClick={() => setShowFeedback(true)} style={getActionButtonStyle()}>
                   <Text style={{ fontSize: '14px', color: colors.text }}>{t('outfit_detail_rate_action')}</Text>
                 </View>
               )}
 
               {!showConfirmDelete ? (
-                <View onClick={() => setShowConfirmDelete(true)} style={{ ...secondaryButtonStyle, backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)' }}>
+                <View
+                  ariaRole='button'
+                  ariaLabel={t('outfit_detail_delete_action')}
+                  onClick={getEnabledActionHandler(deletePending, () => setShowConfirmDelete(true))}
+                  style={getActionButtonStyle({ tone: 'danger', disabled: deletePending })}
+                >
                   <Text style={{ fontSize: '14px', color: colors.danger }}>{t('outfit_detail_delete_action')}</Text>
                 </View>
               ) : (
-                <View style={{ display: 'flex', gap: '10px' }}>
-                  <View onClick={() => setShowConfirmDelete(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
+                <View style={actionRowStyle}>
+                  <View ariaRole='button' ariaLabel={t('outfit_detail_cancel')} onClick={() => setShowConfirmDelete(false)} style={getActionButtonStyle({ flex: 1 })}>
                     <Text style={{ fontSize: '14px', color: colors.text }}>{t('outfit_detail_cancel')}</Text>
                   </View>
-                  <View onClick={handleDelete} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: '#dc2626' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={t('outfit_detail_delete_confirm')}
+                    onClick={getEnabledActionHandler(deletePending, handleDelete)}
+                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: deletePending }), backgroundColor: '#dc2626' }}
+                  >
                     <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{t('outfit_detail_delete_confirm')}</Text>
                   </View>
                 </View>
               )}
             </View>
           </View>
-        </ScrollView>
+        </View>
       </View>
     </View>
   )

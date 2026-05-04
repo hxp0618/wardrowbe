@@ -1,25 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import { Picker, Text, View } from '@tarojs/components'
+import { Input, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
+import {
+  actionRowStyle,
+  actionWrapRowStyle,
+  getActionButtonStyle,
+  getEnabledActionHandler,
+} from '../../components/action-style'
+import { CompactOptionGroup } from '../../components/compact-option-group'
 import { EmptyState } from '../../components/empty-state'
+import { FlatList, FlatListRow } from '../../components/flat-data'
 import { ItemCard } from '../../components/item-card'
 import { ItemDetailSheet } from '../../components/item-detail-sheet'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
-import { colors, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
+import { colors, inputStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
-import { useFolders } from '../../hooks/use-folders'
+import { useCreateFolder, useDeleteFolder, useFolders, useUpdateFolder } from '../../hooks/use-folders'
 import { useCreateItemWithImages, useItems, useItemTypes } from '../../hooks/use-items'
 import { formatItemTypeLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
 import {
   getWardrobeChipLabelStyle,
   getWardrobeChipStyle,
-  getWardrobeCompactActionStyle,
-  getWardrobePickerIconStyle,
-  getWardrobePickerLabelStyle,
-  getWardrobePickerStyle,
 } from './controls-style'
 import {
   getWardrobeFilterPanelStyle,
@@ -29,30 +33,9 @@ import {
   getWardrobeUploadedItemStyle,
   WARDROBE_UPLOADED_ITEM_HIGHLIGHT_MS,
 } from './look-and-feel'
-import { isChooseImageCanceled } from './choose-image'
+import { isChooseImageCanceled } from '../../lib/choose-image'
 
 import type { Item, ItemFilter } from '../../services/types'
-
-function WardrobePickerControl(props: {
-  value: string
-  range: string[]
-  index: number
-  onChange: (nextIndex: number) => void
-}) {
-  return (
-    <Picker
-      mode='selector'
-      range={props.range}
-      value={props.index}
-      onChange={(event) => props.onChange(Number(event.detail.value))}
-    >
-      <View style={getWardrobePickerStyle()}>
-        <Text style={getWardrobePickerLabelStyle()}>{props.value}</Text>
-        <Text style={getWardrobePickerIconStyle()}>▾</Text>
-      </View>
-    </Picker>
-  )
-}
 
 export default function WardrobePage() {
   const canRender = useAuthGuard()
@@ -63,6 +46,11 @@ export default function WardrobePage() {
   const [filterNeedsWash, setFilterNeedsWash] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [folderIndex, setFolderIndex] = useState(0)
+  const [showFolderManager, setShowFolderManager] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
+  const [editingFolderName, setEditingFolderName] = useState('')
+  const [confirmDeleteFolderId, setConfirmDeleteFolderId] = useState<string | null>(null)
   const [detailItem, setDetailItem] = useState<Item | null>(null)
   const [uploadedItemId, setUploadedItemId] = useState<string | null>(null)
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null)
@@ -70,7 +58,15 @@ export default function WardrobePage() {
   const { t, tf } = useI18n()
   const { data: itemTypes } = useItemTypes()
   const { data: folders } = useFolders()
+  const createFolder = useCreateFolder()
+  const updateFolder = useUpdateFolder()
+  const deleteFolder = useDeleteFolder()
   const createItem = useCreateItemWithImages()
+  const folderList = folders ?? []
+  const addItemDisabled = Boolean(createItem.isPending)
+  const createFolderDisabled = !newFolderName.trim() || Boolean(createFolder.isPending)
+  const updateFolderDisabled = !editingFolderName.trim() || Boolean(updateFolder.isPending)
+  const deleteFolderDisabled = Boolean(deleteFolder.isPending)
 
   const sortOptions = [
     { label: t('wardrobe_sort_created_desc'), value: 'created_at', order: 'desc' as const },
@@ -89,10 +85,6 @@ export default function WardrobePage() {
   ]
   const typeFilter = typeIndex === 0 ? undefined : typeOptions[typeIndex]?.value
   const sortOption = sortOptions[sortIndex]
-  const folderOptions = [
-    { label: t('wardrobe_all_folders'), value: '' },
-    ...((folders ?? []).map((folder) => ({ label: folder.name, value: folder.id }))),
-  ]
   const folderFilter = folderIndex === 0 ? undefined : folders?.[folderIndex - 1]?.id
 
   const filters: ItemFilter = {
@@ -108,6 +100,9 @@ export default function WardrobePage() {
   const { data, isLoading } = useItems(filters, page, 20)
   const items = data?.items || []
   const total = data?.total || 0
+  const hasActiveFilters = Boolean(
+    typeFilter || filterFavorite || filterNeedsWash || showArchived || folderFilter
+  )
 
   const scrollToUploadedItem = (itemId: string) =>
     new Promise<void>((resolve) => {
@@ -165,6 +160,8 @@ export default function WardrobePage() {
   if (!canRender) return null
 
   const handleChooseImage = async () => {
+    if (addItemDisabled) return
+
     try {
       const result = await Taro.chooseImage({ count: 5, sizeType: ['compressed'] })
       if (result.tempFilePaths.length === 0) return
@@ -181,6 +178,59 @@ export default function WardrobePage() {
     }
   }
 
+  const handleCreateFolder = async () => {
+    const name = newFolderName.trim()
+    if (!name || createFolder.isPending) return
+
+    try {
+      await createFolder.mutateAsync({ name })
+      setNewFolderName('')
+      void Taro.showToast({ title: t('wardrobe_folder_created'), icon: 'success' })
+    } catch {
+      void Taro.showToast({ title: t('wardrobe_folder_create_failed'), icon: 'none' })
+    }
+  }
+
+  const startEditFolder = (folderId: string, name: string) => {
+    setEditingFolderId(folderId)
+    setEditingFolderName(name)
+    setConfirmDeleteFolderId(null)
+  }
+
+  const cancelEditFolder = () => {
+    setEditingFolderId(null)
+    setEditingFolderName('')
+  }
+
+  const handleUpdateFolder = async (folderId: string) => {
+    const name = editingFolderName.trim()
+    if (!name || updateFolder.isPending) return
+
+    try {
+      await updateFolder.mutateAsync({ id: folderId, payload: { name } })
+      cancelEditFolder()
+      void Taro.showToast({ title: t('wardrobe_folder_updated'), icon: 'success' })
+    } catch {
+      void Taro.showToast({ title: t('wardrobe_folder_update_failed'), icon: 'none' })
+    }
+  }
+
+  const handleDeleteFolder = async (folderId: string) => {
+    if (deleteFolder.isPending) return
+
+    try {
+      await deleteFolder.mutateAsync(folderId)
+      setConfirmDeleteFolderId(null)
+      if (folderFilter === folderId) {
+        setFolderIndex(0)
+        setPage(1)
+      }
+      void Taro.showToast({ title: t('wardrobe_folder_deleted'), icon: 'success' })
+    } catch {
+      void Taro.showToast({ title: t('wardrobe_folder_delete_failed'), icon: 'none' })
+    }
+  }
+
   return (
     <PageShell
       title={t('page_wardrobe_title')}
@@ -189,8 +239,10 @@ export default function WardrobePage() {
       useBuiltInTabBar
       actions={
         <View
-          onClick={handleChooseImage}
-          style={{ ...primaryButtonStyle, ...getWardrobeCompactActionStyle() }}
+          ariaRole='button'
+          ariaLabel={t('wardrobe_add_action')}
+          onClick={getEnabledActionHandler(addItemDisabled, handleChooseImage)}
+          style={getActionButtonStyle({ variant: 'primary', compact: true, disabled: addItemDisabled })}
         >
           <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{t('wardrobe_add_action')}</Text>
         </View>
@@ -198,36 +250,31 @@ export default function WardrobePage() {
     >
       {/* Filters */}
       <SectionCard
+        compact
         title={t('wardrobe_filter_sort_title')}
         style={getWardrobeFilterPanelStyle()}
       >
         <View style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <View style={{ display: 'flex', gap: '10px' }}>
-            <View style={{ flex: 1 }}>
-              <WardrobePickerControl
-                range={typeOptions.map((option) => option.label)}
-                index={typeIndex}
-                value={typeOptions[typeIndex]?.label || typeOptions[0].label}
-                onChange={(nextIndex) => {
-                  setTypeIndex(nextIndex)
-                  setPage(1)
-                }}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <WardrobePickerControl
-                range={sortOptions.map((option) => option.label)}
-                index={sortIndex}
-                value={sortOptions[sortIndex].label}
-                onChange={(nextIndex) => {
-                  setSortIndex(nextIndex)
-                  setPage(1)
-                }}
-              />
-            </View>
-          </View>
-          <View style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <CompactOptionGroup
+            activeIndex={typeIndex}
+            options={typeOptions.map((option) => option.label)}
+            onChange={(nextIndex) => {
+              setTypeIndex(nextIndex)
+              setPage(1)
+            }}
+          />
+          <CompactOptionGroup
+            activeIndex={sortIndex}
+            options={sortOptions.map((option) => option.label)}
+            onChange={(nextIndex) => {
+              setSortIndex(nextIndex)
+              setPage(1)
+            }}
+          />
+          <View style={actionWrapRowStyle}>
             <View
+              ariaRole='button'
+              ariaLabel={t('wardrobe_filter_favorite')}
               onClick={() => {
                 setFilterFavorite(!filterFavorite)
                 setPage(1)
@@ -239,6 +286,8 @@ export default function WardrobePage() {
               </Text>
             </View>
             <View
+              ariaRole='button'
+              ariaLabel={t('wardrobe_filter_needs_wash')}
               onClick={() => {
                 setFilterNeedsWash(!filterNeedsWash)
                 setPage(1)
@@ -250,6 +299,8 @@ export default function WardrobePage() {
               </Text>
             </View>
             <View
+              ariaRole='button'
+              ariaLabel={t('wardrobe_filter_archived')}
               onClick={() => {
                 setShowArchived(!showArchived)
                 setPage(1)
@@ -262,22 +313,164 @@ export default function WardrobePage() {
             </View>
           </View>
           {folders && folders.length > 0 && (
-            <WardrobePickerControl
-              range={folderOptions.map((option) => option.label)}
-              index={folderIndex}
-              value={folderOptions[folderIndex]?.label || folderOptions[0].label}
-              onChange={(nextIndex) => {
-                setFolderIndex(nextIndex)
-                setPage(1)
-              }}
-            />
+            <View style={actionWrapRowStyle}>
+              <View
+                ariaRole='button'
+                ariaLabel={t('wardrobe_all_folders')}
+                onClick={() => {
+                  setFolderIndex(0)
+                  setPage(1)
+                }}
+                style={getWardrobeChipStyle(folderIndex === 0)}
+              >
+                <Text style={getWardrobeChipLabelStyle(folderIndex === 0)}>
+                  {t('wardrobe_all_folders')}
+                </Text>
+              </View>
+              {folderList.map((folder, index) => {
+                const active = folderIndex === index + 1
+                return (
+                  <View
+                    key={folder.id}
+                    ariaRole='button'
+                    ariaLabel={folder.name}
+                    onClick={() => {
+                      setFolderIndex(index + 1)
+                      setPage(1)
+                    }}
+                    style={getWardrobeChipStyle(active)}
+                  >
+                    <Text style={getWardrobeChipLabelStyle(active)}>
+                      {folder.icon ? `${folder.icon} ` : ''}{folder.name}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
           )}
+          <View
+            ariaRole='button'
+            ariaLabel={t('wardrobe_folder_manage')}
+            onClick={() => setShowFolderManager((current) => !current)}
+            style={{ ...getActionButtonStyle({ compact: true }), alignSelf: 'flex-start' }}
+          >
+            <Text style={{ fontSize: '14px', color: colors.text }}>{t('wardrobe_folder_manage')}</Text>
+          </View>
         </View>
       </SectionCard>
+
+      {showFolderManager && (
+        <SectionCard
+          compact
+          title={t('wardrobe_folder_title')}
+          style={getWardrobeSectionCardStyle()}
+        >
+          <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <View style={{ ...actionRowStyle, alignItems: 'center' }}>
+              <Input
+                value={newFolderName}
+                placeholder={t('wardrobe_folder_name_placeholder')}
+                onInput={(event) => setNewFolderName(event.detail.value)}
+                style={{ ...inputStyle, flex: 1, minHeight: '44px' }}
+              />
+              <View
+                ariaRole='button'
+                ariaLabel={t('wardrobe_folder_create')}
+                onClick={getEnabledActionHandler(createFolderDisabled, handleCreateFolder)}
+                style={getActionButtonStyle({ variant: 'primary', compact: true, minWidth: '92px', disabled: createFolderDisabled })}
+              >
+                <Text style={{ fontSize: '13px', color: colors.accentText, fontWeight: 600 }}>
+                  {t('wardrobe_folder_create')}
+                </Text>
+              </View>
+            </View>
+
+            {folderList.length === 0 ? (
+              <Text style={{ fontSize: '13px', color: colors.textMuted }}>{t('wardrobe_folder_empty')}</Text>
+            ) : (
+              <FlatList>
+                {folderList.map((folder) => (
+                  <FlatListRow
+                    key={folder.id}
+                    style={{
+                      padding: '8px 0',
+                    }}
+                  >
+                    {editingFolderId === folder.id ? (
+                      <View style={{ ...actionRowStyle, alignItems: 'center', gap: '6px' }}>
+                        <Input
+                          value={editingFolderName}
+                          onInput={(event) => setEditingFolderName(event.detail.value)}
+                          style={{ ...inputStyle, flex: 1, minWidth: '0', height: '44px', minHeight: '44px', padding: '0 10px' }}
+                        />
+                        <View ariaRole='button' ariaLabel={t('wardrobe_folder_cancel')} onClick={cancelEditFolder} style={{ ...getActionButtonStyle({ compact: true }), padding: '0 10px' }}>
+                          <Text style={{ fontSize: '12px', color: colors.text }}>{t('wardrobe_folder_cancel')}</Text>
+                        </View>
+                        <View
+                          ariaRole='button'
+                          ariaLabel={t('wardrobe_folder_save')}
+                          onClick={getEnabledActionHandler(updateFolderDisabled, () => void handleUpdateFolder(folder.id))}
+                          style={{ ...getActionButtonStyle({ variant: 'primary', compact: true, disabled: updateFolderDisabled }), padding: '0 10px' }}
+                        >
+                          <Text style={{ fontSize: '12px', color: colors.accentText }}>{t('wardrobe_folder_save')}</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={{ ...actionRowStyle, alignItems: 'center' }}>
+                        <View style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flex: 1, minWidth: 0 }}>
+                          <Text style={{ fontSize: '14px', color: colors.text, fontWeight: 600 }}>
+                            {folder.icon ? `${folder.icon} ` : ''}{folder.name}
+                          </Text>
+                          <Text style={{ fontSize: '12px', color: colors.textMuted }}>{folder.item_count}</Text>
+                        </View>
+                        <View style={{ ...actionRowStyle, gap: '6px' }}>
+                          <View
+                            ariaRole='button'
+                            ariaLabel={`${t('wardrobe_folder_edit')} ${folder.name}`}
+                            onClick={() => startEditFolder(folder.id, folder.name)}
+                            style={{ ...getActionButtonStyle({ compact: true }), padding: '0 10px' }}
+                          >
+                            <Text style={{ fontSize: '12px', color: colors.text }}>{t('wardrobe_folder_edit')}</Text>
+                          </View>
+                          {confirmDeleteFolderId === folder.id ? (
+                            <View
+                              ariaRole='button'
+                              ariaLabel={`${t('wardrobe_folder_confirm_delete')} ${folder.name}`}
+                              onClick={getEnabledActionHandler(deleteFolderDisabled, () => void handleDeleteFolder(folder.id))}
+                              style={{ ...getActionButtonStyle({ compact: true, tone: 'danger', disabled: deleteFolderDisabled }), padding: '0 10px' }}
+                            >
+                              <Text style={{ fontSize: '12px', color: colors.danger }}>
+                                {t('wardrobe_folder_confirm_delete')}
+                              </Text>
+                            </View>
+                          ) : (
+                            <View
+                              ariaRole='button'
+                              ariaLabel={`${t('wardrobe_folder_delete')} ${folder.name}`}
+                              onClick={getEnabledActionHandler(deleteFolderDisabled, () => {
+                                setConfirmDeleteFolderId(folder.id)
+                                cancelEditFolder()
+                              })}
+                              style={{ ...getActionButtonStyle({ compact: true, disabled: deleteFolderDisabled }), padding: '0 10px' }}
+                            >
+                              <Text style={{ fontSize: '12px', color: colors.danger }}>{t('wardrobe_folder_delete')}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
+                  </FlatListRow>
+                ))}
+              </FlatList>
+            )}
+          </View>
+        </SectionCard>
+      )}
 
       {/* Items grid */}
       {isLoading ? (
         <SectionCard
+          compact
           title={t('wardrobe_loading_title')}
           style={getWardrobeSectionCardStyle()}
         >
@@ -285,36 +478,52 @@ export default function WardrobePage() {
         </SectionCard>
       ) : items.length === 0 ? (
         <EmptyState
-          title={t('wardrobe_empty_title')}
-          description={t('wardrobe_empty_description')}
-          action={
-            <View onClick={handleChooseImage} style={primaryButtonStyle}>
+          title={hasActiveFilters ? t('wardrobe_filtered_empty_title') : t('wardrobe_empty_title')}
+          description={hasActiveFilters ? t('wardrobe_filtered_empty_description') : t('wardrobe_empty_description')}
+          action={hasActiveFilters ? undefined : (
+            <View
+              ariaRole='button'
+              ariaLabel={t('wardrobe_add_first_item')}
+              onClick={getEnabledActionHandler(addItemDisabled, handleChooseImage)}
+              style={getActionButtonStyle({ variant: 'primary', disabled: addItemDisabled })}
+            >
               <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
                 {t('wardrobe_add_first_item')}
               </Text>
             </View>
-          }
+          )}
         />
       ) : (
-        <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {items.map((item) => (
-            <View
-              key={item.id}
-              id={getWardrobeUploadedItemAnchor(item.id)}
-              onClick={() => setDetailItem(item)}
-            >
-              <ItemCard
-                item={item}
-                variant='wardrobe'
+        <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '10px' }}>
+          {items.map((item) => {
+            const itemTitle = item.name || formatItemTypeLabel(item.type)
+
+            return (
+              <View
+                key={item.id}
+                id={getWardrobeUploadedItemAnchor(item.id)}
+                ariaRole='button'
+                ariaLabel={`查看${itemTitle}详情`}
+                onClick={() => setDetailItem(item)}
                 style={{
-                  ...getWardrobeItemCardShellStyle(),
-                  ...getWardrobeUploadedItemStyle(highlightedItemId === item.id),
+                  width: 'calc(50% - 5px)',
+                  boxSizing: 'border-box',
                 }}
-              />
-            </View>
-          ))}
+              >
+                <ItemCard
+                  item={item}
+                  variant='wardrobe'
+                  style={{
+                    ...getWardrobeItemCardShellStyle(),
+                    ...getWardrobeUploadedItemStyle(highlightedItemId === item.id),
+                    height: '100%',
+                  }}
+                />
+              </View>
+            )
+          })}
           {data?.has_more && (
-            <View onClick={() => setPage((p) => p + 1)} style={secondaryButtonStyle}>
+            <View ariaRole='button' ariaLabel={t('wardrobe_load_more')} onClick={() => setPage((p) => p + 1)} style={{ ...getActionButtonStyle(), width: '100%' }}>
               <Text style={{ fontSize: '14px', color: colors.text }}>{t('wardrobe_load_more')}</Text>
             </View>
           )}

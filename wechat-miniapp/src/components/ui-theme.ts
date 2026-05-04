@@ -107,28 +107,28 @@ export function getThemeStyle(appearance: AppAppearance): CSSProperties {
 }
 
 export const pagePadding = '16px'
-export const cardRadius = '20px'
-export const controlRadius = '14px'
+export const cardRadius = '8px'
+export const controlRadius = '12px'
 
 export const titleTextStyle: CSSProperties = {
   display: 'block',
   color: colors.text,
-  fontSize: '28px',
+  fontSize: '24px',
   fontWeight: 700,
   lineHeight: 1.2,
 }
 
 export const subtitleTextStyle: CSSProperties = {
   display: 'block',
-  marginTop: '8px',
+  marginTop: '6px',
   color: colors.textMuted,
   fontSize: '14px',
-  lineHeight: 1.6,
+  lineHeight: 1.5,
 }
 
 export const sectionTitleStyle: CSSProperties = {
   color: colors.text,
-  fontSize: '17px',
+  fontSize: '16px',
   fontWeight: 600,
 }
 

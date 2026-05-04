@@ -18,9 +18,11 @@ export function useGeneratePairings() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (request: GeneratePairingsRequest) => generatePairings(request),
-    onSuccess: () => {
+    mutationFn: ({ itemId, ...request }: GeneratePairingsRequest & { itemId: string }) =>
+      generatePairings(itemId, request),
+    onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['miniapp', 'pairings'] })
+      void queryClient.invalidateQueries({ queryKey: ['miniapp', 'pairings', 'item', variables.itemId] })
     },
   })
 }

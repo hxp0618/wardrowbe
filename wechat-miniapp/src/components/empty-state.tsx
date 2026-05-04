@@ -7,20 +7,28 @@ type EmptyStateProps = {
   title: string
   description: string
   action?: ReactNode
+  embedded?: boolean
 }
 
 export function EmptyState(props: EmptyStateProps) {
+  const containerStyle = props.embedded
+    ? {
+        padding: '6px 0',
+        boxSizing: 'border-box',
+      }
+    : {
+        ...cardStyle,
+        padding: '16px',
+      }
+
   return (
     <View
-      style={{
-        ...cardStyle,
-        padding: '24px',
-      }}
+      style={containerStyle}
     >
       <Text
         style={{
           display: 'block',
-          fontSize: '18px',
+          fontSize: '16px',
           fontWeight: 600,
           color: colors.text,
         }}
@@ -30,7 +38,7 @@ export function EmptyState(props: EmptyStateProps) {
       <Text
         style={{
           display: 'block',
-          marginTop: '10px',
+          marginTop: '6px',
           fontSize: '14px',
           color: colors.textMuted,
           lineHeight: 1.5,
@@ -41,7 +49,7 @@ export function EmptyState(props: EmptyStateProps) {
       {props.action ? (
         <View
           style={{
-            marginTop: '16px',
+            marginTop: '12px',
           }}
         >
           {props.action}

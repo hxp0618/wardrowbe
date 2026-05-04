@@ -4,26 +4,11 @@ import {
   getEditorialChipLabelStyle,
   getEditorialChipStyle,
   getEditorialCompactButtonStyle,
-  getEditorialPickerIconStyle,
-  getEditorialPickerLabelStyle,
-  getEditorialPickerTriggerStyle,
 } from '../../components/editorial-style'
 
 import { colors } from '../../components/ui-theme'
 
 type WardrobeChipTone = 'default' | 'favorite' | 'warning'
-
-export function getWardrobePickerStyle(): CSSProperties {
-  return getEditorialPickerTriggerStyle()
-}
-
-export function getWardrobePickerLabelStyle(): CSSProperties {
-  return getEditorialPickerLabelStyle()
-}
-
-export function getWardrobePickerIconStyle(): CSSProperties {
-  return getEditorialPickerIconStyle()
-}
 
 export function getWardrobeChipStyle(
   active: boolean,
@@ -39,7 +24,7 @@ export function getWardrobeChipStyle(
 
   if (active) {
     return {
-      minHeight: '32px',
+      minHeight: '44px',
       padding: '0 12px',
       borderRadius: '999px',
       backgroundColor: colors.surfaceSelected,
@@ -53,7 +38,7 @@ export function getWardrobeChipStyle(
   }
 
   return {
-    minHeight: '32px',
+    minHeight: '44px',
     padding: '0 12px',
     borderRadius: '999px',
     backgroundColor: colors.surface,

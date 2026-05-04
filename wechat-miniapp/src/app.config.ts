@@ -1,3 +1,9 @@
+import {
+  TAB_NAV_ITEMS,
+  toMiniappAssetPath,
+  toMiniappPagePath,
+} from './lib/navigation-options'
+
 export default defineAppConfig({
   pages: [
     'pages/login/index',
@@ -27,38 +33,12 @@ export default defineAppConfig({
     selectedColor: '#6F5B49',
     backgroundColor: '#FCF6ED',
     borderStyle: 'white',
-    list: [
-      {
-        pagePath: 'pages/dashboard/index',
-        text: '首页',
-        iconPath: 'assets/tabbar/home.png',
-        selectedIconPath: 'assets/tabbar/home-active.png',
-      },
-      {
-        pagePath: 'pages/wardrobe/index',
-        text: '衣橱',
-        iconPath: 'assets/tabbar/wardrobe.png',
-        selectedIconPath: 'assets/tabbar/wardrobe-active.png',
-      },
-      {
-        pagePath: 'pages/suggest/index',
-        text: '推荐',
-        iconPath: 'assets/tabbar/suggest.png',
-        selectedIconPath: 'assets/tabbar/suggest-active.png',
-      },
-      {
-        pagePath: 'pages/outfits/index',
-        text: '穿搭',
-        iconPath: 'assets/tabbar/outfits.png',
-        selectedIconPath: 'assets/tabbar/outfits-active.png',
-      },
-      {
-        pagePath: 'pages/settings/index',
-        text: '设置',
-        iconPath: 'assets/tabbar/settings.png',
-        selectedIconPath: 'assets/tabbar/settings-active.png',
-      },
-    ],
+    list: TAB_NAV_ITEMS.map((item) => ({
+      pagePath: toMiniappPagePath(item.url),
+      text: item.text,
+      iconPath: toMiniappAssetPath(item.iconPath),
+      selectedIconPath: toMiniappAssetPath(item.selectedIconPath),
+    })),
   },
   window: {
     navigationBarTitleText: 'Wardrowbe',

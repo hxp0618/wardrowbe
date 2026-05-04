@@ -32,13 +32,15 @@ export function getHeaderMetrics() {
     const taroWithWindowInfo = Taro as typeof Taro & {
       getWindowInfo?: () => {
         statusBarHeight?: number
+        windowWidth?: number
+        screenWidth?: number
       }
       getAppBaseInfo?: () => {
         statusBarHeight?: number
       }
     }
     const windowInfo = taroWithWindowInfo.getWindowInfo?.() as
-      | { statusBarHeight?: number }
+      | { statusBarHeight?: number; windowWidth?: number; screenWidth?: number }
       | undefined
     const appBaseInfo = taroWithWindowInfo.getAppBaseInfo?.() as
       | { statusBarHeight?: number }
@@ -50,10 +52,14 @@ export function getHeaderMetrics() {
     const menuButtonRect = Taro.getMenuButtonBoundingClientRect?.()
     const metrics = resolveHeaderMetrics({
       statusBarHeight,
+      windowWidth: windowInfo?.windowWidth || windowInfo?.screenWidth,
       menuButtonRect: menuButtonRect
         ? {
             top: menuButtonRect.top,
             height: menuButtonRect.height,
+            left: menuButtonRect.left,
+            right: menuButtonRect.right,
+            width: menuButtonRect.width,
           }
         : undefined,
     })
@@ -62,12 +68,14 @@ export function getHeaderMetrics() {
       paddingTop: `${metrics.paddingTop}px`,
       contentHeight: `${metrics.contentHeight}px`,
       paddingBottom: `${metrics.paddingBottom}px`,
+      paddingRight: `${metrics.paddingRight}px`,
     }
   } catch {
     return {
       paddingTop: '28px',
       contentHeight: '44px',
       paddingBottom: '12px',
+      paddingRight: '16px',
     }
   }
 }
@@ -97,7 +105,7 @@ export function AppHeader(props: AppHeaderProps) {
         zIndex: 20,
         paddingTop: metrics.paddingTop,
         paddingLeft: '16px',
-        paddingRight: '16px',
+        paddingRight: metrics.paddingRight,
         paddingBottom: metrics.paddingBottom,
         backgroundColor: colors.page,
         borderBottom: `1px solid ${colors.border}`,
@@ -112,10 +120,12 @@ export function AppHeader(props: AppHeaderProps) {
         }}
       >
         <View
+          ariaRole={!props.hideMenu && props.onMenuClick ? 'button' : undefined}
+          ariaLabel={!props.hideMenu && props.onMenuClick ? t('app_header_open_menu') : undefined}
           onClick={props.onMenuClick}
           style={{
-            width: '36px',
-            height: '36px',
+            width: '44px',
+            height: '44px',
             borderRadius: '12px',
             border: `1px solid ${colors.border}`,
             backgroundColor: colors.surfaceMuted,
@@ -147,10 +157,12 @@ export function AppHeader(props: AppHeaderProps) {
 
         <View style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <View
+            ariaRole='button'
+            ariaLabel={t('app_header_toggle_theme')}
             onClick={handleThemeTap}
             style={{
-              width: '36px',
-              height: '36px',
+              width: '44px',
+              height: '44px',
               borderRadius: '12px',
               border: `1px solid ${colors.border}`,
               backgroundColor: colors.surfaceMuted,

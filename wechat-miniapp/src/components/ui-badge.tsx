@@ -1,5 +1,6 @@
 import { Text } from '@tarojs/components'
 
+import { getToneActionSurfaceStyle, getToneTextColor } from './action-style'
 import { colors } from './ui-theme'
 
 type UIBadgeProps = {
@@ -8,31 +9,16 @@ type UIBadgeProps = {
 }
 
 function resolveTone(tone: UIBadgeProps['tone']) {
-  if (tone === 'success') {
+  if (tone) {
     return {
-      color: colors.success,
-      backgroundColor: 'rgba(52, 211, 153, 0.12)',
-      border: '1px solid rgba(52, 211, 153, 0.22)',
+      color: getToneTextColor(tone),
+      ...getToneActionSurfaceStyle(tone),
     }
   }
-  if (tone === 'danger') {
-    return {
-      color: colors.danger,
-      backgroundColor: 'rgba(248, 113, 113, 0.12)',
-      border: '1px solid rgba(248, 113, 113, 0.22)',
-    }
-  }
-  if (tone === 'warning') {
-    return {
-      color: colors.warning,
-      backgroundColor: 'rgba(251, 191, 36, 0.12)',
-      border: '1px solid rgba(251, 191, 36, 0.22)',
-    }
-  }
+
   return {
     color: colors.textMuted,
-    backgroundColor: colors.surfaceMuted,
-    border: `1px solid ${colors.border}`,
+    ...getToneActionSurfaceStyle('default'),
   }
 }
 

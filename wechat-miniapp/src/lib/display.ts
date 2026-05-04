@@ -570,3 +570,20 @@ export function formatOutfitSourceLabel(source: string | null | undefined, local
   const normalized = source.trim().toLowerCase().replace(/[\s-]+/g, '_')
   return labelsFor(locale).outfitSources[normalized] ?? humanizeToken(source)
 }
+
+export function formatOutfitDetailLabel(
+  outfit: { name?: string | null; occasion?: string | null },
+  locale?: AppLocale
+): string {
+  const title = outfit.name || formatOccasionLabel(outfit.occasion, locale)
+  if (locale === 'en') return `View ${title} details`
+  return `查看${title}详情`
+}
+
+export function formatTemperature(
+  celsius: number,
+  unit: string | null | undefined
+): string {
+  if (unit === 'fahrenheit') return `${Math.round(celsius * 9 / 5 + 32)}°F`
+  return `${Math.round(celsius)}°C`
+}

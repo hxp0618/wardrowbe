@@ -1,9 +1,11 @@
 import type { CSSProperties } from 'react'
 
-import { Image, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 
 import { formatItemTypeLabel, formatSubtypeLabel } from '../lib/display'
+import { getDisplayImageUrl, getItemPreviewUrls, getPreviewImageUrl } from '../lib/image-preview'
 import type { Item } from '../services/types'
+import { PreviewableImage } from './previewable-image'
 import { UIBadge } from './ui-badge'
 import { colors } from './ui-theme'
 
@@ -14,7 +16,9 @@ type ItemCardProps = {
 }
 
 export function ItemCard(props: ItemCardProps) {
-  const imageUrl = props.item.thumbnail_url ?? props.item.image_url
+  const imageUrl = getDisplayImageUrl(props.item)
+  const previewUrl = getPreviewImageUrl(props.item)
+  const previewUrls = getItemPreviewUrls(props.item)
   const typeLabel = formatItemTypeLabel(props.item.type)
   const subtypeLabel = formatSubtypeLabel(props.item.subtype)
   const title = props.item.name || typeLabel
@@ -25,37 +29,50 @@ export function ItemCard(props: ItemCardProps) {
     needsWash: '需要清洗',
     archived: '已归档',
   }
+  const mediaStyle: CSSProperties = wardrobeVariant
+    ? {
+        width: '100%',
+        height: '172px',
+        borderRadius: '8px 8px 6px 6px',
+        backgroundColor: colors.surfaceMuted,
+        flexShrink: 0,
+      }
+    : {
+        width: '88px',
+        height: '104px',
+        borderRadius: '8px',
+        backgroundColor: colors.surfaceMuted,
+        flexShrink: 0,
+      }
 
   return (
     <View
       style={{
         display: 'flex',
-        gap: wardrobeVariant ? '12px' : '14px',
-        padding: wardrobeVariant ? '12px' : '16px',
-        borderRadius: wardrobeVariant ? '22px' : '18px',
+        flexDirection: wardrobeVariant ? 'column' : 'row',
+        gap: wardrobeVariant ? '0' : '12px',
+        padding: wardrobeVariant ? '0' : '14px',
+        borderRadius: '8px',
         backgroundColor: colors.surface,
         border: `1px solid ${colors.border}`,
+        overflow: 'hidden',
+        boxSizing: 'border-box',
         ...props.style,
       }}
     >
       {imageUrl ? (
-        <Image
+        <PreviewableImage
+          ariaLabel={`查看${title}大图`}
           src={imageUrl}
+          previewCurrent={previewUrl ?? imageUrl}
+          previewUrls={previewUrls.length ? previewUrls : [previewUrl ?? imageUrl]}
           mode='aspectFill'
-          style={{
-            width: wardrobeVariant ? '104px' : '96px',
-            height: wardrobeVariant ? '128px' : '112px',
-            borderRadius: wardrobeVariant ? '16px' : '14px',
-            backgroundColor: colors.surfaceMuted,
-            flexShrink: 0,
-          }}
+          style={mediaStyle}
         />
       ) : (
         <View
           style={{
-            width: wardrobeVariant ? '104px' : '96px',
-            height: wardrobeVariant ? '128px' : '112px',
-            borderRadius: wardrobeVariant ? '16px' : '14px',
+            ...mediaStyle,
             backgroundColor: colors.surfaceMuted,
             display: 'flex',
             alignItems: 'center',
@@ -66,15 +83,23 @@ export function ItemCard(props: ItemCardProps) {
           <Text style={{ fontSize: '13px', color: colors.textSoft }}>{typeLabel}</Text>
         </View>
       )}
-      <View style={{ flex: 1 }}>
+      <View
+        style={{
+          flex: 1,
+          padding: wardrobeVariant ? '9px 10px 11px' : '0',
+          minHeight: wardrobeVariant ? '78px' : undefined,
+          boxSizing: 'border-box',
+        }}
+      >
         <Text
           style={{
             display: 'block',
-            fontSize: wardrobeVariant ? '16px' : '17px',
+            fontSize: wardrobeVariant ? '14px' : '16px',
             fontWeight: 600,
             color: colors.text,
             lineHeight: 1.3,
           }}
+          numberOfLines={1}
         >
           {title}
         </Text>
@@ -82,9 +107,10 @@ export function ItemCard(props: ItemCardProps) {
           style={{
             display: 'block',
             marginTop: wardrobeVariant ? '4px' : '6px',
-            fontSize: '12px',
+            fontSize: wardrobeVariant ? '11px' : '12px',
             color: colors.textMuted,
           }}
+          numberOfLines={1}
         >
           {typeLabel}
           {subtypeLabel ? ` · ${subtypeLabel}` : ''}
@@ -92,8 +118,8 @@ export function ItemCard(props: ItemCardProps) {
         <Text
           style={{
             display: 'block',
-            marginTop: wardrobeVariant ? '6px' : '8px',
-            fontSize: wardrobeVariant ? '11px' : '12px',
+            marginTop: wardrobeVariant ? '5px' : '7px',
+            fontSize: wardrobeVariant ? '10px' : '12px',
             color: colors.textSoft,
           }}
         >
@@ -103,8 +129,8 @@ export function ItemCard(props: ItemCardProps) {
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: wardrobeVariant ? '6px' : '8px',
-            marginTop: wardrobeVariant ? '8px' : '10px',
+            gap: wardrobeVariant ? '5px' : '8px',
+            marginTop: wardrobeVariant ? '6px' : '9px',
           }}
         >
           {props.item.favorite ? <UIBadge label={copy.favorite} tone='danger' /> : null}

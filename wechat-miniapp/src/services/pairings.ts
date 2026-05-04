@@ -24,9 +24,10 @@ export function listPairings(
 }
 
 export function generatePairings(
+  itemId: string,
   request: GeneratePairingsRequest
 ): Promise<GeneratePairingsResponse> {
-  return api.post<GeneratePairingsResponse>('/pairings/generate', request)
+  return api.post<GeneratePairingsResponse>(`/pairings/generate/${itemId}`, request)
 }
 
 export function deletePairing(pairingId: string): Promise<void> {

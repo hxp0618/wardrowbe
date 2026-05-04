@@ -101,7 +101,7 @@ MESSAGES_ZH: dict[str, str] = {
     "learning.interpretation.disliked": "不太喜欢",
     "learning.interpretation.strongly_disliked": "很不喜欢",
     "learning.insight.love_color_title": "你很喜欢{color}！",
-    "learning.insight.love_color_desc": "你的反馈显示你明显偏爱{color}色单品，我们会在推荐中优先考虑这些颜色。",
+    "learning.insight.love_color_desc": "你的反馈显示你明显偏爱{color}单品，我们会在推荐中优先考虑这些颜色。",
     "learning.insight.avoid_color_title": "对{color}不太感冒",
     "learning.insight.avoid_color_desc": "你常会拒绝包含{color}的穿搭，我们会尽量提供替代方案。",
     "learning.insight.great_match_title": "非常合拍！",
@@ -337,6 +337,122 @@ LOCALES: dict[str, dict[str, str]] = {
 }
 
 DEFAULT_LOCALE = "zh"
+
+_DOMAIN_LABELS: dict[str, dict[str, dict[str, str]]] = {
+    "color": {
+        "zh": {
+            "black": "黑色",
+            "white": "白色",
+            "gray": "灰色",
+            "grey": "灰色",
+            "navy": "海军蓝",
+            "blue": "蓝色",
+            "green": "绿色",
+            "red": "红色",
+            "pink": "粉色",
+            "purple": "紫色",
+            "yellow": "黄色",
+            "orange": "橙色",
+            "brown": "棕色",
+            "tan": "棕褐色",
+            "beige": "米色",
+            "khaki": "卡其色",
+            "olive": "橄榄绿",
+            "cream": "奶油色",
+        },
+        "en": {
+            "black": "Black",
+            "white": "White",
+            "gray": "Gray",
+            "grey": "Gray",
+            "navy": "Navy",
+            "blue": "Blue",
+            "green": "Green",
+            "red": "Red",
+            "pink": "Pink",
+            "purple": "Purple",
+            "yellow": "Yellow",
+            "orange": "Orange",
+            "brown": "Brown",
+            "tan": "Tan",
+            "beige": "Beige",
+            "khaki": "Khaki",
+            "olive": "Olive",
+            "cream": "Cream",
+        },
+    },
+    "style": {
+        "zh": {
+            "minimalist": "极简",
+            "casual": "休闲",
+            "classic": "经典",
+            "elegant": "优雅",
+            "sporty": "运动",
+            "streetwear": "街头",
+            "modern": "现代",
+            "vintage": "复古",
+            "chic": "时髦",
+            "edgy": "个性",
+            "preppy": "学院",
+            "boho": "波西米亚",
+            "bohemian": "波西米亚",
+            "romantic": "浪漫",
+            "bold": "大胆",
+            "formal": "正式",
+            "very-casual": "非常休闲",
+            "smart-casual": "轻商务",
+            "business-casual": "商务休闲",
+        },
+        "en": {
+            "minimalist": "Minimalist",
+            "casual": "Casual",
+            "classic": "Classic",
+            "elegant": "Elegant",
+            "sporty": "Sporty",
+            "streetwear": "Streetwear",
+            "modern": "Modern",
+            "vintage": "Vintage",
+            "chic": "Chic",
+            "edgy": "Edgy",
+            "preppy": "Preppy",
+            "boho": "Boho",
+            "bohemian": "Bohemian",
+            "romantic": "Romantic",
+            "bold": "Bold",
+            "formal": "Formal",
+            "very-casual": "Very Casual",
+            "smart-casual": "Smart Casual",
+            "business-casual": "Business Casual",
+        },
+    },
+}
+
+
+def _normalize_domain_key(value: str) -> str:
+    return value.strip().lower().replace("_", "-").replace(" ", "-")
+
+
+def _humanize_domain_value(value: str) -> str:
+    value = value.strip()
+    if not value or re.search(r"[\u4e00-\u9fff]", value):
+        return value
+    return re.sub(r"[_-]+", " ", value).title()
+
+
+def translate_domain_value(locale: str, category: str, value: str | None) -> str:
+    if not value:
+        return ""
+    normalized_locale = locale if locale in LOCALES else DEFAULT_LOCALE
+    normalized_category = {"colors": "color", "styles": "style"}.get(category, category)
+    normalized_value = _normalize_domain_key(value)
+    labels = _DOMAIN_LABELS.get(normalized_category, {}).get(normalized_locale, {})
+    return labels.get(normalized_value) or _humanize_domain_value(value)
+
+
+def translate_domain_values(locale: str, category: str, values: list[str]) -> str:
+    labels = [translate_domain_value(locale, category, value) for value in values]
+    separator = "、" if (locale if locale in LOCALES else DEFAULT_LOCALE) == "zh" else ", "
+    return separator.join(label for label in labels if label)
 
 
 def resolve_locale(request: Request | None) -> str:

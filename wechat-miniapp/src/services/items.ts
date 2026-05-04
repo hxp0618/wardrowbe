@@ -67,7 +67,7 @@ export function toggleNeedsWash(id: string, needsWash: boolean): Promise<Item> {
 }
 
 export function reanalyzeItem(id: string): Promise<Item> {
-  return api.post<Item>(`/items/${id}/reanalyze`)
+  return api.post<Item>(`/items/${id}/analyze`)
 }
 
 export function archiveItem(id: string, reason?: string): Promise<Item> {
@@ -75,7 +75,7 @@ export function archiveItem(id: string, reason?: string): Promise<Item> {
 }
 
 export function unarchiveItem(id: string): Promise<Item> {
-  return api.post<Item>(`/items/${id}/unarchive`)
+  return api.post<Item>(`/items/${id}/restore`)
 }
 
 export function logWear(

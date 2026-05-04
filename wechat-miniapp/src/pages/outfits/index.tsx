@@ -2,25 +2,29 @@ import { useState } from 'react'
 import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
+import { getActionButtonStyle } from '../../components/action-style'
+import { CompactOptionGroup } from '../../components/compact-option-group'
 import { EmptyState } from '../../components/empty-state'
 import { OutfitCard } from '../../components/outfit-card'
 import { OutfitDetailSheet } from '../../components/outfit-detail-sheet'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
-import { colors, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
+import { colors } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useOutfits } from '../../hooks/use-outfits'
+import { formatOutfitDetailLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
 
 import type { Outfit, OutfitFilters } from '../../services/types'
 
-type FilterChip = 'all' | 'my-looks' | 'worn' | 'pairings' | 'ai'
+type FilterChip = 'all' | 'pending' | 'my-looks' | 'worn' | 'pairings' | 'ai'
 
 function chipToFilters(chip: FilterChip): OutfitFilters {
   switch (chip) {
+    case 'pending': return { status: 'pending' }
     case 'my-looks': return { is_lookbook: true }
     case 'worn': return { is_lookbook: false, status: 'accepted' }
-    case 'pairings': return { has_source_item: true }
+    case 'pairings': return { source: 'pairing' }
     case 'ai': return { source: 'scheduled,on_demand' }
     case 'all': default: return {}
   }
@@ -34,6 +38,7 @@ export default function OutfitsPage() {
   const { t, tf } = useI18n()
   const chips: { key: FilterChip; label: string }[] = [
     { key: 'all', label: t('outfits_chip_all') },
+    { key: 'pending', label: t('outfits_chip_pending') },
     { key: 'my-looks', label: t('outfits_chip_my_looks') },
     { key: 'worn', label: t('outfits_chip_worn') },
     { key: 'pairings', label: t('outfits_chip_pairings') },
@@ -48,30 +53,18 @@ export default function OutfitsPage() {
 
   return (
     <PageShell title={t('page_outfits_title')} subtitle={t('page_outfits_subtitle')} navKey='outfits' useBuiltInTabBar>
-      {/* Filter chips */}
-      <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '4px' }}>
-        {chips.map((chip) => (
-          <View
-            key={chip.key}
-            onClick={() => { setActiveChip(chip.key); setPage(1) }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '999px',
-              border: activeChip === chip.key ? `2px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-              backgroundColor: activeChip === chip.key ? colors.surfaceSelected : colors.surfaceMuted,
-            }}
-          >
-            <Text style={{
-              fontSize: '13px',
-              color: activeChip === chip.key ? colors.text : colors.textMuted,
-              fontWeight: activeChip === chip.key ? 600 : 400,
-            }}>
-              {chip.label}
-            </Text>
-          </View>
-        ))}
+      <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginBottom: '2px' }}>
+        <CompactOptionGroup
+          activeIndex={chips.findIndex((chip) => chip.key === activeChip)}
+          options={chips.map((chip) => chip.label)}
+          onChange={(nextIndex) => {
+            setActiveChip(chips[nextIndex].key)
+            setPage(1)
+          }}
+          style={{ flex: 1 }}
+        />
         {data && (
-          <Text style={{ fontSize: '12px', color: colors.textMuted, alignSelf: 'center', marginLeft: 'auto' }}>
+          <Text style={{ fontSize: '12px', color: colors.textMuted, marginLeft: 'auto' }}>
             {tf('outfits_total', { count: data.total })}
           </Text>
         )}
@@ -79,7 +72,7 @@ export default function OutfitsPage() {
 
       {/* Outfit list */}
       {isLoading ? (
-        <SectionCard title={t('outfits_loading_title')}>
+        <SectionCard compact title={t('outfits_loading_title')}>
           <Text style={{ fontSize: '14px', color: colors.textMuted }}>{t('outfits_loading')}</Text>
         </SectionCard>
       ) : outfits.length === 0 ? (
@@ -88,8 +81,10 @@ export default function OutfitsPage() {
           description={activeChip === 'my-looks' ? t('outfits_empty_description_my_looks') : t('outfits_empty_description_default')}
           action={
             <View
+              ariaRole='button'
+              ariaLabel={t('outfits_get_suggestion')}
               onClick={() => Taro.switchTab({ url: '/pages/suggest/index' })}
-              style={primaryButtonStyle}
+              style={getActionButtonStyle({ variant: 'primary' })}
             >
               <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
                 {t('outfits_get_suggestion')}
@@ -98,14 +93,19 @@ export default function OutfitsPage() {
           }
         />
       ) : (
-        <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {outfits.map((outfit) => (
-            <View key={outfit.id} onClick={() => setDetailOutfit(outfit)}>
+            <View
+              key={outfit.id}
+              ariaRole='button'
+              ariaLabel={formatOutfitDetailLabel(outfit)}
+              onClick={() => setDetailOutfit(outfit)}
+            >
               <OutfitCard outfit={outfit} />
             </View>
           ))}
           {data?.has_more && (
-            <View onClick={() => setPage((p) => p + 1)} style={secondaryButtonStyle}>
+            <View ariaRole='button' ariaLabel={t('outfits_load_more')} onClick={() => setPage((p) => p + 1)} style={getActionButtonStyle()}>
               <Text style={{ fontSize: '14px', color: colors.text }}>{t('outfits_load_more')}</Text>
             </View>
           )}

@@ -11,7 +11,7 @@ export function getWardrobeSectionCardStyle(): CSSProperties {
 export function getWardrobeFilterPanelStyle(): CSSProperties {
   return {
     ...getWardrobeSectionCardStyle(),
-    padding: '18px',
+    padding: '14px',
   }
 }
 
@@ -29,6 +29,5 @@ export function getWardrobeUploadedItemStyle(isHighlighted: boolean): CSSPropert
   return {
     backgroundColor: 'var(--wb-color-surface-selected)',
     border: '1px solid var(--wb-color-border-strong)',
-    boxShadow: '0 8px 24px rgba(143, 111, 87, 0.12)',
   }
 }

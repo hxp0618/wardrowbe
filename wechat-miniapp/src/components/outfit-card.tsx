@@ -1,7 +1,8 @@
-import { Image, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 
-import { formatItemTypeLabel, formatOccasionLabel, formatOutfitSourceLabel, formatOutfitStatusLabel } from '../lib/display'
+import { formatOccasionLabel, formatOutfitSourceLabel, formatOutfitStatusLabel } from '../lib/display'
 import type { Outfit, Pairing } from '../services/types'
+import { OutfitImageGrid } from './outfit-image-grid'
 import { UIBadge } from './ui-badge'
 import { colors } from './ui-theme'
 
@@ -21,54 +22,58 @@ export function OutfitCard(props: OutfitCardProps) {
       : 'default'
 
   const title = props.outfit.name || formatOccasionLabel(props.outfit.occasion)
-
   return (
     <View
       style={{
-        padding: '16px',
-        borderRadius: '18px',
+        padding: '10px',
+        borderRadius: '8px',
         backgroundColor: colors.surface,
         border: `1px solid ${colors.border}`,
+        boxSizing: 'border-box',
       }}
     >
+      <OutfitImageGrid itemHeightMode='fill' items={props.outfit.items} />
       <View
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '12px',
+          marginTop: '10px',
         }}
       >
         <View style={{ flex: 1 }}>
           <Text
             style={{
               display: 'block',
-              fontSize: '17px',
+              fontSize: '16px',
               fontWeight: 600,
               color: colors.text,
+              lineHeight: 1.3,
             }}
+            numberOfLines={1}
           >
             {title}
           </Text>
           <Text
-          style={{
-            display: 'block',
-            marginTop: '6px',
-            fontSize: '12px',
-            color: colors.textMuted,
-          }}
-        >
-          {formatOutfitStatusLabel(props.outfit.status)}
-          {props.outfit.scheduled_for ? ` · ${props.outfit.scheduled_for}` : ''}
-        </Text>
-      </View>
+            style={{
+              display: 'block',
+              marginTop: '6px',
+              fontSize: '12px',
+              color: colors.textMuted,
+            }}
+          >
+            {formatOutfitStatusLabel(props.outfit.status)}
+            {props.outfit.scheduled_for ? ` · ${props.outfit.scheduled_for}` : ''}
+          </Text>
+        </View>
         <UIBadge label={props.badge || formatOutfitSourceLabel(props.outfit.source)} tone={badgeTone} />
       </View>
       {props.outfit.reasoning ? (
         <Text
           style={{
             display: 'block',
-            marginTop: '12px',
+            marginTop: '8px',
             fontSize: '13px',
             color: colors.textMuted,
             lineHeight: 1.5,
@@ -77,46 +82,6 @@ export function OutfitCard(props: OutfitCardProps) {
           {props.outfit.reasoning}
         </Text>
       ) : null}
-      <View
-        style={{
-          display: 'flex',
-          gap: '8px',
-          marginTop: '14px',
-          flexWrap: 'wrap',
-        }}
-      >
-        {props.outfit.items.map((item) => {
-          const imageUrl = item.thumbnail_url ?? item.image_url
-          return imageUrl ? (
-            <Image
-              key={item.id}
-              src={imageUrl}
-              mode='aspectFill'
-              style={{
-                width: '84px',
-                height: '84px',
-                borderRadius: '12px',
-                backgroundColor: colors.surfaceMuted,
-              }}
-            />
-          ) : (
-            <View
-              key={item.id}
-              style={{
-                width: '84px',
-                height: '84px',
-                borderRadius: '12px',
-                backgroundColor: colors.surfaceMuted,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ fontSize: '12px', color: colors.textSoft }}>{formatItemTypeLabel(item.type)}</Text>
-            </View>
-          )
-        })}
-      </View>
     </View>
   )
 }

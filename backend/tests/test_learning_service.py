@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -193,3 +193,35 @@ class TestIncrementalEMA:
         profile = result.scalar_one_or_none()
         assert profile is not None
         assert profile.feedback_count >= 1
+
+
+class TestInsightLocalization:
+    @pytest.mark.asyncio
+    async def test_generate_insights_localizes_chinese_domain_values(
+        self, db_session, test_user_for_learning
+    ):
+        user_id = test_user_for_learning.id
+        profile = UserLearningProfile(
+            user_id=user_id,
+            learned_color_scores={"brown": 0.6, "blue": -0.5},
+            learned_style_scores={"casual": 0.7, "streetwear": 0.4},
+            learned_occasion_patterns={},
+            learned_weather_preferences={},
+            feedback_count=3,
+            last_computed_at=datetime.now(UTC),
+        )
+        db_session.add(profile)
+        await db_session.commit()
+
+        insights = await LearningService(db_session).generate_insights(user_id, locale="zh")
+        rendered_text = "\n".join(f"{insight.title}\n{insight.description}" for insight in insights)
+
+        assert "棕色" in rendered_text
+        assert "蓝色" in rendered_text
+        assert "休闲" in rendered_text
+        assert "街头" in rendered_text
+        assert "brown" not in rendered_text
+        assert "blue" not in rendered_text
+        assert "casual" not in rendered_text
+        assert "streetwear" not in rendered_text
+        assert "棕色色" not in rendered_text

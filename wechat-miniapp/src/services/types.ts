@@ -115,6 +115,7 @@ export interface ManualOutfitRequest {
 export interface OutfitFeedbackRequest {
   rating?: number
   comment?: string
+  worn?: boolean
   actually_worn?: boolean
   comfort_rating?: number
   style_rating?: number

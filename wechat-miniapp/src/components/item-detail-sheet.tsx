@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Image, Picker, ScrollView, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import {
+  useAddItemsToFolder,
+  useFolders,
+  useRemoveItemsFromFolder,
+} from '../hooks/use-folders'
 import {
   useArchiveItem,
   useDeleteItem,
@@ -11,9 +16,35 @@ import {
   useToggleNeedsWash,
   useUnarchiveItem,
 } from '../hooks/use-items'
+import { useGeneratePairings } from '../hooks/use-pairings'
+import { formatChineseDate } from '../lib/date-utils'
 import { formatItemTypeLabel, formatOccasionLabel, formatStyleLabel, formatSubtypeLabel } from '../lib/display'
+import { getItemPreviewUrls, getPreviewImageUrl } from '../lib/image-preview'
 import type { Item } from '../services/types'
-import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from './ui-theme'
+import type { Folder } from '../services/folders'
+import {
+  actionRowStyle,
+  actionStackStyle,
+  getActionButtonStyle,
+  getDisabledActionStyle,
+  getEnabledActionHandler,
+  getToneActionSurfaceStyle,
+} from './action-style'
+import { buildOccasionOptions } from '../lib/options'
+import { CompactOptionGroup } from './compact-option-group'
+import { PreviewableImage } from './previewable-image'
+import {
+  flatActionFormStyle,
+  flatDetailBlockStyle,
+  sheetBackdropStyle,
+  sheetContentStyle,
+  sheetHandleStyle,
+  sheetHandleTrackStyle,
+  sheetOverlayStyle,
+  sheetPanelStyle,
+  sheetScrollBodyStyle,
+} from './sheet-style'
+import { colors } from './ui-theme'
 
 type ItemDetailSheetProps = {
   item: Item | null
@@ -21,14 +52,9 @@ type ItemDetailSheetProps = {
   onClose: () => void
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  })
-}
-
-const OCCASIONS = ['casual', 'office', 'formal', 'date', 'sporty', 'outdoor']
+const OCCASION_OPTIONS = buildOccasionOptions(formatOccasionLabel)
 const WASH_METHODS = ['手洗', '机洗', '干洗', '免洗']
+
 export function ItemDetailSheet(props: ItemDetailSheetProps) {
   const { item: initialItem, visible, onClose } = props
   const toggleFavorite = useToggleFavorite()
@@ -39,7 +65,12 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   const deleteItem = useDeleteItem()
   const logWear = useLogWear()
   const logWash = useLogWash()
+  const generatePairings = useGeneratePairings()
+  const { data: folders } = useFolders()
+  const addItemsToFolder = useAddItemsToFolder()
+  const removeItemsFromFolder = useRemoveItemsFromFolder()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showConfirmArchive, setShowConfirmArchive] = useState(false)
   const [showLogWear, setShowLogWear] = useState(false)
   const [showLogWash, setShowLogWash] = useState(false)
   const [wearOccasionIndex, setWearOccasionIndex] = useState(0)
@@ -49,15 +80,41 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   useEffect(() => {
     setCurrentItem(initialItem)
     setShowConfirmDelete(false)
+    setShowConfirmArchive(false)
     setShowLogWear(false)
     setShowLogWash(false)
     setWearOccasionIndex(0)
     setWashMethodIndex(0)
   }, [initialItem, visible])
 
+  useEffect(() => {
+    if (!visible) return undefined
+
+    void Taro.hideTabBar({ animation: false }).catch(() => undefined)
+
+    return () => {
+      void Taro.showTabBar({ animation: false }).catch(() => undefined)
+    }
+  }, [visible])
+
   if (!visible || !currentItem) return null
 
   const item = currentItem
+  const itemFolders = item.folders ?? []
+  const availableFolders = (folders ?? []).filter(
+    (folder) => !itemFolders.some((itemFolder) => itemFolder.id === folder.id)
+  )
+  const favoritePending = Boolean(toggleFavorite.isPending)
+  const needsWashPending = Boolean(toggleNeedsWash.isPending)
+  const reanalyzePending = Boolean(reanalyze.isPending)
+  const archivePending = Boolean(archive.isPending)
+  const unarchivePending = Boolean(unarchive.isPending)
+  const deletePending = Boolean(deleteItem.isPending)
+  const logWearPending = Boolean(logWear.isPending)
+  const logWashPending = Boolean(logWash.isPending)
+  const addFolderPending = Boolean(addItemsToFolder.isPending)
+  const removeFolderPending = Boolean(removeItemsFromFolder.isPending)
+  const generatePairingsPending = Boolean(generatePairings.isPending)
   const imageUrl = item.medium_url || item.thumbnail_url || item.image_url
   const typeLabel = formatItemTypeLabel(item.type)
   const subtypeLabel = formatSubtypeLabel(item.subtype)
@@ -83,6 +140,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
     wearLogged: '已记录穿着',
     washLogged: '已记录清洗',
     logFailed: '记录失败',
+    closeDetail: '关闭详情',
     wearCount: '穿着次数',
     quantity: '数量',
     lastWorn: '上次穿着',
@@ -95,6 +153,14 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
     confirm: '确认',
     logWash: '记录清洗',
     method: '方式',
+    folders: '文件夹',
+    folderCount: (count: number) => `已加入 ${count} 个`,
+    noFolders: '未加入文件夹',
+    addToFolder: '加入文件夹',
+    removeFromFolder: '移出',
+    folderAdded: '已加入文件夹',
+    folderRemoved: '已移出文件夹',
+    folderActionFailed: '文件夹操作失败',
     favorite: '收藏',
     favorited: '已收藏',
     needsWash: '需清洗',
@@ -104,6 +170,11 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
     reanalyze: '重新分析',
     unarchive: '取消归档',
     archive: '归档',
+    archiveConfirm: '确认归档',
+    generatePairings: '生成搭配',
+    generatingPairings: '生成中...',
+    pairingsGenerated: (count: number) => `已生成 ${count} 套搭配`,
+    generatePairingsFailed: '生成失败',
     delete: '删除',
     deleteConfirm: '确认删除',
   }
@@ -115,8 +186,17 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
     item.status === 'error' ? '#EF4444'
     : item.status === 'processing' ? '#F59E0B'
     : item.status === 'archived' ? '#6B7280' : '#22C55E'
+  const detailMetrics = [
+    { label: copy.wearCount, value: String(item.wear_count), valueSize: '18px' },
+    { label: copy.quantity, value: String(item.quantity), valueSize: '18px' },
+    ...(item.last_worn_at
+      ? [{ label: copy.lastWorn, value: formatChineseDate(item.last_worn_at), valueSize: '13px' }]
+      : []),
+  ]
 
   const handleToggleFavorite = async () => {
+    if (favoritePending) return
+
     try {
       const updated = await toggleFavorite.mutateAsync({ id: item.id, favorite: !item.favorite })
       setCurrentItem(updated)
@@ -125,6 +205,8 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   }
 
   const handleToggleWash = async () => {
+    if (needsWashPending) return
+
     try {
       const updated = await toggleNeedsWash.mutateAsync({ id: item.id, needsWash: !item.needs_wash })
       setCurrentItem(updated)
@@ -133,6 +215,8 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   }
 
   const handleReanalyze = async () => {
+    if (reanalyzePending) return
+
     try {
       const updated = await reanalyze.mutateAsync(item.id)
       setCurrentItem(updated)
@@ -141,14 +225,19 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   }
 
   const handleArchive = async () => {
+    if (archivePending) return
+
     try {
       await archive.mutateAsync({ id: item.id })
+      setShowConfirmArchive(false)
       void Taro.showToast({ title: copy.archived, icon: 'success' })
       onClose()
     } catch { void Taro.showToast({ title: copy.archiveFailed, icon: 'none' }) }
   }
 
   const handleUnarchive = async () => {
+    if (unarchivePending) return
+
     try {
       const updated = await unarchive.mutateAsync(item.id)
       setCurrentItem(updated)
@@ -157,6 +246,8 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   }
 
   const handleDelete = async () => {
+    if (deletePending) return
+
     try {
       await deleteItem.mutateAsync(item.id)
       void Taro.showToast({ title: copy.deleted, icon: 'success' })
@@ -165,8 +256,13 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   }
 
   const handleLogWear = async () => {
+    if (logWearPending) return
+
     try {
-      const updated = await logWear.mutateAsync({ id: item.id, occasion: OCCASIONS[wearOccasionIndex] })
+      const updated = await logWear.mutateAsync({
+        id: item.id,
+        occasion: OCCASION_OPTIONS[wearOccasionIndex]?.value || OCCASION_OPTIONS[0].value,
+      })
       setCurrentItem(updated)
       void Taro.showToast({ title: copy.wearLogged, icon: 'success' })
       setShowLogWear(false)
@@ -174,6 +270,8 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   }
 
   const handleLogWash = async () => {
+    if (logWashPending) return
+
     try {
       const updated = await logWash.mutateAsync({ id: item.id, method: WASH_METHODS[washMethodIndex] })
       setCurrentItem(updated)
@@ -182,92 +280,237 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
     } catch { void Taro.showToast({ title: copy.logFailed, icon: 'none' }) }
   }
 
+  const handleGeneratePairings = async () => {
+    if (generatePairingsPending) return
+
+    try {
+      const result = await generatePairings.mutateAsync({
+        itemId: item.id,
+        num_pairings: 5,
+      })
+      void Taro.showToast({ title: copy.pairingsGenerated(result.generated), icon: 'success' })
+    } catch {
+      void Taro.showToast({ title: copy.generatePairingsFailed, icon: 'none' })
+    }
+  }
+
+  const folderToRef = (folder: Folder) => ({
+    id: folder.id,
+    name: folder.name,
+    icon: folder.icon ?? undefined,
+    color: folder.color ?? undefined,
+  })
+
+  const handleAddToFolder = async (folder: Folder) => {
+    if (addFolderPending) return
+
+    try {
+      await addItemsToFolder.mutateAsync({
+        folderId: folder.id,
+        itemIds: [item.id],
+      })
+      setCurrentItem({
+        ...item,
+        folders: [...itemFolders, folderToRef(folder)],
+      })
+      void Taro.showToast({ title: copy.folderAdded, icon: 'success' })
+    } catch {
+      void Taro.showToast({ title: copy.folderActionFailed, icon: 'none' })
+    }
+  }
+
+  const handleRemoveFromFolder = async (folderId: string) => {
+    if (removeFolderPending) return
+
+    try {
+      await removeItemsFromFolder.mutateAsync({
+        folderId,
+        itemIds: [item.id],
+      })
+      setCurrentItem({
+        ...item,
+        folders: itemFolders.filter((folder) => folder.id !== folderId),
+      })
+      void Taro.showToast({ title: copy.folderRemoved, icon: 'success' })
+    } catch {
+      void Taro.showToast({ title: copy.folderActionFailed, icon: 'none' })
+    }
+  }
+
   const additionalImages = item.additional_images || []
-  const allImages = [imageUrl, ...additionalImages.map((img) => img.medium_url || img.thumbnail_url || img.image_url)].filter(Boolean) as string[]
+  const previewImages = getItemPreviewUrls(item)
+  const imageEntries = [
+    { displayUrl: imageUrl, previewUrl: getPreviewImageUrl(item) },
+    ...additionalImages.map((img) => ({
+      displayUrl: img.medium_url || img.thumbnail_url || img.image_url,
+      previewUrl: getPreviewImageUrl(img),
+    })),
+  ].filter((entry): entry is { displayUrl: string; previewUrl: string } => Boolean(entry.displayUrl && entry.previewUrl))
+  const primaryImageEntry = imageEntries[0]
+  const secondaryImageEntries = imageEntries.slice(1)
 
   return (
-    <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>
-      <View onClick={onClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '85vh', backgroundColor: colors.surface, borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column', borderTop: `1px solid ${colors.border}` }}>
-        <View style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-          <View style={{ width: '40px', height: '4px', borderRadius: '2px', backgroundColor: colors.sheetHandle }} />
+    <View catchMove style={sheetOverlayStyle}>
+      <View ariaRole='button' ariaLabel={copy.closeDetail} catchMove onClick={onClose} style={sheetBackdropStyle} />
+      <View catchMove style={sheetPanelStyle}>
+        <View style={sheetHandleTrackStyle}>
+          <View style={sheetHandleStyle} />
         </View>
-        <ScrollView scrollY style={{ flex: 1 }}>
-          <View style={{ padding: '0 20px 40px' }}>
-            {allImages.length > 0 && (
-              <ScrollView scrollX style={{ marginBottom: '16px' }}>
-                <View style={{ display: 'inline-flex', gap: '10px' }}>
-                  {allImages.map((url, i) => (
-                    <Image key={i} src={url} mode='aspectFill' style={{ width: '200px', height: '200px', borderRadius: '16px', backgroundColor: colors.surfaceMuted, display: 'inline-block' }}
-                      onClick={() => Taro.previewImage({ current: url, urls: allImages })} />
-                  ))}
-                </View>
-              </ScrollView>
-            )}
-            <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <Text style={{ fontSize: '22px', fontWeight: 600, color: colors.text }}>{title}</Text>
+        <View catchMove style={sheetScrollBodyStyle}>
+          <View style={sheetContentStyle}>
+            {primaryImageEntry ? (
+              <View style={{ marginBottom: '12px' }}>
+                <PreviewableImage
+                  ariaLabel={`查看 ${title} 第 1 张大图`}
+                  src={primaryImageEntry.displayUrl}
+                  previewCurrent={primaryImageEntry.previewUrl}
+                  previewUrls={previewImages}
+                  mode='aspectFill'
+                  style={{ width: '100%', height: '220px', borderRadius: '8px', backgroundColor: colors.surfaceMuted }}
+                />
+                {secondaryImageEntries.length > 0 ? (
+                  <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                      {secondaryImageEntries.map((entry, i) => (
+                        <PreviewableImage
+                          key={i}
+                          ariaLabel={`查看 ${title} 第 ${i + 2} 张大图`}
+                          src={entry.displayUrl}
+                          previewCurrent={entry.previewUrl}
+                          previewUrls={previewImages}
+                          mode='aspectFill'
+                          style={{ width: '72px', height: '72px', borderRadius: '8px', backgroundColor: colors.surfaceMuted }}
+                        />
+                      ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+            <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '10px' }}>
+              <Text style={{ fontSize: '18px', fontWeight: 600, color: colors.text }}>{title}</Text>
               <Text style={{ fontSize: '12px', color: statusColor, backgroundColor: `${statusColor}15`, padding: '4px 12px', borderRadius: '999px' }}>{statusLabel}</Text>
             </View>
             <Text style={{ display: 'block', fontSize: '13px', color: colors.textMuted, marginBottom: '8px' }}>
               {typeLabel}{subtypeLabel ? ` · ${subtypeLabel}` : ''}{item.brand ? ` · ${item.brand}` : ''}
             </Text>
-            <View style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              <View style={{ padding: '10px 14px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
-                <Text style={{ fontSize: '12px', color: colors.textMuted }}>穿着次数</Text>
-                <Text style={{ fontSize: '12px', color: colors.textMuted }}>{copy.wearCount}</Text>
-                <Text style={{ display: 'block', fontSize: '20px', fontWeight: 600, color: colors.text }}>{item.wear_count}</Text>
-              </View>
-              <View style={{ padding: '10px 14px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
-                <Text style={{ fontSize: '12px', color: colors.textMuted }}>{copy.quantity}</Text>
-                <Text style={{ display: 'block', fontSize: '20px', fontWeight: 600, color: colors.text }}>{item.quantity}</Text>
-              </View>
-              {item.last_worn_at && (
-                <View style={{ padding: '10px 14px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
-                  <Text style={{ fontSize: '12px', color: colors.textMuted }}>{copy.lastWorn}</Text>
-                  <Text style={{ display: 'block', fontSize: '13px', color: colors.text }}>{formatDate(item.last_worn_at)}</Text>
-                </View>
-              )}
+            <View style={{ display: 'flex', marginBottom: '12px', borderTop: `1px solid ${colors.border}`, borderBottom: `1px solid ${colors.border}` }}>
+              {detailMetrics.map((metric, index) => {
+                const isLast = index === detailMetrics.length - 1
+
+                return (
+                  <View
+                    key={metric.label}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '9px 8px',
+                      borderRight: isLast ? undefined : `1px solid ${colors.border}`,
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>{metric.label}</Text>
+                    <Text style={{ display: 'block', marginTop: '4px', fontSize: metric.valueSize, fontWeight: metric.valueSize === '18px' ? 600 : 400, color: colors.text }} numberOfLines={1}>
+                      {metric.value}
+                    </Text>
+                  </View>
+                )
+              })}
             </View>
             {item.tags && (
-              <View style={{ marginBottom: '16px' }}>
+              <View style={{ marginBottom: '12px' }}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>{copy.tags}</Text>
                 <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {item.tags.style?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '4px 10px', borderRadius: '999px' }}>{formatStyleLabel(s)}</Text>)}
-                  {item.tags.season?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.warning, backgroundColor: 'rgba(251, 191, 36, 0.12)', padding: '4px 10px', borderRadius: '999px' }}>{s}</Text>)}
-                  {item.tags.material && <Text style={{ fontSize: '11px', color: colors.success, backgroundColor: 'rgba(52, 211, 153, 0.12)', padding: '4px 10px', borderRadius: '999px' }}>{item.tags.material}</Text>}
+                  {item.tags.season?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.warning, padding: '4px 10px', borderRadius: '999px', ...getToneActionSurfaceStyle('warning') }}>{s}</Text>)}
+                  {item.tags.material && <Text style={{ fontSize: '11px', color: colors.success, padding: '4px 10px', borderRadius: '999px', ...getToneActionSurfaceStyle('success') }}>{item.tags.material}</Text>}
                   {item.tags.pattern && <Text style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceSelected, padding: '4px 10px', borderRadius: '999px' }}>{item.tags.pattern}</Text>}
                 </View>
               </View>
             )}
             {item.ai_description && (
-              <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
+              <View style={flatDetailBlockStyle}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>{copy.aiDescription}</Text>
                 <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>{item.ai_description}</Text>
               </View>
             )}
             {item.notes && (
-              <View style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: colors.surfaceMuted }}>
+              <View style={flatDetailBlockStyle}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '6px' }}>{copy.notes}</Text>
                 <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>{item.notes}</Text>
               </View>
             )}
 
+            <View style={{ marginBottom: '10px', padding: '10px 0', borderTop: `1px solid ${colors.border}`, borderBottom: `1px solid ${colors.border}` }}>
+              <Text style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: colors.text }}>{copy.folders}</Text>
+              <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginTop: '2px', marginBottom: itemFolders.length || availableFolders.length ? '8px' : 0 }}>
+                {itemFolders.length ? copy.folderCount(itemFolders.length) : copy.noFolders}
+              </Text>
+              {itemFolders.length ? (
+                <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: availableFolders.length ? '10px' : 0 }}>
+                  {itemFolders.map((folder) => (
+                    <View
+                      key={folder.id}
+                      style={{ minHeight: '44px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', borderRadius: '999px', backgroundColor: colors.surface, border: `1px solid ${colors.border}` }}
+                    >
+                      <Text style={{ fontSize: '12px', color: colors.text }}>
+                        {folder.icon ? `${folder.icon} ` : ''}{folder.name}
+                      </Text>
+                      <View
+                        ariaRole='button'
+                        ariaLabel={`${copy.removeFromFolder} ${folder.name}`}
+                        onClick={getEnabledActionHandler(removeFolderPending, () => void handleRemoveFromFolder(folder.id))}
+                        style={{ minHeight: '44px', display: 'flex', alignItems: 'center', padding: '0 2px', ...getDisabledActionStyle(removeFolderPending) }}
+                      >
+                        <Text style={{ fontSize: '12px', color: colors.danger }}>{copy.removeFromFolder}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              {availableFolders.length > 0 && (
+                <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {availableFolders.map((folder) => (
+                      <View
+                        key={folder.id}
+                        ariaRole='button'
+                        ariaLabel={`${copy.addToFolder} ${folder.name}`}
+                        onClick={getEnabledActionHandler(addFolderPending, () => void handleAddToFolder(folder))}
+                        style={{ minHeight: '44px', display: 'flex', alignItems: 'center', padding: '0 10px', borderRadius: '999px', backgroundColor: colors.surface, border: `1px solid ${colors.border}`, ...getDisabledActionStyle(addFolderPending) }}
+                      >
+                        <Text style={{ fontSize: '12px', color: colors.text }}>
+                          + {folder.icon ? `${folder.icon} ` : ''}{folder.name}
+                        </Text>
+                      </View>
+                    ))}
+                </View>
+              )}
+            </View>
+
             {/* Log wear form */}
             {showLogWear && (
-              <View style={{ marginBottom: '12px', padding: '14px', borderRadius: '14px', backgroundColor: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.22)' }}>
+              <View style={flatActionFormStyle}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>{copy.logWear}</Text>
-                <Picker mode='selector' range={OCCASIONS} value={wearOccasionIndex} onChange={(e) => setWearOccasionIndex(Number(e.detail.value))}>
-                  <View style={{ ...inputStyle, marginBottom: '10px' }}>
-                    <Text style={{ fontSize: '13px', color: colors.text }}>
-                      {copy.occasion}: {formatOccasionLabel(OCCASIONS[wearOccasionIndex])}
-                    </Text>
-                  </View>
-                </Picker>
-                <View style={{ display: 'flex', gap: '10px' }}>
-                  <View onClick={() => setShowLogWear(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
+                <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>{copy.occasion}</Text>
+                <CompactOptionGroup
+                  activeIndex={wearOccasionIndex}
+                  options={OCCASION_OPTIONS.map((option) => option.label)}
+                  onChange={setWearOccasionIndex}
+                  style={{ marginBottom: '10px' }}
+                />
+                <View style={{ ...actionRowStyle, gap: '10px' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.cancel}
+                    onClick={() => setShowLogWear(false)}
+                    style={getActionButtonStyle({ flex: 1 })}
+                  >
                     <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
                   </View>
-                  <View onClick={handleLogWear} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: '#166534' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.confirm}
+                    onClick={getEnabledActionHandler(logWearPending, handleLogWear)}
+                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: logWearPending }), backgroundColor: '#166534' }}
+                  >
                     <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.confirm}</Text>
                   </View>
                 </View>
@@ -276,18 +519,30 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
 
             {/* Log wash form */}
             {showLogWash && (
-              <View style={{ marginBottom: '12px', padding: '14px', borderRadius: '14px', backgroundColor: colors.infoSurface, border: `1px solid ${colors.infoBorder}` }}>
+              <View style={flatActionFormStyle}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '10px' }}>{copy.logWash}</Text>
-                <Picker mode='selector' range={WASH_METHODS} value={washMethodIndex} onChange={(e) => setWashMethodIndex(Number(e.detail.value))}>
-                  <View style={{ ...inputStyle, marginBottom: '10px' }}>
-                    <Text style={{ fontSize: '13px', color: colors.text }}>{copy.method}: {washMethodLabels[washMethodIndex]}</Text>
-                  </View>
-                </Picker>
-                <View style={{ display: 'flex', gap: '10px' }}>
-                  <View onClick={() => setShowLogWash(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
+                <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>{copy.method}</Text>
+                <CompactOptionGroup
+                  activeIndex={washMethodIndex}
+                  options={washMethodLabels}
+                  onChange={setWashMethodIndex}
+                  style={{ marginBottom: '10px' }}
+                />
+                <View style={{ ...actionRowStyle, gap: '10px' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.cancel}
+                    onClick={() => setShowLogWash(false)}
+                    style={getActionButtonStyle({ flex: 1 })}
+                  >
                     <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
                   </View>
-                  <View onClick={handleLogWash} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: colors.infoText }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.confirm}
+                    onClick={getEnabledActionHandler(logWashPending, handleLogWash)}
+                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: logWashPending }), backgroundColor: colors.infoText }}
+                  >
                     <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.confirm}</Text>
                   </View>
                 </View>
@@ -295,60 +550,145 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
             )}
 
             {/* Action buttons */}
-            <View style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-              <View style={{ display: 'flex', gap: '10px' }}>
-                <View onClick={handleToggleFavorite} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: item.favorite ? 'rgba(248, 113, 113, 0.12)' : colors.surfaceMuted, border: item.favorite ? '1px solid rgba(248, 113, 113, 0.22)' : `1px solid ${colors.border}`, textAlign: 'center' }}>
+            <View style={{ ...actionStackStyle, marginTop: '6px' }}>
+              <View style={actionRowStyle}>
+                <View
+                  ariaRole='button'
+                  ariaLabel={item.favorite ? copy.favorited : copy.favorite}
+                  onClick={getEnabledActionHandler(favoritePending, handleToggleFavorite)}
+                  style={{ ...getActionButtonStyle({ variant: 'plain', tone: item.favorite ? 'danger' : 'default', flex: 1, disabled: favoritePending }), textAlign: 'center' }}
+                >
                   <Text style={{ fontSize: '14px', color: item.favorite ? colors.danger : colors.text }}>{item.favorite ? copy.favorited : copy.favorite}</Text>
                 </View>
-                <View onClick={handleToggleWash} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: item.needs_wash ? 'rgba(251, 191, 36, 0.12)' : colors.surfaceMuted, border: item.needs_wash ? '1px solid rgba(251, 191, 36, 0.22)' : `1px solid ${colors.border}`, textAlign: 'center' }}>
+                <View
+                  ariaRole='button'
+                  ariaLabel={item.needs_wash ? copy.needsWash : copy.clean}
+                  onClick={getEnabledActionHandler(needsWashPending, handleToggleWash)}
+                  style={{ ...getActionButtonStyle({ variant: 'plain', tone: item.needs_wash ? 'warning' : 'default', flex: 1, disabled: needsWashPending }), textAlign: 'center' }}
+                >
                   <Text style={{ fontSize: '14px', color: item.needs_wash ? colors.warning : colors.text }}>{item.needs_wash ? copy.needsWash : copy.clean}</Text>
                 </View>
               </View>
 
               {!showLogWear && !showLogWash && (
-                <View style={{ display: 'flex', gap: '10px' }}>
-                  <View onClick={() => setShowLogWear(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.22)', textAlign: 'center' }}>
+                <View style={actionRowStyle}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.wearAction}
+                    onClick={getEnabledActionHandler(logWearPending, () => setShowLogWear(true))}
+                    style={{ ...getActionButtonStyle({ variant: 'plain', tone: 'success', flex: 1, disabled: logWearPending }), textAlign: 'center' }}
+                  >
                     <Text style={{ fontSize: '14px', color: colors.success }}>{copy.wearAction}</Text>
                   </View>
-                  <View onClick={() => setShowLogWash(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', backgroundColor: colors.infoSurface, border: `1px solid ${colors.infoBorder}`, textAlign: 'center' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.washAction}
+                    onClick={getEnabledActionHandler(logWashPending, () => setShowLogWash(true))}
+                    style={{ ...getActionButtonStyle({ variant: 'plain', tone: 'info', flex: 1, disabled: logWashPending }), textAlign: 'center' }}
+                  >
                     <Text style={{ fontSize: '14px', color: colors.infoText }}>{copy.washAction}</Text>
                   </View>
                 </View>
               )}
 
               {(item.status === 'error' || item.status === 'ready') && (
-                <View onClick={handleReanalyze} style={secondaryButtonStyle}>
+                <View
+                  ariaRole='button'
+                  ariaLabel={copy.reanalyze}
+                  onClick={getEnabledActionHandler(reanalyzePending, handleReanalyze)}
+                  style={getActionButtonStyle({ disabled: reanalyzePending })}
+                >
                   <Text style={{ fontSize: '14px', color: colors.text }}>{copy.reanalyze}</Text>
                 </View>
               )}
 
+              {item.status === 'ready' && !item.is_archived ? (
+                <View
+                  ariaRole='button'
+                  ariaLabel={copy.generatePairings}
+                  onClick={getEnabledActionHandler(generatePairingsPending, handleGeneratePairings)}
+                  style={getActionButtonStyle({ disabled: generatePairingsPending })}
+                >
+                  <Text style={{ fontSize: '14px', color: colors.text }}>
+                    {generatePairingsPending ? copy.generatingPairings : copy.generatePairings}
+                  </Text>
+                </View>
+              ) : null}
+
               {item.is_archived ? (
-                <View onClick={handleUnarchive} style={secondaryButtonStyle}>
+                <View
+                  ariaRole='button'
+                  ariaLabel={copy.unarchive}
+                  onClick={getEnabledActionHandler(unarchivePending, handleUnarchive)}
+                  style={getActionButtonStyle({ disabled: unarchivePending })}
+                >
                   <Text style={{ fontSize: '14px', color: colors.text }}>{copy.unarchive}</Text>
                 </View>
+              ) : showConfirmArchive ? (
+                <View style={{ ...actionRowStyle, gap: '10px' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.cancel}
+                    onClick={() => setShowConfirmArchive(false)}
+                    style={getActionButtonStyle({ flex: 1 })}
+                  >
+                    <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
+                  </View>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.archiveConfirm}
+                    onClick={getEnabledActionHandler(archivePending, handleArchive)}
+                    style={getActionButtonStyle({ variant: 'primary', flex: 1, disabled: archivePending })}
+                  >
+                    <Text style={{ fontSize: '14px', color: colors.accentText }}>{copy.archiveConfirm}</Text>
+                  </View>
+                </View>
               ) : (
-                <View onClick={handleArchive} style={secondaryButtonStyle}>
+                <View
+                  ariaRole='button'
+                  ariaLabel={copy.archive}
+                  onClick={getEnabledActionHandler(archivePending, () => {
+                    setShowConfirmArchive(true)
+                    setShowConfirmDelete(false)
+                  })}
+                  style={getActionButtonStyle({ disabled: archivePending })}
+                >
                   <Text style={{ fontSize: '14px', color: colors.text }}>{copy.archive}</Text>
                 </View>
               )}
 
               {!showConfirmDelete ? (
-                <View onClick={() => setShowConfirmDelete(true)} style={{ ...secondaryButtonStyle, backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)' }}>
+                <View
+                  ariaRole='button'
+                  ariaLabel={copy.delete}
+                  onClick={getEnabledActionHandler(deletePending, () => setShowConfirmDelete(true))}
+                  style={getActionButtonStyle({ tone: 'danger', disabled: deletePending })}
+                >
                   <Text style={{ fontSize: '14px', color: colors.danger }}>{copy.delete}</Text>
                 </View>
               ) : (
-                <View style={{ display: 'flex', gap: '10px' }}>
-                  <View onClick={() => setShowConfirmDelete(false)} style={{ ...secondaryButtonStyle, flex: 1 }}>
+                <View style={{ ...actionRowStyle, gap: '10px' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.cancel}
+                    onClick={() => setShowConfirmDelete(false)}
+                    style={getActionButtonStyle({ flex: 1 })}
+                  >
                     <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
                   </View>
-                  <View onClick={handleDelete} style={{ ...primaryButtonStyle, flex: 1, backgroundColor: '#dc2626' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.deleteConfirm}
+                    onClick={getEnabledActionHandler(deletePending, handleDelete)}
+                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: deletePending }), backgroundColor: '#dc2626' }}
+                  >
                     <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.deleteConfirm}</Text>
                   </View>
                 </View>
               )}
             </View>
           </View>
-        </ScrollView>
+        </View>
       </View>
     </View>
   )

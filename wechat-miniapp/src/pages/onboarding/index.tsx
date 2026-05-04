@@ -1,58 +1,33 @@
 import { useEffect, useState } from 'react'
-import { Image, Input, Picker, Slider, Text, View } from '@tarojs/components'
+import { Input, Slider, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
+import { actionRowStyle, getActionButtonStyle, getEnabledActionHandler } from '../../components/action-style'
+import { CompactOptionGroup } from '../../components/compact-option-group'
 import { PageShell } from '../../components/page-shell'
+import { PreviewableImage } from '../../components/previewable-image'
 import { SectionCard } from '../../components/section-card'
-import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
+import { colors, inputStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useCreateFamily, useJoinFamily } from '../../hooks/use-family'
 import { useCreateItemWithImages } from '../../hooks/use-items'
 import { usePreferences, useUpdatePreferences } from '../../hooks/use-preferences'
 import { useCompleteOnboarding, useUpdateUserProfile, useUserProfile } from '../../hooks/use-user'
 import { formatColorLabel, formatItemTypeLabel } from '../../lib/display'
+import { ITEM_TYPE_VALUES, WARDROBE_COLOR_OPTIONS, isLightWardrobeColor } from '../../lib/options'
 import {
   applyManualLocationName,
   buildUserProfileUpdate,
-  hasResolvedLocation,
   resolveLocationDraftForSave,
   toResolvedLocationDraft,
 } from '../../lib/location-form'
+import { isChooseImageCanceled } from '../../lib/choose-image'
 import { getEditableWechatDisplayName } from '../../lib/wechat-user'
 import { chooseWechatLocation, WechatLocationError } from '../../lib/wechat-location'
 import { geocodeWeatherLocation } from '../../services/outfits'
 
 const DASHBOARD_PAGE_URL = '/pages/dashboard/index'
 const TOTAL_STEPS = 5
-
-const COLOR_OPTIONS = [
-  { value: 'black', hex: '#171717' },
-  { value: 'white', hex: '#f5f5f5' },
-  { value: 'gray', hex: '#9ca3af' },
-  { value: 'navy', hex: '#1e3a8a' },
-  { value: 'blue', hex: '#2563eb' },
-  { value: 'green', hex: '#15803d' },
-  { value: 'red', hex: '#dc2626' },
-  { value: 'pink', hex: '#ec4899' },
-  { value: 'purple', hex: '#7c3aed' },
-  { value: 'yellow', hex: '#facc15' },
-  { value: 'orange', hex: '#f97316' },
-  { value: 'brown', hex: '#92400e' },
-  { value: 'beige', hex: '#d6c6a5' },
-] as const
-
-const ITEM_TYPE_OPTIONS = [
-  't-shirt',
-  'shirt',
-  'pants',
-  'jeans',
-  'skirt',
-  'dress',
-  'jacket',
-  'coat',
-  'sneakers',
-  'shoes',
-] as const
 
 const STYLE_KEYS = ['casual', 'formal', 'sporty', 'minimalist', 'bold'] as const
 const STYLE_LABELS: Record<(typeof STYLE_KEYS)[number], string> = {
@@ -61,10 +36,6 @@ const STYLE_LABELS: Record<(typeof STYLE_KEYS)[number], string> = {
   sporty: '运动',
   minimalist: '极简',
   bold: '大胆',
-}
-
-function toneColorLabel(value: string): string {
-  return ['white', 'yellow', 'beige'].includes(value) ? '#111827' : '#ffffff'
 }
 
 async function navigateToDashboard() {
@@ -82,8 +53,8 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
           <View key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <View
               style={{
-                width: '34px',
-                height: '34px',
+                width: '28px',
+                height: '28px',
                 borderRadius: '999px',
                 display: 'flex',
                 alignItems: 'center',
@@ -99,7 +70,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
             {index < TOTAL_STEPS - 1 ? (
               <View
                 style={{
-                  width: '22px',
+                  width: '18px',
                   height: '3px',
                   borderRadius: '999px',
                   backgroundColor: index < currentStep ? colors.accent : colors.surfaceMuted,
@@ -125,21 +96,25 @@ function StepActions(props: {
   disabled?: boolean
   loading?: boolean
 }) {
+  const primaryDisabled = Boolean(props.disabled || props.loading)
+
   return (
-    <View style={{ display: 'flex', gap: '10px' }}>
+    <View style={{ ...actionRowStyle, gap: '10px' }}>
       {props.showBack ? (
-        <View onClick={props.onBack} style={{ ...secondaryButtonStyle, flex: 1 }}>
+        <View ariaRole='button' ariaLabel={props.backLabel || '上一步'} onClick={props.onBack} style={getActionButtonStyle({ flex: 1 })}>
           <Text style={{ fontSize: '14px', color: colors.text }}>{props.backLabel || '上一步'}</Text>
         </View>
       ) : null}
       {props.showSkip ? (
-        <View onClick={props.onSkip} style={{ ...secondaryButtonStyle, flex: 1 }}>
+        <View ariaRole='button' ariaLabel={props.skipLabel || '先跳过'} onClick={props.onSkip} style={getActionButtonStyle({ flex: 1 })}>
           <Text style={{ fontSize: '14px', color: colors.textMuted }}>{props.skipLabel || '先跳过'}</Text>
         </View>
       ) : null}
       <View
-        onClick={props.disabled ? undefined : props.onPrimary}
-        style={{ ...primaryButtonStyle, flex: 1, opacity: props.disabled || props.loading ? 0.65 : 1 }}
+        ariaRole='button'
+        ariaLabel={props.primaryLabel}
+        onClick={getEnabledActionHandler(primaryDisabled, props.onPrimary)}
+        style={getActionButtonStyle({ variant: 'primary', flex: 1, disabled: primaryDisabled, disabledOpacity: 0.65 })}
       >
         <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
           {props.loading ? '处理中...' : props.primaryLabel}
@@ -158,12 +133,14 @@ function ColorPicker(props: {
 
   return (
     <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-      {COLOR_OPTIONS.map((color) => {
+      {WARDROBE_COLOR_OPTIONS.map((color) => {
         const active = props.selected.includes(color.value)
 
         return (
           <View
             key={color.value}
+            ariaRole='button'
+            ariaLabel={`${props.tone === 'favorite' ? '选择偏好颜色' : '标记避免颜色'}：${formatColorLabel(color.value)}`}
             onClick={() => {
               if (active) {
                 props.onChange(props.selected.filter((item) => item !== color.value))
@@ -172,8 +149,8 @@ function ColorPicker(props: {
               props.onChange([...props.selected, color.value])
             }}
             style={{
-              width: '38px',
-              height: '38px',
+              width: '44px',
+              height: '44px',
               borderRadius: '999px',
               display: 'flex',
               alignItems: 'center',
@@ -184,7 +161,7 @@ function ColorPicker(props: {
             }}
           >
             {active ? (
-              <Text style={{ fontSize: '16px', color: toneColorLabel(color.value), fontWeight: 700 }}>
+              <Text style={{ fontSize: '16px', color: isLightWardrobeColor(color.value) ? '#111827' : '#ffffff', fontWeight: 700 }}>
                 {props.tone === 'favorite' ? '✓' : '×'}
               </Text>
             ) : null}
@@ -225,6 +202,7 @@ export default function OnboardingPage() {
   })
   const [uploadPaths, setUploadPaths] = useState<string[]>([])
   const [uploadTypeIndex, setUploadTypeIndex] = useState(0)
+  const familyModeIndex = familyMode === 'create' ? 0 : familyMode === 'join' ? 1 : -1
 
   useEffect(() => {
     if (userProfile) {
@@ -375,6 +353,7 @@ export default function OnboardingPage() {
       if (!result.tempFilePaths.length) return
       setUploadPaths(result.tempFilePaths)
     } catch (error) {
+      if (isChooseImageCanceled(error)) return
       const message = error instanceof Error ? error.message : '选图失败'
       void Taro.showToast({ title: message, icon: 'none' })
     }
@@ -390,7 +369,7 @@ export default function OnboardingPage() {
       await createItem.mutateAsync({
         filePaths: uploadPaths,
         fields: {
-          type: ITEM_TYPE_OPTIONS[uploadTypeIndex],
+          type: ITEM_TYPE_VALUES[uploadTypeIndex],
         },
       })
       void Taro.showToast({ title: '首件单品已加入衣橱', icon: 'success' })
@@ -424,11 +403,8 @@ export default function OnboardingPage() {
 
       {step === 0 ? (
         <>
-          <SectionCard title='开始之前'>
-            <View style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <View style={{ width: '72px', height: '72px', borderRadius: '24px', backgroundColor: colors.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: '28px', color: colors.text, fontWeight: 700 }}>W</Text>
-              </View>
+          <SectionCard compact title='开始之前'>
+            <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Text style={{ fontSize: '18px', fontWeight: 600, color: colors.text }}>
                 {displayName ? `欢迎回来，${displayName.split(' ')[0]}` : '先设置一个你的昵称'}
               </Text>
@@ -444,20 +420,6 @@ export default function OnboardingPage() {
                   style={inputStyle}
                 />
               </View>
-              <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <View style={{ padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>拍下第一件衣物</Text>
-                  <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>AI 会自动识别类型、颜色和风格信息</Text>
-                </View>
-                <View style={{ padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>建立你的偏好画像</Text>
-                  <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>后续推荐会更贴近你的风格</Text>
-                </View>
-                <View style={{ padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
-                  <Text style={{ fontSize: '14px', color: colors.text }}>按需加入家庭</Text>
-                  <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>共享邀请码、查看家庭动态与通知</Text>
-                </View>
-              </View>
             </View>
           </SectionCard>
 
@@ -472,39 +434,16 @@ export default function OnboardingPage() {
 
       {step === 1 ? (
         <>
-          <SectionCard title='家庭设置'>
+          <SectionCard compact title='家庭设置'>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
                 这一步是可选的。你可以创建家庭空间，或者用邀请码加入已有家庭。
               </Text>
-              <View style={{ display: 'flex', gap: '10px' }}>
-                <View
-                  onClick={() => setFamilyMode('create')}
-                  style={{
-                    flex: 1,
-                    padding: '12px 14px',
-                    borderRadius: '14px',
-                    backgroundColor: familyMode === 'create' ? colors.surfaceSelected : colors.surfaceMuted,
-                    border: familyMode === 'create' ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                  }}
-                >
-                  <Text style={{ fontSize: '14px', color: colors.text, fontWeight: 600 }}>创建家庭</Text>
-                  <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>开启新的共享空间</Text>
-                </View>
-                <View
-                  onClick={() => setFamilyMode('join')}
-                  style={{
-                    flex: 1,
-                    padding: '12px 14px',
-                    borderRadius: '14px',
-                    backgroundColor: familyMode === 'join' ? colors.surfaceSelected : colors.surfaceMuted,
-                    border: familyMode === 'join' ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
-                  }}
-                >
-                  <Text style={{ fontSize: '14px', color: colors.text, fontWeight: 600 }}>加入家庭</Text>
-                  <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>使用已有邀请码加入</Text>
-                </View>
-              </View>
+              <CompactOptionGroup
+                activeIndex={familyModeIndex}
+                options={['创建家庭', '加入家庭']}
+                onChange={(nextIndex) => setFamilyMode(nextIndex === 0 ? 'create' : 'join')}
+              />
               {familyMode === 'create' ? (
                 <Input value={familyName} placeholder='输入家庭名称' onInput={(event) => setFamilyName(event.detail.value)} style={inputStyle} />
               ) : null}
@@ -529,12 +468,12 @@ export default function OnboardingPage() {
 
       {step === 2 ? (
         <>
-          <SectionCard title='位置设置'>
+          <SectionCard compact title='位置设置'>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
                 推荐会结合天气。你可以直接选择位置，也可以手动填写城市名称。
               </Text>
-              <View onClick={handleDetectLocation} style={secondaryButtonStyle}>
+              <View ariaRole='button' ariaLabel='选择当前位置' onClick={handleDetectLocation} style={getActionButtonStyle()}>
                 <Text style={{ fontSize: '14px', color: colors.text }}>选择当前位置</Text>
               </View>
               <Input
@@ -582,68 +521,69 @@ export default function OnboardingPage() {
 
       {step === 3 ? (
         <>
-          <SectionCard title='颜色偏好'>
-            <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <Text style={{ fontSize: '13px', color: colors.textMuted }}>选择你偏爱的颜色</Text>
-              <ColorPicker
-                selected={favoriteColors}
-                onChange={(next) => {
-                  setFavoriteColors(next)
-                  setAvoidColors((prev) => prev.filter((item) => !next.includes(item)))
-                }}
-                tone='favorite'
-              />
-              {favoriteColors.length ? (
-                <Text style={{ fontSize: '12px', color: colors.textSoft }}>
-                  已选：{favoriteColors.map((value) => formatColorLabel(value)).join('、')}
-                </Text>
-              ) : null}
-            </View>
-          </SectionCard>
+          <SectionCard compact title='偏好设置'>
+            <View style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>颜色偏好</Text>
+                <Text style={{ fontSize: '13px', color: colors.textMuted }}>选择你偏爱的颜色</Text>
+                <ColorPicker
+                  selected={favoriteColors}
+                  onChange={(next) => {
+                    setFavoriteColors(next)
+                    setAvoidColors((prev) => prev.filter((item) => !next.includes(item)))
+                  }}
+                  tone='favorite'
+                />
+                {favoriteColors.length ? (
+                  <Text style={{ fontSize: '12px', color: colors.textSoft }}>
+                    已选：{favoriteColors.map((value) => formatColorLabel(value)).join('、')}
+                  </Text>
+                ) : null}
+              </View>
 
-          <SectionCard title='避免颜色'>
-            <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <Text style={{ fontSize: '13px', color: colors.textMuted }}>标记你不太想看到的颜色</Text>
-              <ColorPicker
-                selected={avoidColors}
-                onChange={(next) => {
-                  setAvoidColors(next)
-                  setFavoriteColors((prev) => prev.filter((item) => !next.includes(item)))
-                }}
-                tone='avoid'
-              />
-              {avoidColors.length ? (
-                <Text style={{ fontSize: '12px', color: colors.textSoft }}>
-                  已选：{avoidColors.map((value) => formatColorLabel(value)).join('、')}
-                </Text>
-              ) : null}
-            </View>
-          </SectionCard>
+              <View style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '14px', borderTop: `1px solid ${colors.border}` }}>
+                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>避免颜色</Text>
+                <Text style={{ fontSize: '13px', color: colors.textMuted }}>标记你不太想看到的颜色</Text>
+                <ColorPicker
+                  selected={avoidColors}
+                  onChange={(next) => {
+                    setAvoidColors(next)
+                    setFavoriteColors((prev) => prev.filter((item) => !next.includes(item)))
+                  }}
+                  tone='avoid'
+                />
+                {avoidColors.length ? (
+                  <Text style={{ fontSize: '12px', color: colors.textSoft }}>
+                    已选：{avoidColors.map((value) => formatColorLabel(value)).join('、')}
+                  </Text>
+                ) : null}
+              </View>
 
-          <SectionCard title='风格倾向'>
-            <View style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {STYLE_KEYS.map((key) => (
-                <View key={key}>
-                  <View style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <Text style={{ fontSize: '14px', color: colors.text }}>{STYLE_LABELS[key]}</Text>
-                    <Text style={{ fontSize: '12px', color: colors.textMuted }}>{styleProfile[key]}%</Text>
+              <View style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingTop: '14px', borderTop: `1px solid ${colors.border}` }}>
+                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>风格倾向</Text>
+                {STYLE_KEYS.map((key) => (
+                  <View key={key}>
+                    <View style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <Text style={{ fontSize: '14px', color: colors.text }}>{STYLE_LABELS[key]}</Text>
+                      <Text style={{ fontSize: '12px', color: colors.textMuted }}>{styleProfile[key]}%</Text>
+                    </View>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={10}
+                      value={styleProfile[key]}
+                      activeColor={colors.accent}
+                      backgroundColor={colors.surfaceMuted}
+                      onChange={(event) =>
+                        setStyleProfile((prev) => ({
+                          ...prev,
+                          [key]: event.detail.value,
+                        }))
+                      }
+                    />
                   </View>
-                  <Slider
-                    min={0}
-                    max={100}
-                    step={10}
-                    value={styleProfile[key]}
-                    activeColor={colors.accent}
-                    backgroundColor={colors.surfaceMuted}
-                    onChange={(event) =>
-                      setStyleProfile((prev) => ({
-                        ...prev,
-                        [key]: event.detail.value,
-                      }))
-                    }
-                  />
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           </SectionCard>
 
@@ -661,32 +601,33 @@ export default function OnboardingPage() {
 
       {step === 4 ? (
         <>
-          <SectionCard title='上传第一件单品'>
+          <SectionCard compact title='上传第一件单品'>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {uploadPaths[0] ? (
-                <Image
+                <PreviewableImage
                   src={uploadPaths[0]}
+                  previewUrls={uploadPaths}
                   mode='aspectFill'
-                  style={{ width: '100%', height: '280px', borderRadius: '18px', backgroundColor: colors.surfaceMuted }}
+                  style={{ width: '100%', height: '220px', borderRadius: '8px', backgroundColor: colors.surfaceMuted }}
                 />
               ) : (
-                <View style={{ height: '220px', borderRadius: '18px', border: `1px dashed ${colors.borderStrong}`, backgroundColor: colors.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
+                <View style={{ height: '160px', borderRadius: '8px', border: `1px dashed ${colors.borderStrong}`, backgroundColor: colors.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
                   <Text style={{ fontSize: '15px', color: colors.text }}>拍摄或选择衣物图片</Text>
                   <Text style={{ fontSize: '12px', color: colors.textMuted }}>支持 1-5 张图片，首张会作为主图</Text>
                 </View>
               )}
 
-              <View onClick={handleChooseImage} style={secondaryButtonStyle}>
+              <View ariaRole='button' ariaLabel={uploadPaths.length ? '重新选择图片' : '选择图片'} onClick={handleChooseImage} style={getActionButtonStyle()}>
                 <Text style={{ fontSize: '14px', color: colors.text }}>{uploadPaths.length ? '重新选择图片' : '选择图片'}</Text>
               </View>
 
               {uploadPaths.length ? (
                 <>
-                  <Picker mode='selector' range={ITEM_TYPE_OPTIONS.map((type) => formatItemTypeLabel(type))} value={uploadTypeIndex} onChange={(event) => setUploadTypeIndex(Number(event.detail.value))}>
-                    <View style={inputStyle}>
-                      <Text style={{ fontSize: '14px', color: colors.text }}>类型：{formatItemTypeLabel(ITEM_TYPE_OPTIONS[uploadTypeIndex])}</Text>
-                    </View>
-                  </Picker>
+                  <CompactOptionGroup
+                    activeIndex={uploadTypeIndex}
+                    options={ITEM_TYPE_VALUES.map((type) => formatItemTypeLabel(type))}
+                    onChange={setUploadTypeIndex}
+                  />
                   <Text style={{ fontSize: '12px', color: colors.textSoft }}>已选择 {uploadPaths.length} 张图片</Text>
                 </>
               ) : null}
@@ -707,7 +648,7 @@ export default function OnboardingPage() {
 
       {step === 5 ? (
         <>
-          <SectionCard title='准备完成'>
+          <SectionCard compact title='准备完成'>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <View style={{ width: '72px', height: '72px', borderRadius: '999px', backgroundColor: 'rgba(52, 211, 153, 0.14)', border: '1px solid rgba(52, 211, 153, 0.24)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: '28px', color: colors.success, fontWeight: 700 }}>✓</Text>

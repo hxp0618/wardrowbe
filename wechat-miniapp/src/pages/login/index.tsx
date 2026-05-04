@@ -6,9 +6,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 
 import { EmptyState } from '../../components/empty-state'
+import { getActionButtonStyle, getEnabledActionHandler } from '../../components/action-style'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
-import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
+import { colors, inputStyle } from '../../components/ui-theme'
 import { useI18n } from '../../lib/i18n'
 import { setStoredAccessToken } from '../../lib/storage'
 import {
@@ -114,6 +115,8 @@ export default function LoginPage() {
   }, [])
 
   async function handleLogin(action: () => Promise<AuthSession>) {
+    if (isSubmitting) return
+
     setIsSubmitting(true)
     setErrorMessage(null)
 
@@ -151,22 +154,6 @@ export default function LoginPage() {
 
   return (
     <PageShell header={null} title={t('page_login_title')} subtitle={t('page_login_subtitle')}>
-      <View
-        style={{
-          width: '72px',
-          height: '72px',
-          borderRadius: '24px',
-          backgroundColor: colors.surfaceMuted,
-          border: `1px solid ${colors.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '4px',
-        }}
-      >
-        <Text style={{ fontSize: '24px', color: colors.text, fontWeight: 700 }}>W</Text>
-      </View>
-
       {inviteToken ? (
         <EmptyState
           title={t('login_invite_detected_title')}
@@ -174,7 +161,7 @@ export default function LoginPage() {
         />
       ) : null}
 
-      <SectionCard title={t('login_welcome_title')}>
+      <SectionCard compact title={t('login_welcome_title')}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.5 }}>
             {t('login_intro')}
@@ -183,7 +170,7 @@ export default function LoginPage() {
           {authAvailability ? (
             <>
               {authAvailability.wechatEnabled ? (
-                <View onClick={handleWechatLogin} style={{ ...primaryButtonStyle, opacity: isSubmitting ? 0.7 : 1 }}>
+                <View ariaRole='button' ariaLabel={t('login_wechat')} onClick={getEnabledActionHandler(isSubmitting, handleWechatLogin)} style={getActionButtonStyle({ variant: 'primary', disabled: isSubmitting })}>
                   <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
                     {isSubmitting ? t('login_submitting') : t('login_wechat')}
                   </Text>
@@ -193,10 +180,8 @@ export default function LoginPage() {
               {authAvailability.devEnabled ? (
                 <View
                   style={{
-                    padding: '12px',
-                    borderRadius: '14px',
-                    backgroundColor: colors.surfaceMuted,
-                    border: `1px solid ${colors.border}`,
+                    paddingTop: '12px',
+                    borderTop: `1px solid ${colors.border}`,
                   }}
                 >
                   <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginBottom: '10px' }}>
@@ -215,7 +200,7 @@ export default function LoginPage() {
                       onInput={(event) => setDisplayName(event.detail.value)}
                       style={inputStyle}
                     />
-                    <View onClick={handleDevLogin} style={{ ...secondaryButtonStyle, opacity: isSubmitting ? 0.7 : 1 }}>
+                    <View ariaRole='button' ariaLabel={t('login_dev_submit')} onClick={getEnabledActionHandler(isSubmitting, handleDevLogin)} style={getActionButtonStyle({ disabled: isSubmitting })}>
                       <Text style={{ fontSize: '14px', color: colors.text }}>
                         {isSubmitting ? t('login_dev_submitting') : t('login_dev_submit')}
                       </Text>
@@ -226,6 +211,7 @@ export default function LoginPage() {
 
               {!authAvailability.wechatEnabled && !authAvailability.devEnabled ? (
                 <EmptyState
+                  embedded
                   title={t('login_unavailable_title')}
                   description={authAvailability.message || t('login_unavailable_default')}
                 />
@@ -240,7 +226,7 @@ export default function LoginPage() {
       </SectionCard>
 
       {errorMessage ? (
-        <SectionCard title={t('login_failed_title')}>
+        <SectionCard compact title={t('login_failed_title')}>
           <Text style={{ fontSize: '13px', color: colors.danger }}>{errorMessage}</Text>
         </SectionCard>
       ) : null}

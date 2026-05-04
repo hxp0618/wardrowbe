@@ -2,12 +2,14 @@ import { Input, Picker, Switch, Text, Textarea, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState } from 'react'
 
+import { actionWrapRowStyle, getActionButtonStyle, getEnabledActionHandler } from '../../components/action-style'
 import { EmptyState } from '../../components/empty-state'
+import { FlatList, FlatListRow } from '../../components/flat-data'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
 import { StatCard } from '../../components/stat-card'
 import { UIBadge } from '../../components/ui-badge'
-import { colors, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../../components/ui-theme'
+import { colors, inputStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import {
   useBarkDefaults,
@@ -25,17 +27,16 @@ import {
 } from '../../hooks/use-notifications'
 import { formatNotificationChannelLabel, formatOccasionLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
-
-type ChannelOption = 'email' | 'webhook' | 'ntfy' | 'mattermost' | 'bark'
-type WebhookPreset = 'generic' | 'telegram' | 'discord' | 'slack' | 'feishu' | 'wechat_work'
-type WebhookMethod = 'POST' | 'PUT'
-type WebhookContentType = 'application/json' | 'application/x-www-form-urlencoded'
-
-const CHANNEL_OPTIONS: ChannelOption[] = ['email', 'webhook', 'ntfy', 'mattermost', 'bark']
-const OCCASIONS = ['casual', 'office', 'formal', 'date', 'sporty', 'outdoor']
-const WEBHOOK_PRESETS: WebhookPreset[] = ['generic', 'telegram', 'discord', 'slack', 'feishu', 'wechat_work']
-const WEBHOOK_METHODS: WebhookMethod[] = ['POST', 'PUT']
-const WEBHOOK_CONTENT_TYPES: WebhookContentType[] = ['application/json', 'application/x-www-form-urlencoded']
+import {
+  NOTIFICATION_CHANNEL_OPTIONS as CHANNEL_OPTIONS,
+  WEBHOOK_CONTENT_TYPE_OPTIONS as WEBHOOK_CONTENT_TYPES,
+  WEBHOOK_METHOD_OPTIONS as WEBHOOK_METHODS,
+  WEBHOOK_PRESET_OPTIONS as WEBHOOK_PRESETS,
+  getDefaultBarkServer,
+  type NotificationChannelOption as ChannelOption,
+  type WebhookPresetOption as WebhookPreset,
+} from '../../lib/notification-options'
+import { OCCASION_VALUES } from '../../lib/options'
 
 function parseWebhookHeaders(value: string): Record<string, string> | undefined {
   const entries = value
@@ -53,10 +54,6 @@ function parseWebhookHeaders(value: string): Record<string, string> | undefined 
     .filter((entry): entry is readonly [string, string] => Boolean(entry))
 
   return entries.length ? Object.fromEntries(entries) : undefined
-}
-
-function getDefaultBarkServer(server?: string): string {
-  return server || 'https://api.day.app'
 }
 
 export default function NotificationsPage() {
@@ -290,13 +287,17 @@ export default function NotificationsPage() {
 
   const handleCreateSetting = async () => {
     const channel = CHANNEL_OPTIONS[channelIndex]
+    const target = channelTarget.trim()
+    if (!target || createSetting.isPending) {
+      return
+    }
     let config: Record<string, unknown>
     if (channel === 'email') {
-      config = { address: channelTarget }
+      config = { address: target }
     } else if (channel === 'webhook') {
       const preset = WEBHOOK_PRESETS[webhookPresetIndex]
       config = {
-        url: channelTarget,
+        url: target,
         preset,
         method: WEBHOOK_METHODS[webhookMethodIndex],
         content_type: WEBHOOK_CONTENT_TYPES[webhookContentTypeIndex],
@@ -313,17 +314,17 @@ export default function NotificationsPage() {
       }
     } else if (channel === 'ntfy') {
       config = {
-        topic: channelTarget,
+        topic: target,
         server: ntfyDefaults?.server,
       }
       if (channelSecondary.trim()) {
         config.token = channelSecondary.trim()
       }
     } else if (channel === 'mattermost') {
-      config = { webhook_url: channelTarget }
+      config = { webhook_url: target }
     } else {
       config = {
-        device_key: channelTarget,
+        device_key: target,
         server: channelSecondary.trim() || getDefaultBarkServer(barkDefaults?.server),
         group: channelTertiary.trim() || 'Wardrowbe',
       }
@@ -345,11 +346,15 @@ export default function NotificationsPage() {
   }
 
   const handleCreateSchedule = async () => {
+    if (createScheduleMutation.isPending) {
+      return
+    }
+
     try {
       await createScheduleMutation.mutateAsync({
         day_of_week: dayIndex,
         notification_time: notificationTime,
-        occasion: OCCASIONS[occasionIndex],
+        occasion: OCCASION_VALUES[occasionIndex],
         enabled: true,
         notify_day_before: notifyDayBefore,
       })
@@ -376,7 +381,7 @@ export default function NotificationsPage() {
         />
       </View>
 
-      <SectionCard title={copy.addChannelTitle}>
+      <SectionCard compact title={copy.addChannelTitle}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <Picker
             mode='selector'
@@ -392,7 +397,7 @@ export default function NotificationsPage() {
               <Text style={{ fontSize: '14px', color: colors.text }}>{formatNotificationChannelLabel(currentChannel)}</Text>
             </View>
           </Picker>
-          <View style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <View style={actionWrapRowStyle}>
             <UIBadge label={formatNotificationChannelLabel(currentChannel)} />
             <UIBadge label={copy.channelDescriptions[currentChannel]} />
             {currentChannel === 'ntfy' && ntfyDefaults?.server ? (
@@ -409,6 +414,8 @@ export default function NotificationsPage() {
             ) : null}
           </View>
           <Input
+            key={`target-${currentChannel}`}
+            ariaLabel={getChannelPlaceholder(currentChannel)}
             value={channelTarget}
             placeholder={getChannelPlaceholder(currentChannel)}
             onInput={(event) => setChannelTarget(event.detail.value)}
@@ -416,6 +423,8 @@ export default function NotificationsPage() {
           />
           {currentChannel === 'ntfy' ? (
             <Input
+              key='ntfy-token'
+              ariaLabel={copy.placeholders.ntfyToken}
               value={channelSecondary}
               placeholder={copy.placeholders.ntfyToken}
               password
@@ -426,12 +435,16 @@ export default function NotificationsPage() {
           {currentChannel === 'bark' ? (
             <>
               <Input
+                key='bark-server'
+                ariaLabel={copy.placeholders.barkServer}
                 value={channelSecondary}
                 placeholder={copy.placeholders.barkServer}
                 onInput={(event) => setChannelSecondary(event.detail.value)}
                 style={inputStyle}
               />
               <Input
+                key='bark-group'
+                ariaLabel={copy.placeholders.barkGroup}
                 value={channelTertiary}
                 placeholder={copy.placeholders.barkGroup}
                 onInput={(event) => setChannelTertiary(event.detail.value)}
@@ -448,6 +461,8 @@ export default function NotificationsPage() {
               </Picker>
               {WEBHOOK_PRESETS[webhookPresetIndex] === 'telegram' ? (
                 <Input
+                  key='telegram-chat-id'
+                  ariaLabel={copy.placeholders.telegramChatId}
                   value={webhookChatId}
                   placeholder={copy.placeholders.telegramChatId}
                   onInput={(event) => setWebhookChatId(event.detail.value)}
@@ -465,30 +480,37 @@ export default function NotificationsPage() {
                 </View>
               </Picker>
               <Textarea
+                ariaLabel={copy.placeholders.headers}
                 value={webhookHeadersText}
                 placeholder={copy.placeholders.headers}
                 onInput={(event) => setWebhookHeadersText(event.detail.value)}
-                style={{ width: '100%', minHeight: '90px', padding: '12px 14px', borderRadius: '14px', border: `1px solid ${colors.border}`, backgroundColor: colors.surfaceMuted, color: colors.text, boxSizing: 'border-box', fontSize: '13px' }}
+                style={{ width: '100%', minHeight: '90px', padding: '12px 14px', borderRadius: '12px', border: `1px solid ${colors.border}`, backgroundColor: colors.surface, color: colors.text, boxSizing: 'border-box', fontSize: '13px' }}
               />
               <Textarea
+                ariaLabel={copy.placeholders.template}
                 value={webhookTemplate}
                 placeholder={copy.placeholders.template}
                 onInput={(event) => setWebhookTemplate(event.detail.value)}
-                style={{ width: '100%', minHeight: '110px', padding: '12px 14px', borderRadius: '14px', border: `1px solid ${colors.border}`, backgroundColor: colors.surfaceMuted, color: colors.text, boxSizing: 'border-box', fontSize: '13px' }}
+                style={{ width: '100%', minHeight: '110px', padding: '12px 14px', borderRadius: '12px', border: `1px solid ${colors.border}`, backgroundColor: colors.surface, color: colors.text, boxSizing: 'border-box', fontSize: '13px' }}
               />
             </>
           ) : null}
-          <View onClick={handleCreateSetting} style={{ ...primaryButtonStyle, opacity: !channelTarget.trim() || createSetting.isPending ? 0.7 : 1 }}>
+          <View
+            ariaRole='button'
+            ariaLabel={copy.add}
+            onClick={getEnabledActionHandler(!channelTarget.trim() || createSetting.isPending, handleCreateSetting)}
+            style={getActionButtonStyle({ variant: 'primary', disabled: !channelTarget.trim() || createSetting.isPending })}
+          >
             <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{createSetting.isPending ? copy.adding : copy.add}</Text>
           </View>
         </View>
       </SectionCard>
 
-      <SectionCard title={copy.channelsTitle}>
+      <SectionCard compact title={copy.channelsTitle}>
         {settings?.length ? (
-          <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <FlatList>
             {settings.map((setting) => (
-              <View key={setting.id} style={{ padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
+              <FlatListRow key={setting.id}>
                 <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ display: 'block', fontSize: '14px', color: colors.text }}>{formatNotificationChannelLabel(setting.channel)}</Text>
@@ -498,35 +520,47 @@ export default function NotificationsPage() {
                   </View>
                   <Switch
                     checked={setting.enabled}
-                    onChange={(event) =>
+                    disabled={updateSetting.isPending}
+                    onChange={(event) => {
+                      if (updateSetting.isPending) return
                       updateSetting.mutate({
                         id: setting.id,
                         data: { enabled: event.detail.value },
                       })
-                    }
+                    }}
                   />
                 </View>
-                <View style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <View style={{ ...actionWrapRowStyle, marginTop: '10px' }}>
                   <UIBadge label={setting.enabled ? copy.statusEnabled : copy.statusDisabled} tone={setting.enabled ? 'success' : 'default'} />
                   <UIBadge label={copy.priority(setting.priority)} />
                 </View>
-                <View style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
-                  <View onClick={() => testSetting.mutate(setting.id)} style={{ ...secondaryButtonStyle, minHeight: '36px', padding: '8px 12px', opacity: testSetting.isPending ? 0.7 : 1 }}>
+                <View style={{ ...actionWrapRowStyle, gap: '12px', marginTop: '10px' }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.test}
+                    onClick={getEnabledActionHandler(testSetting.isPending, () => testSetting.mutate(setting.id))}
+                    style={getActionButtonStyle({ compact: true, disabled: testSetting.isPending })}
+                  >
                     <Text style={{ fontSize: '12px', color: colors.text }}>{copy.test}</Text>
                   </View>
-                  <View onClick={() => deleteSetting.mutate(setting.id)} style={{ ...secondaryButtonStyle, minHeight: '36px', padding: '8px 12px', backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)', opacity: deleteSetting.isPending ? 0.7 : 1 }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.delete}
+                    onClick={getEnabledActionHandler(deleteSetting.isPending, () => deleteSetting.mutate(setting.id))}
+                    style={getActionButtonStyle({ compact: true, tone: 'danger', disabled: deleteSetting.isPending })}
+                  >
                     <Text style={{ fontSize: '12px', color: colors.danger }}>{copy.delete}</Text>
                   </View>
                 </View>
-              </View>
+              </FlatListRow>
             ))}
-          </View>
+          </FlatList>
         ) : (
           <EmptyState title={copy.channelsEmptyTitle} description={copy.channelsEmptyDescription} />
         )}
       </SectionCard>
 
-      <SectionCard title={copy.schedulesTitle}>
+      <SectionCard compact title={copy.schedulesTitle}>
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px' }}>
           <Picker mode='selector' range={copy.days} value={dayIndex} onChange={(event) => setDayIndex(Number(event.detail.value))}>
             <View style={inputStyle}>
@@ -543,7 +577,7 @@ export default function NotificationsPage() {
               <Text style={{ fontSize: '14px', color: colors.text }}>{occasionOptions[occasionIndex]}</Text>
             </View>
           </Picker>
-          <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
+          <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderTop: `1px solid ${colors.border}`, borderBottom: `1px solid ${colors.border}` }}>
             <View>
               <Text style={{ display: 'block', fontSize: '14px', color: colors.text }}>{copy.notifyDayBefore}</Text>
               <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>
@@ -552,71 +586,85 @@ export default function NotificationsPage() {
             </View>
             <Switch checked={notifyDayBefore} onChange={(event) => setNotifyDayBefore(event.detail.value)} />
           </View>
-          <View onClick={handleCreateSchedule} style={{ ...primaryButtonStyle, opacity: createScheduleMutation.isPending ? 0.7 : 1 }}>
+          <View
+            ariaRole='button'
+            ariaLabel={copy.createSchedule}
+            onClick={getEnabledActionHandler(createScheduleMutation.isPending, handleCreateSchedule)}
+            style={getActionButtonStyle({ variant: 'primary', disabled: createScheduleMutation.isPending })}
+          >
             <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>{createScheduleMutation.isPending ? copy.creating : copy.createSchedule}</Text>
           </View>
         </View>
         {schedules?.length ? (
-          <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <FlatList>
             {schedules.map((schedule) => (
-              <View key={schedule.id} style={{ padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
+              <FlatListRow key={schedule.id}>
                 <Text style={{ display: 'block', fontSize: '14px', color: colors.text }}>
                   {copy.days[schedule.day_of_week]} {schedule.notification_time}
                 </Text>
                 <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>
                   {formatOccasionLabel(schedule.occasion)} · {schedule.enabled ? copy.scheduleEnabled : copy.scheduleDisabled}
                 </Text>
-                <View style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <View style={{ ...actionWrapRowStyle, marginTop: '10px' }}>
                   <UIBadge label={schedule.notify_day_before ? copy.badgeDayBefore : copy.badgeSameDay} />
                   <UIBadge label={schedule.enabled ? copy.badgeEnabled : copy.badgeClosed} tone={schedule.enabled ? 'success' : 'default'} />
                 </View>
-                <View style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <View style={{ ...actionWrapRowStyle, gap: '12px', marginTop: '10px' }}>
                   <View
-                    onClick={() =>
+                    ariaRole='button'
+                    ariaLabel={schedule.enabled ? copy.disableSchedule : copy.enableSchedule}
+                    onClick={getEnabledActionHandler(updateSchedule.isPending, () =>
                       updateSchedule.mutate({
                         id: schedule.id,
                         data: { enabled: !schedule.enabled },
                       })
-                    }
-                    style={{ ...secondaryButtonStyle, minHeight: '36px', padding: '8px 12px', opacity: updateSchedule.isPending ? 0.7 : 1 }}
+                    )}
+                    style={getActionButtonStyle({ compact: true, disabled: updateSchedule.isPending })}
                   >
                     <Text style={{ fontSize: '12px', color: colors.text }}>{schedule.enabled ? copy.disableSchedule : copy.enableSchedule}</Text>
                   </View>
                   <View
-                    onClick={() =>
+                    ariaRole='button'
+                    ariaLabel={schedule.notify_day_before ? copy.switchSameDay : copy.switchDayBefore}
+                    onClick={getEnabledActionHandler(updateSchedule.isPending, () =>
                       updateSchedule.mutate({
                         id: schedule.id,
                         data: { notify_day_before: !schedule.notify_day_before },
                       })
-                    }
-                    style={{ ...secondaryButtonStyle, minHeight: '36px', padding: '8px 12px', opacity: updateSchedule.isPending ? 0.7 : 1 }}
+                    )}
+                    style={getActionButtonStyle({ compact: true, disabled: updateSchedule.isPending })}
                   >
                     <Text style={{ fontSize: '12px', color: colors.text }}>
                       {schedule.notify_day_before ? copy.switchSameDay : copy.switchDayBefore}
                     </Text>
                   </View>
-                  <View onClick={() => deleteScheduleMutation.mutate(schedule.id)} style={{ ...secondaryButtonStyle, minHeight: '36px', padding: '8px 12px', backgroundColor: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.22)', opacity: deleteScheduleMutation.isPending ? 0.7 : 1 }}>
+                  <View
+                    ariaRole='button'
+                    ariaLabel={copy.deleteSchedule}
+                    onClick={getEnabledActionHandler(deleteScheduleMutation.isPending, () => deleteScheduleMutation.mutate(schedule.id))}
+                    style={getActionButtonStyle({ compact: true, tone: 'danger', disabled: deleteScheduleMutation.isPending })}
+                  >
                     <Text style={{ fontSize: '12px', color: colors.danger }}>{copy.deleteSchedule}</Text>
                   </View>
                 </View>
-              </View>
+              </FlatListRow>
             ))}
-          </View>
+          </FlatList>
         ) : null}
       </SectionCard>
 
-      <SectionCard title={copy.historyTitle}>
+      <SectionCard compact title={copy.historyTitle}>
         {history?.length ? (
-          <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <FlatList>
             {history.map((item) => (
-              <View key={item.id} style={{ padding: '12px 14px', borderRadius: '14px', backgroundColor: colors.surfaceMuted }}>
+              <FlatListRow key={item.id}>
                 <Text style={{ display: 'block', fontSize: '14px', color: colors.text }}>{formatNotificationChannelLabel(item.channel)}</Text>
                 <Text style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: colors.textMuted }}>
                   {item.status} · {item.created_at}
                 </Text>
-              </View>
+              </FlatListRow>
             ))}
-          </View>
+          </FlatList>
         ) : (
           <EmptyState title={copy.historyEmptyTitle} description={copy.historyEmptyDescription} />
         )}

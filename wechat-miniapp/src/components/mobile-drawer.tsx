@@ -1,65 +1,21 @@
 import { useEffect, useState } from 'react'
 
-import { Text, View } from '@tarojs/components'
+import { Image, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import { useI18n } from '../lib/i18n'
+import { navigateToPage } from '../lib/navigation'
+import {
+  ALL_DRAWER_ITEMS,
+  PRIMARY_DRAWER_ITEMS,
+  SECONDARY_DRAWER_ITEMS,
+  type AppDrawerKey,
+  type AppNavItem,
+} from '../lib/navigation-options'
 import { colors } from './ui-theme'
 import { getHeaderChromeHeight, resolveHeaderMetrics } from './header-metrics'
 
-export type MobileDrawerKey =
-  | 'dashboard'
-  | 'wardrobe'
-  | 'suggest'
-  | 'outfits'
-  | 'pairings'
-  | 'history'
-  | 'family-feed'
-  | 'analytics'
-  | 'learning'
-  | 'family'
-  | 'notifications'
-  | 'settings'
-
-type DrawerItem = {
-  key: MobileDrawerKey
-  labelKey:
-    | 'nav_dashboard'
-    | 'nav_wardrobe'
-    | 'nav_suggest'
-    | 'nav_outfits'
-    | 'nav_pairings'
-    | 'nav_history'
-    | 'nav_family_feed'
-    | 'nav_analytics'
-    | 'nav_learning'
-    | 'nav_family'
-    | 'nav_notifications'
-    | 'nav_settings'
-  icon: string
-  url: string
-  type: 'tab' | 'page'
-}
-
-const PRIMARY_ITEMS: DrawerItem[] = [
-  { key: 'dashboard', labelKey: 'nav_dashboard', icon: '⌂', url: '/pages/dashboard/index', type: 'tab' },
-  { key: 'wardrobe', labelKey: 'nav_wardrobe', icon: '⌘', url: '/pages/wardrobe/index', type: 'tab' },
-  { key: 'suggest', labelKey: 'nav_suggest', icon: '✦', url: '/pages/suggest/index', type: 'tab' },
-  { key: 'outfits', labelKey: 'nav_outfits', icon: '▣', url: '/pages/outfits/index', type: 'tab' },
-  { key: 'pairings', labelKey: 'nav_pairings', icon: '◫', url: '/pages/pairings/index', type: 'page' },
-  { key: 'history', labelKey: 'nav_history', icon: '↺', url: '/pages/history/index', type: 'page' },
-  { key: 'family-feed', labelKey: 'nav_family_feed', icon: '♡', url: '/pages/family-feed/index', type: 'page' },
-  { key: 'analytics', labelKey: 'nav_analytics', icon: '◔', url: '/pages/analytics/index', type: 'page' },
-  { key: 'learning', labelKey: 'nav_learning', icon: '◌', url: '/pages/learning/index', type: 'page' },
-]
-
-const SECONDARY_ITEMS: DrawerItem[] = [
-  { key: 'family', labelKey: 'nav_family', icon: '◍', url: '/pages/family/index', type: 'page' },
-  { key: 'notifications', labelKey: 'nav_notifications', icon: '◉', url: '/pages/notifications/index', type: 'page' },
-  { key: 'settings', labelKey: 'nav_settings', icon: '⚙', url: '/pages/settings/index', type: 'tab' },
-]
-
-const ALL_ITEMS = [...PRIMARY_ITEMS, ...SECONDARY_ITEMS]
+export type MobileDrawerKey = AppDrawerKey
 const DRAWER_WIDTH = 288
 const DRAWER_SIDE_PADDING = 16
 const DRAWER_TOP_GAP = 4
@@ -69,7 +25,7 @@ export function resolveMobileDrawerKey(path?: string): MobileDrawerKey | null {
   if (!path) {
     return null
   }
-  const match = ALL_ITEMS.find((item) => item.url === path)
+  const match = ALL_DRAWER_ITEMS.find((item) => item.url === path)
   return match?.key ?? null
 }
 
@@ -129,7 +85,7 @@ type MobileDrawerProps = {
   onClose: () => void
 }
 
-async function navigateToItem(item: DrawerItem, activeKey: MobileDrawerKey | null, onClose: () => void) {
+async function navigateToItem(item: AppNavItem, activeKey: MobileDrawerKey | null, onClose: () => void) {
   onClose()
   if (item.key === activeKey) {
     return
@@ -138,11 +94,35 @@ async function navigateToItem(item: DrawerItem, activeKey: MobileDrawerKey | nul
     await Taro.switchTab({ url: item.url })
     return
   }
-  await Taro.navigateTo({ url: item.url })
+  navigateToPage(item.url)
+}
+
+function renderNavIcon(item: AppNavItem, active: boolean, label: string) {
+  if (item.iconPath) {
+    return (
+      <Image
+        ariaLabel={`${label} 图标`}
+        mode='aspectFit'
+        src={active && item.selectedIconPath ? item.selectedIconPath : item.iconPath}
+        style={{
+          width: '18px',
+          height: '18px',
+          flexShrink: 0,
+          opacity: active ? 1 : 0.76,
+        }}
+      />
+    )
+  }
+
+  return (
+    <Text style={{ color: active ? colors.accentText : colors.textMuted, fontSize: '16px' }}>
+      {item.iconText}
+    </Text>
+  )
 }
 
 function renderItem(
-  item: DrawerItem,
+  item: AppNavItem,
   activeKey: MobileDrawerKey | null,
   onClose: () => void,
   label: string
@@ -152,6 +132,8 @@ function renderItem(
   return (
     <View
       key={item.key}
+      ariaRole='button'
+      ariaLabel={label}
       onClick={() => {
         void navigateToItem(item, activeKey, onClose)
       }}
@@ -159,14 +141,13 @@ function renderItem(
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
+        minHeight: '44px',
         padding: '6px 12px',
-        borderRadius: '14px',
+        borderRadius: '8px',
         backgroundColor: active ? colors.accent : 'transparent',
       }}
     >
-      <Text style={{ color: active ? colors.accentText : colors.textMuted, fontSize: '16px' }}>
-        {item.icon}
-      </Text>
+      {renderNavIcon(item, active, label)}
       <Text
         style={{
           color: active ? colors.accentText : colors.text,
@@ -188,13 +169,32 @@ export function MobileDrawer(props: MobileDrawerProps) {
     setLayout(getMobileDrawerLayout())
   }, [])
 
+  useEffect(() => {
+    if (!props.open) {
+      return undefined
+    }
+
+    void Promise.resolve(Taro.hideTabBar({ animation: false })).catch(() => undefined)
+
+    return () => {
+      void Promise.resolve(Taro.showTabBar({ animation: false })).catch(() => undefined)
+    }
+  }, [props.open])
+
+  if (!props.open) {
+    return null
+  }
+
   return (
     <View
       style={{
-        pointerEvents: props.open ? 'auto' : 'none',
+        pointerEvents: 'auto',
       }}
     >
       <View
+        ariaRole='button'
+        ariaLabel={t('drawer_dismiss')}
+        catchMove
         onClick={props.onClose}
         style={{
           position: 'fixed',
@@ -204,11 +204,12 @@ export function MobileDrawer(props: MobileDrawerProps) {
           left: '0',
           zIndex: 49,
           backgroundColor: 'rgba(0, 0, 0, 0.56)',
-          opacity: props.open ? 1 : 0,
+          opacity: 1,
           transition: 'opacity 180ms ease',
         }}
       />
       <View
+        catchMove
         style={{
           position: 'fixed',
           top: '0',
@@ -218,13 +219,16 @@ export function MobileDrawer(props: MobileDrawerProps) {
           zIndex: 50,
           backgroundColor: colors.surface,
           borderRight: `1px solid ${colors.border}`,
-          transform: props.open ? 'translateX(0)' : 'translateX(-110%)',
+          transform: 'translateX(0)',
           transition: 'transform 220ms ease',
           boxSizing: 'border-box',
           paddingTop: layout.paddingTop,
           paddingRight: `${DRAWER_SIDE_PADDING}px`,
           paddingBottom: '28px',
           paddingLeft: `${DRAWER_SIDE_PADDING}px`,
+          maxHeight: '100vh',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
           display: 'flex',
           flexDirection: 'column',
           gap: '18px',
@@ -248,11 +252,13 @@ export function MobileDrawer(props: MobileDrawerProps) {
             </Text>
           </View>
           <View
+            ariaRole='button'
+            ariaLabel={t('drawer_close')}
             onClick={props.onClose}
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '12px',
+              width: '44px',
+              height: '44px',
+              borderRadius: '8px',
               border: `1px solid ${colors.border}`,
               backgroundColor: colors.surfaceMuted,
               display: 'flex',
@@ -265,7 +271,7 @@ export function MobileDrawer(props: MobileDrawerProps) {
         </View>
 
         <View style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {PRIMARY_ITEMS.map((item) =>
+          {PRIMARY_DRAWER_ITEMS.map((item) =>
             renderItem(item, props.activeKey, props.onClose, t(item.labelKey))
           )}
         </View>
@@ -275,7 +281,7 @@ export function MobileDrawer(props: MobileDrawerProps) {
             {t('drawer_section_settings')}
           </Text>
           <View style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {SECONDARY_ITEMS.map((item) =>
+            {SECONDARY_DRAWER_ITEMS.map((item) =>
               renderItem(item, props.activeKey, props.onClose, t(item.labelKey))
             )}
           </View>

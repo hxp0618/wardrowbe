@@ -31,7 +31,7 @@ from app.models.learning import (
 )
 from app.models.outfit import Outfit, OutfitItem, OutfitStatus, UserFeedback
 from app.models.preference import UserPreference
-from app.utils.i18n import translate
+from app.utils.i18n import translate, translate_domain_value, translate_domain_values
 from app.utils.signed_urls import sign_image_url
 
 logger = logging.getLogger(__name__)
@@ -926,18 +926,21 @@ class LearningService:
 
             if top_colors and top_colors[0][1] > 0.3:
                 best_color = top_colors[0][0]
+                best_color_label = translate_domain_value(locale, "color", best_color)
                 insights.append(
                     StyleInsight(
                         user_id=user_id,
                         category="color",
                         insight_type="positive",
                         title=translate(
-                            locale, "learning.insight.love_color_title", color=best_color
+                            locale,
+                            "learning.insight.love_color_title",
+                            color=best_color_label,
                         ),
                         description=translate(
                             locale,
                             "learning.insight.love_color_desc",
-                            color=best_color,
+                            color=best_color_label,
                         ),
                         confidence=Decimal(str(min(0.95, abs(top_colors[0][1])))),
                         supporting_data={"color": best_color, "score": top_colors[0][1]},
@@ -948,18 +951,21 @@ class LearningService:
             # Look for avoided colors
             avoided = [c for c, s in profile.learned_color_scores.items() if s < -0.3]
             if avoided:
+                avoided_color_label = translate_domain_value(locale, "color", avoided[0])
                 insights.append(
                     StyleInsight(
                         user_id=user_id,
                         category="color",
                         insight_type="negative",
                         title=translate(
-                            locale, "learning.insight.avoid_color_title", color=avoided[0]
+                            locale,
+                            "learning.insight.avoid_color_title",
+                            color=avoided_color_label,
                         ),
                         description=translate(
                             locale,
                             "learning.insight.avoid_color_desc",
-                            color=avoided[0],
+                            color=avoided_color_label,
                         ),
                         confidence=Decimal("0.7"),
                         supporting_data={"colors": avoided},
@@ -1009,6 +1015,10 @@ class LearningService:
                 reverse=True,
             )[:2]
             if top_styles and top_styles[0][1] > 0.2:
+                top_style_label = translate_domain_value(locale, "style", top_styles[0][0])
+                top_style_labels = translate_domain_values(
+                    locale, "style", [style for style, _ in top_styles]
+                )
                 insights.append(
                     StyleInsight(
                         user_id=user_id,
@@ -1017,12 +1027,12 @@ class LearningService:
                         title=translate(
                             locale,
                             "learning.insight.style_pattern_title",
-                            style=top_styles[0][0],
+                            style=top_style_label,
                         ),
                         description=translate(
                             locale,
                             "learning.insight.style_pattern_desc",
-                            styles=", ".join(s for s, _ in top_styles),
+                            styles=top_style_labels,
                         ),
                         confidence=Decimal(str(min(0.9, abs(top_styles[0][1])))),
                         supporting_data={"styles": dict(top_styles)},

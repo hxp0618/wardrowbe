@@ -7,27 +7,24 @@ type EditorialChipTone = 'default' | 'warning'
 export function getEditorialRaisedPanelStyle(): CSSProperties {
   return {
     backgroundColor: colors.surfaceRaised,
-    borderRadius: '22px',
+    borderRadius: '8px',
     border: '1px solid rgba(9, 9, 11, 0.04)',
-    boxShadow: '0 8px 24px rgba(24, 24, 27, 0.04)',
   }
 }
 
 export function getEditorialCardStyle(): CSSProperties {
   return {
     backgroundColor: colors.surface,
-    borderRadius: '22px',
+    borderRadius: '8px',
     border: '1px solid rgba(9, 9, 11, 0.06)',
-    boxShadow: '0 10px 24px rgba(24, 24, 27, 0.04)',
   }
 }
 
 export function getEditorialFeatureCardStyle(): CSSProperties {
   return {
-    borderRadius: '26px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(255, 249, 241, 0.96)',
     border: '1px solid rgba(188, 146, 96, 0.18)',
-    boxShadow: '0 18px 40px rgba(82, 62, 40, 0.08)',
   }
 }
 
@@ -36,7 +33,7 @@ export function getEditorialTintedPanelStyle(
 ): CSSProperties {
   if (tint === 'sage') {
     return {
-      borderRadius: '20px',
+      borderRadius: '8px',
       backgroundColor: 'rgba(220, 241, 229, 0.92)',
       border: '1px solid rgba(110, 168, 134, 0.22)',
     }
@@ -44,14 +41,14 @@ export function getEditorialTintedPanelStyle(
 
   if (tint === 'rose') {
     return {
-      borderRadius: '20px',
+      borderRadius: '8px',
       backgroundColor: 'rgba(248, 231, 234, 0.92)',
       border: '1px solid rgba(204, 128, 140, 0.2)',
     }
   }
 
   return {
-    borderRadius: '20px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(228, 240, 250, 0.94)',
     border: '1px solid rgba(114, 149, 187, 0.2)',
   }
@@ -62,29 +59,29 @@ export function getEditorialMetricTileStyle(
 ): CSSProperties {
   if (tint === 'sage') {
     return {
-      borderRadius: '18px',
+      borderRadius: '8px',
       backgroundColor: 'rgba(220, 241, 229, 0.96)',
       border: '1px solid rgba(110, 168, 134, 0.2)',
-      padding: '12px 14px',
+      padding: '10px 12px',
       boxSizing: 'border-box',
     }
   }
 
   if (tint === 'sky') {
     return {
-      borderRadius: '18px',
+      borderRadius: '8px',
       backgroundColor: 'rgba(228, 240, 250, 0.98)',
       border: '1px solid rgba(114, 149, 187, 0.2)',
-      padding: '12px 14px',
+      padding: '10px 12px',
       boxSizing: 'border-box',
     }
   }
 
   return {
-    borderRadius: '18px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     border: '1px solid rgba(188, 146, 96, 0.16)',
-    padding: '12px 14px',
+    padding: '10px 12px',
     boxSizing: 'border-box',
   }
 }
@@ -92,7 +89,7 @@ export function getEditorialMetricTileStyle(
 export function getEditorialPickerTriggerStyle(): CSSProperties {
   return {
     width: '100%',
-    minHeight: '40px',
+    minHeight: '44px',
     padding: '0 12px',
     borderRadius: '12px',
     backgroundColor: colors.surface,
@@ -131,7 +128,7 @@ export function getEditorialChipStyle(
 ): CSSProperties {
   if (active && tone === 'warning') {
     return {
-      minHeight: '32px',
+      minHeight: '44px',
       padding: '0 12px',
       borderRadius: '999px',
       backgroundColor: '#fffbeb',
@@ -146,7 +143,7 @@ export function getEditorialChipStyle(
 
   if (active) {
     return {
-      minHeight: '32px',
+      minHeight: '44px',
       padding: '0 12px',
       borderRadius: '999px',
       backgroundColor: colors.accent,
@@ -160,7 +157,7 @@ export function getEditorialChipStyle(
   }
 
   return {
-    minHeight: '32px',
+    minHeight: '44px',
     padding: '0 12px',
     borderRadius: '999px',
     backgroundColor: colors.surface,
@@ -183,7 +180,7 @@ export function getEditorialChipLabelStyle(active: boolean): CSSProperties {
 
 export function getEditorialCompactButtonStyle(): CSSProperties {
   return {
-    minHeight: '38px',
+    minHeight: '44px',
     padding: '0 12px',
     borderRadius: '12px',
   }

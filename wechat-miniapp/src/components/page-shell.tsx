@@ -22,7 +22,7 @@ type PageShellProps = {
   children: ReactNode
 }
 
-const DEFAULT_PAGE_SECTION_GAP = 18
+const DEFAULT_PAGE_SECTION_GAP = 14
 const NO_HEADER_TOP_CHROME_GAP = 4
 
 export function getPageTopChromeHeight() {
@@ -137,7 +137,7 @@ export function PageShell(props: PageShellProps) {
           paddingBottom: props.useBuiltInTabBar || showMobileTabBar ? '104px' : '28px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px',
+          gap: '14px',
           boxSizing: 'border-box',
         }}
       >
@@ -159,7 +159,7 @@ export function PageShell(props: PageShellProps) {
         </View>
         {props.children}
       </View>
-      {showMobileTabBar ? <MobileTabBar activeKey={props.navKey!} /> : null}
+      {showMobileTabBar && !menuOpen ? <MobileTabBar activeKey={props.navKey!} /> : null}
     </View>
   )
 }
