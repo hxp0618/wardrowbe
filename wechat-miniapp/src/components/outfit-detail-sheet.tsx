@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Slider, Text, Textarea, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useAcceptOutfit, useDeleteOutfit, useRejectOutfit, useSubmitOutfitFeedback } from '../hooks/use-outfits'
+import { useHideTabBar } from '../hooks/use-hide-tab-bar'
 import { formatItemTypeLabel, formatOccasionLabel, formatOutfitSourceLabel, formatOutfitStatusLabel, formatWeatherConditionLabel } from '../lib/display'
 import { useI18n } from '../lib/i18n'
+import { runMutationWithToast } from '../lib/mutation-toast'
 import type { Outfit } from '../services/types'
 import {
   actionRowStyle,
@@ -11,6 +13,7 @@ import {
   getActionButtonStyle,
   getEnabledActionHandler,
 } from './action-style'
+import { ConfirmActionRow } from './confirm-action-row'
 import { OutfitImageGrid } from './outfit-image-grid'
 import {
   flatActionFormStyle,
@@ -23,7 +26,7 @@ import {
   sheetPanelStyle,
   sheetScrollBodyStyle,
 } from './sheet-style'
-import { colors } from './ui-theme'
+import { colors, pillBaseStyle } from './ui-theme'
 
 type OutfitDetailSheetProps = {
   outfit: Outfit | null
@@ -52,15 +55,7 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
     setComment('')
   }, [outfit, visible])
 
-  useEffect(() => {
-    if (!visible) return undefined
-
-    void Taro.hideTabBar({ animation: false }).catch(() => undefined)
-
-    return () => {
-      void Taro.showTabBar({ animation: false }).catch(() => undefined)
-    }
-  }, [visible])
+  useHideTabBar(visible)
 
   if (!visible || !currentOutfit) return null
 
@@ -70,51 +65,49 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
 
   const handleAccept = async () => {
     if (statusActionPending) return
-
-    try {
-      const updated = await acceptOutfit.mutateAsync(currentOutfit.id)
-      setCurrentOutfit(updated)
-      void Taro.showToast({ title: t('outfit_detail_toast_accepted'), icon: 'success' })
-    } catch { void Taro.showToast({ title: t('outfit_detail_toast_action_failed'), icon: 'none' }) }
+    const outcome = await runMutationWithToast(acceptOutfit, currentOutfit.id, {
+      success: t('outfit_detail_toast_accepted'),
+      failure: t('outfit_detail_toast_action_failed'),
+    })
+    if (outcome.ok) setCurrentOutfit(outcome.result)
   }
 
   const handleReject = async () => {
     if (statusActionPending) return
-
-    try {
-      const updated = await rejectOutfit.mutateAsync(currentOutfit.id)
-      setCurrentOutfit(updated)
-      void Taro.showToast({ title: t('outfit_detail_toast_rejected'), icon: 'success' })
-    } catch { void Taro.showToast({ title: t('outfit_detail_toast_action_failed'), icon: 'none' }) }
+    const outcome = await runMutationWithToast(rejectOutfit, currentOutfit.id, {
+      success: t('outfit_detail_toast_rejected'),
+      failure: t('outfit_detail_toast_action_failed'),
+    })
+    if (outcome.ok) setCurrentOutfit(outcome.result)
   }
 
   const handleDelete = async () => {
     if (deletePending) return
-
-    try {
-      await deleteOutfitMutation.mutateAsync(currentOutfit.id)
-      void Taro.showToast({ title: t('outfit_detail_toast_deleted'), icon: 'success' })
-      onClose()
-    } catch { void Taro.showToast({ title: t('outfit_detail_toast_delete_failed'), icon: 'none' }) }
+    const outcome = await runMutationWithToast(deleteOutfitMutation, currentOutfit.id, {
+      success: t('outfit_detail_toast_deleted'),
+      failure: t('outfit_detail_toast_delete_failed'),
+    })
+    if (outcome.ok) onClose()
   }
 
   const handleSubmitFeedback = async () => {
     if (feedbackPending) return
-
-    try {
-      const updated = await submitFeedback.mutateAsync({
-        outfitId: currentOutfit.id,
-        feedback: {
-          rating,
-          comment: comment.trim() || undefined,
-          actually_worn: true,
-          worn: true,
-        },
-      })
-      setCurrentOutfit(updated)
-      void Taro.showToast({ title: t('outfit_detail_toast_feedback_submitted'), icon: 'success' })
+    const outcome = await runMutationWithToast(submitFeedback, {
+      outfitId: currentOutfit.id,
+      feedback: {
+        rating,
+        comment: comment.trim() || undefined,
+        actually_worn: true,
+        worn: true,
+      },
+    }, {
+      success: t('outfit_detail_toast_feedback_submitted'),
+      failure: t('outfit_detail_toast_feedback_failed'),
+    })
+    if (outcome.ok) {
+      setCurrentOutfit(outcome.result)
       setShowFeedback(false)
-    } catch { void Taro.showToast({ title: t('outfit_detail_toast_feedback_failed'), icon: 'none' }) }
+    }
   }
 
   return (
@@ -132,10 +125,10 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
                 {currentOutfit.name || formatOccasionLabel(currentOutfit.occasion)}
               </Text>
               <View style={{ display: 'flex', gap: '8px' }}>
-                <Text style={{ fontSize: '12px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '4px 10px', borderRadius: '999px' }}>
+                <Text style={{ ...pillBaseStyle, fontSize: '12px', color: colors.textMuted, backgroundColor: colors.surfaceMuted }}>
                   {formatOutfitSourceLabel(currentOutfit.source)}
                 </Text>
-                <Text style={{ fontSize: '12px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '4px 10px', borderRadius: '999px' }}>
+                <Text style={{ ...pillBaseStyle, fontSize: '12px', color: colors.textMuted, backgroundColor: colors.surfaceMuted }}>
                   {formatOutfitStatusLabel(currentOutfit.status)}
                 </Text>
               </View>
@@ -229,6 +222,7 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
                 <Textarea
                   value={comment}
                   placeholder={t('outfit_detail_comment_placeholder')}
+                  maxlength={500}
                   onInput={(e) => setComment(e.detail.value)}
                   style={{ width: '100%', height: '72px', padding: '10px', borderRadius: '10px', border: `1px solid ${colors.border}`, backgroundColor: colors.surface, color: colors.text, boxSizing: 'border-box', fontSize: '13px' }}
                 />
@@ -287,19 +281,14 @@ export function OutfitDetailSheet(props: OutfitDetailSheetProps) {
                   <Text style={{ fontSize: '14px', color: colors.danger }}>{t('outfit_detail_delete_action')}</Text>
                 </View>
               ) : (
-                <View style={actionRowStyle}>
-                  <View ariaRole='button' ariaLabel={t('outfit_detail_cancel')} onClick={() => setShowConfirmDelete(false)} style={getActionButtonStyle({ flex: 1 })}>
-                    <Text style={{ fontSize: '14px', color: colors.text }}>{t('outfit_detail_cancel')}</Text>
-                  </View>
-                  <View
-                    ariaRole='button'
-                    ariaLabel={t('outfit_detail_delete_confirm')}
-                    onClick={getEnabledActionHandler(deletePending, handleDelete)}
-                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: deletePending }), backgroundColor: '#dc2626' }}
-                  >
-                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{t('outfit_detail_delete_confirm')}</Text>
-                  </View>
-                </View>
+                <ConfirmActionRow
+                  tone='danger'
+                  cancelLabel={t('outfit_detail_cancel')}
+                  confirmLabel={t('outfit_detail_delete_confirm')}
+                  onCancel={() => setShowConfirmDelete(false)}
+                  onConfirm={handleDelete}
+                  pending={deletePending}
+                />
               )}
             </View>
           </View>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Image, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
+import { useHideTabBar } from '../hooks/use-hide-tab-bar'
 import { useI18n } from '../lib/i18n'
 import { navigateToPage } from '../lib/navigation'
 import {
@@ -169,17 +170,7 @@ export function MobileDrawer(props: MobileDrawerProps) {
     setLayout(getMobileDrawerLayout())
   }, [])
 
-  useEffect(() => {
-    if (!props.open) {
-      return undefined
-    }
-
-    void Promise.resolve(Taro.hideTabBar({ animation: false })).catch(() => undefined)
-
-    return () => {
-      void Promise.resolve(Taro.showTabBar({ animation: false })).catch(() => undefined)
-    }
-  }, [props.open])
+  useHideTabBar(props.open)
 
   if (!props.open) {
     return null
@@ -224,7 +215,7 @@ export function MobileDrawer(props: MobileDrawerProps) {
           boxSizing: 'border-box',
           paddingTop: layout.paddingTop,
           paddingRight: `${DRAWER_SIDE_PADDING}px`,
-          paddingBottom: '28px',
+          paddingBottom: 'calc(28px + env(safe-area-inset-bottom))',
           paddingLeft: `${DRAWER_SIDE_PADDING}px`,
           maxHeight: '100vh',
           overflowY: 'auto',

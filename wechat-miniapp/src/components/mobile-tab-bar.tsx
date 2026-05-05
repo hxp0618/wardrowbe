@@ -20,7 +20,7 @@ export function MobileTabBar(props: MobileTabBarProps) {
         position: 'fixed',
         left: '12px',
         right: '12px',
-        bottom: '12px',
+        bottom: 'calc(12px + env(safe-area-inset-bottom))',
         zIndex: 30,
         borderRadius: '8px',
         border: `1px solid ${colors.borderStrong}`,

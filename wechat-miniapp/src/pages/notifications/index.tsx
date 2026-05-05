@@ -38,22 +38,34 @@ import {
 } from '../../lib/notification-options'
 import { OCCASION_VALUES } from '../../lib/options'
 
-function parseWebhookHeaders(value: string): Record<string, string> | undefined {
-  const entries = value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const separatorIndex = line.indexOf(':')
-      if (separatorIndex <= 0) return null
-      const key = line.slice(0, separatorIndex).trim()
-      const headerValue = line.slice(separatorIndex + 1).trim()
-      if (!key || !headerValue) return null
-      return [key, headerValue] as const
-    })
-    .filter((entry): entry is readonly [string, string] => Boolean(entry))
+type ParsedWebhookHeaders = {
+  headers: Record<string, string> | undefined
+  invalidLineNumbers: number[]
+}
 
-  return entries.length ? Object.fromEntries(entries) : undefined
+function parseWebhookHeaders(value: string): ParsedWebhookHeaders {
+  const invalidLineNumbers: number[] = []
+  const entries: Array<readonly [string, string]> = []
+
+  value.split('\n').forEach((rawLine, index) => {
+    const line = rawLine.trim()
+    if (!line) return
+
+    const separatorIndex = line.indexOf(':')
+    const key = separatorIndex > 0 ? line.slice(0, separatorIndex).trim() : ''
+    const headerValue = separatorIndex > 0 ? line.slice(separatorIndex + 1).trim() : ''
+
+    if (!key || !headerValue) {
+      invalidLineNumbers.push(index + 1)
+      return
+    }
+    entries.push([key, headerValue] as const)
+  })
+
+  return {
+    headers: entries.length ? Object.fromEntries(entries) : undefined,
+    invalidLineNumbers,
+  }
 }
 
 export default function NotificationsPage() {
@@ -84,167 +96,93 @@ export default function NotificationsPage() {
   const [occasionIndex, setOccasionIndex] = useState(0)
   const [notificationTime, setNotificationTime] = useState('08:00')
   const [notifyDayBefore, setNotifyDayBefore] = useState(false)
-  const { t, locale } = useI18n()
-  const copy =
-    locale === 'en'
-      ? {
-          days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          presetLabels: {
-            generic: 'Generic',
-            telegram: 'Telegram',
-            discord: 'Discord',
-            slack: 'Slack',
-            feishu: 'Feishu',
-            wechat_work: 'WeCom',
-          } as Record<WebhookPreset, string>,
-          channelDescriptions: {
-            email: 'Send reminders and test messages by email',
-            webhook: 'Connect a custom webhook or bot',
-            ntfy: 'Push notifications through an ntfy topic',
-            mattermost: 'Push notifications through a Mattermost webhook',
-            bark: 'Push alerts to Bark iOS devices',
-          } as Record<ChannelOption, string>,
-          placeholders: {
-            email: 'Enter email address',
-            webhook: 'Enter webhook URL',
-            ntfy: 'Enter ntfy topic',
-            mattermost: 'Enter Mattermost webhook URL',
-            bark: 'Enter Bark device key',
-            default: 'Enter value',
-            ntfyToken: 'Enter ntfy access token (optional)',
-            barkServer: 'Enter Bark server URL (optional)',
-            barkGroup: 'Enter Bark group (optional)',
-            telegramChatId: 'Enter Telegram chat_id',
-            headers: 'Headers (optional), one per line: Header-Name: value',
-            template: 'Custom payload template (optional)',
-          },
-          barkKeyConfigured: 'device key configured',
-          channelCreated: 'Channel created',
-          scheduleCreated: 'Schedule created',
-          createFailed: 'Create failed',
-          enabledChannels: 'Enabled channels',
-          channelsHint: (count: number) => `${count} total`,
-          schedules: 'Schedules',
-          historyHint: (count: number) => `${count} deliveries`,
-          addChannelTitle: 'Add Channel',
-          defaultServer: (server: string) => `Default server ${server}`,
-          defaultPostJson: 'Default POST / JSON',
-          incomingWebhook: 'Uses Incoming Webhook',
-          presetLabel: (label: string) => `Preset: ${label}`,
-          methodLabel: (method: string) => `Method: ${method}`,
-          contentTypeLabel: (value: string) => `Content type: ${value}`,
-          adding: 'Adding...',
-          add: 'Add channel',
-          channelsTitle: 'Channels',
-          statusEnabled: 'Enabled',
-          statusDisabled: 'Disabled',
-          priority: (value: number) => `Priority ${value}`,
-          test: 'Test',
-          delete: 'Delete',
-          channelsEmptyTitle: 'No notification channels yet',
-          channelsEmptyDescription: 'Add an email, ntfy, Mattermost, Bark, or webhook channel first.',
-          schedulesTitle: 'Reminder Schedules',
-          timeLabel: (value: string) => `Time: ${value}`,
-          notifyDayBefore: 'Notify one day earlier',
-          notifyDayBeforeDescription: 'When enabled, a reminder is sent at the same time on the previous day.',
-          creating: 'Creating...',
-          createSchedule: 'Create schedule',
-          scheduleEnabled: 'Enabled',
-          scheduleDisabled: 'Disabled',
-          badgeDayBefore: 'Day-before reminder',
-          badgeSameDay: 'Same-day reminder',
-          badgeEnabled: 'Enabled',
-          badgeClosed: 'Disabled',
-          disableSchedule: 'Disable schedule',
-          enableSchedule: 'Enable schedule',
-          switchSameDay: 'Switch to same day',
-          switchDayBefore: 'Switch to day before',
-          deleteSchedule: 'Delete schedule',
-          historyTitle: 'Recent Deliveries',
-          historyEmptyTitle: 'No delivery history yet',
-          historyEmptyDescription: 'History will appear here after you send test notifications or real reminders.',
-        }
-      : {
-          days: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-          presetLabels: {
-            generic: '通用',
-            telegram: 'Telegram',
-            discord: 'Discord',
-            slack: 'Slack',
-            feishu: '飞书',
-            wechat_work: '企业微信',
-          } as Record<WebhookPreset, string>,
-          channelDescriptions: {
-            email: '向邮箱发送提醒和测试消息',
-            webhook: '接入自定义 webhook 或机器人',
-            ntfy: '通过 ntfy topic 推送通知',
-            mattermost: '通过 Mattermost Webhook 推送通知',
-            bark: '向 Bark iOS 设备推送提醒',
-          } as Record<ChannelOption, string>,
-          placeholders: {
-            email: '输入邮箱地址',
-            webhook: '输入 webhook URL',
-            ntfy: '输入 ntfy topic',
-            mattermost: '输入 Mattermost webhook URL',
-            bark: '输入 Bark 设备密钥',
-            default: '请输入',
-            ntfyToken: '输入 ntfy access token（可选）',
-            barkServer: '输入 Bark 服务地址（可选）',
-            barkGroup: '输入 Bark 分组（可选）',
-            telegramChatId: '输入 Telegram chat_id',
-            headers: '请求头（可选），每行一个，格式：Header-Name: value',
-            template: '自定义 payload 模板（可选）',
-          },
-          barkKeyConfigured: '已配置设备密钥',
-          channelCreated: '通知渠道已创建',
-          scheduleCreated: '提醒计划已创建',
-          createFailed: '创建失败',
-          enabledChannels: '已启用渠道',
-          channelsHint: (count: number) => `共 ${count} 个渠道`,
-          schedules: '提醒计划',
-          historyHint: (count: number) => `历史 ${count} 条`,
-          addChannelTitle: '新增渠道',
-          defaultServer: (server: string) => `默认服务 ${server}`,
-          defaultPostJson: '默认 POST / JSON',
-          incomingWebhook: '使用 Incoming Webhook',
-          presetLabel: (label: string) => `模板：${label}`,
-          methodLabel: (method: string) => `方法：${method}`,
-          contentTypeLabel: (value: string) => `内容类型：${value}`,
-          adding: '添加中...',
-          add: '添加渠道',
-          channelsTitle: '通知渠道',
-          statusEnabled: '已启用',
-          statusDisabled: '已停用',
-          priority: (value: number) => `优先级 ${value}`,
-          test: '测试',
-          delete: '删除',
-          channelsEmptyTitle: '还没有通知渠道',
-          channelsEmptyDescription: '先添加一个 email、ntfy、Mattermost、Bark 或 webhook 渠道。',
-          schedulesTitle: '提醒计划',
-          timeLabel: (value: string) => `时间：${value}`,
-          notifyDayBefore: '提前一天提醒',
-          notifyDayBeforeDescription: '开启后会在前一天同一时间发送',
-          creating: '创建中...',
-          createSchedule: '新增计划',
-          scheduleEnabled: '启用',
-          scheduleDisabled: '停用',
-          badgeDayBefore: '提前一天提醒',
-          badgeSameDay: '当天提醒',
-          badgeEnabled: '启用中',
-          badgeClosed: '已关闭',
-          disableSchedule: '停用计划',
-          enableSchedule: '启用计划',
-          switchSameDay: '改为当天提醒',
-          switchDayBefore: '改为提前一天',
-          deleteSchedule: '删除计划',
-          historyTitle: '最近投递',
-          historyEmptyTitle: '还没有投递记录',
-          historyEmptyDescription: '发送过测试通知或实际提醒后，这里会出现历史记录。',
-        }
-  const occasionOptions =
-    locale === 'en'
-      ? ['Casual', 'Office', 'Formal', 'Date', 'Sporty', 'Outdoor']
-      : ['休闲', '办公', '正式', '约会', '运动', '户外']
+  const { t, tf } = useI18n()
+  const copy = {
+    days: [
+      t('notifications_day_mon'),
+      t('notifications_day_tue'),
+      t('notifications_day_wed'),
+      t('notifications_day_thu'),
+      t('notifications_day_fri'),
+      t('notifications_day_sat'),
+      t('notifications_day_sun'),
+    ],
+    presetLabels: {
+      generic: t('notifications_preset_generic'),
+      telegram: 'Telegram',
+      discord: 'Discord',
+      slack: 'Slack',
+      feishu: t('notifications_preset_feishu'),
+      wechat_work: t('notifications_preset_wechat_work'),
+    } as Record<WebhookPreset, string>,
+    channelDescriptions: {
+      email: t('notifications_channel_desc_email'),
+      webhook: t('notifications_channel_desc_webhook'),
+      ntfy: t('notifications_channel_desc_ntfy'),
+      mattermost: t('notifications_channel_desc_mattermost'),
+      bark: t('notifications_channel_desc_bark'),
+    } as Record<ChannelOption, string>,
+    placeholders: {
+      email: t('notifications_placeholder_email'),
+      webhook: t('notifications_placeholder_webhook'),
+      ntfy: t('notifications_placeholder_ntfy'),
+      mattermost: t('notifications_placeholder_mattermost'),
+      bark: t('notifications_placeholder_bark'),
+      default: t('notifications_placeholder_default'),
+      ntfyToken: t('notifications_placeholder_ntfy_token'),
+      barkServer: t('notifications_placeholder_bark_server'),
+      barkGroup: t('notifications_placeholder_bark_group'),
+      telegramChatId: t('notifications_placeholder_telegram_chat_id'),
+      headers: t('notifications_placeholder_headers'),
+      template: t('notifications_placeholder_template'),
+    },
+    barkKeyConfigured: t('notifications_bark_key_configured'),
+    channelCreated: t('notifications_channel_created'),
+    scheduleCreated: t('notifications_schedule_created'),
+    createFailed: t('notifications_create_failed'),
+    enabledChannels: t('notifications_enabled_channels'),
+    channelsHint: (count: number) => tf('notifications_channels_hint', { count }),
+    schedules: t('notifications_schedules'),
+    historyHint: (count: number) => tf('notifications_history_hint', { count }),
+    addChannelTitle: t('notifications_add_channel_title'),
+    defaultServer: (server: string) => tf('notifications_default_server', { server }),
+    defaultPostJson: t('notifications_default_post_json'),
+    incomingWebhook: t('notifications_incoming_webhook'),
+    presetLabel: (label: string) => tf('notifications_preset_label', { label }),
+    methodLabel: (method: string) => tf('notifications_method_label', { method }),
+    contentTypeLabel: (value: string) => tf('notifications_content_type_label', { value }),
+    adding: t('notifications_adding'),
+    add: t('notifications_add'),
+    channelsTitle: t('notifications_channels_title'),
+    statusEnabled: t('notifications_status_enabled'),
+    statusDisabled: t('notifications_status_disabled'),
+    priority: (value: number) => tf('notifications_priority', { value }),
+    test: t('notifications_test'),
+    delete: t('notifications_delete'),
+    channelsEmptyTitle: t('notifications_channels_empty_title'),
+    channelsEmptyDescription: t('notifications_channels_empty_description'),
+    schedulesTitle: t('notifications_schedules_title'),
+    timeLabel: (value: string) => tf('notifications_time_label', { value }),
+    notifyDayBefore: t('notifications_notify_day_before'),
+    notifyDayBeforeDescription: t('notifications_notify_day_before_description'),
+    creating: t('notifications_creating'),
+    createSchedule: t('notifications_create_schedule'),
+    scheduleEnabled: t('notifications_schedule_enabled'),
+    scheduleDisabled: t('notifications_schedule_disabled'),
+    badgeDayBefore: t('notifications_badge_day_before'),
+    badgeSameDay: t('notifications_badge_same_day'),
+    badgeEnabled: t('notifications_badge_enabled'),
+    badgeClosed: t('notifications_badge_closed'),
+    disableSchedule: t('notifications_disable_schedule'),
+    enableSchedule: t('notifications_enable_schedule'),
+    switchSameDay: t('notifications_switch_same_day'),
+    switchDayBefore: t('notifications_switch_day_before'),
+    deleteSchedule: t('notifications_delete_schedule'),
+    historyTitle: t('notifications_history_title'),
+    historyEmptyTitle: t('notifications_history_empty_title'),
+    historyEmptyDescription: t('notifications_history_empty_description'),
+  }
+  const occasionOptions = OCCASION_VALUES.map((value) => formatOccasionLabel(value))
 
   const getChannelPlaceholder = (channel: ChannelOption) => copy.placeholders[channel] ?? copy.placeholders.default
   const getChannelSummary = (setting: { channel: string; config: Record<string, unknown> }) => {
@@ -385,7 +323,7 @@ export default function NotificationsPage() {
         <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <Picker
             mode='selector'
-            range={CHANNEL_OPTIONS}
+            range={[...CHANNEL_OPTIONS]}
             value={channelIndex}
             onChange={(event) => {
               const nextIndex = Number(event.detail.value)
@@ -469,12 +407,12 @@ export default function NotificationsPage() {
                   style={inputStyle}
                 />
               ) : null}
-              <Picker mode='selector' range={WEBHOOK_METHODS} value={webhookMethodIndex} onChange={(event) => setWebhookMethodIndex(Number(event.detail.value))}>
+              <Picker mode='selector' range={[...WEBHOOK_METHODS]} value={webhookMethodIndex} onChange={(event) => setWebhookMethodIndex(Number(event.detail.value))}>
                 <View style={inputStyle}>
                   <Text style={{ fontSize: '14px', color: colors.text }}>{copy.methodLabel(WEBHOOK_METHODS[webhookMethodIndex])}</Text>
                 </View>
               </Picker>
-              <Picker mode='selector' range={WEBHOOK_CONTENT_TYPES} value={webhookContentTypeIndex} onChange={(event) => setWebhookContentTypeIndex(Number(event.detail.value))}>
+              <Picker mode='selector' range={[...WEBHOOK_CONTENT_TYPES]} value={webhookContentTypeIndex} onChange={(event) => setWebhookContentTypeIndex(Number(event.detail.value))}>
                 <View style={inputStyle}>
                   <Text style={{ fontSize: '14px', color: colors.text }}>{copy.contentTypeLabel(WEBHOOK_CONTENT_TYPES[webhookContentTypeIndex])}</Text>
                 </View>

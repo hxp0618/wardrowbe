@@ -72,6 +72,7 @@ vi.mock('./ui-theme', () => ({
   },
   getThemeStyle: () => ({}),
   pagePadding: '16px',
+  spaceBetweenRowStyle: {},
   subtitleTextStyle: {},
   titleTextStyle: {},
 }))

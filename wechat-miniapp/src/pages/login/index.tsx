@@ -11,7 +11,7 @@ import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
 import { colors, inputStyle } from '../../components/ui-theme'
 import { useI18n } from '../../lib/i18n'
-import { setStoredAccessToken } from '../../lib/storage'
+import { clearStoredAccessToken, setStoredAccessToken } from '../../lib/storage'
 import {
   getMiniappAuthAvailability,
   loginWithDev,
@@ -69,7 +69,18 @@ export async function completeAuthenticatedLogin(options: {
   options.setHydrated(true)
   options.queryClient.removeQueries({ queryKey: ['miniapp'] })
 
-  const profile = await bootstrapMiniappSession(options.queryClient)
+  let profile: Awaited<ReturnType<typeof bootstrapMiniappSession>>
+  try {
+    profile = await bootstrapMiniappSession(options.queryClient)
+  } catch (error) {
+    // Bootstrap failure leaves the persisted token pointing at a session we
+    // never finished authenticating. Roll it back so the next launch starts
+    // clean instead of silently retrying with a half-broken state.
+    clearStoredAccessToken()
+    options.setAccessToken(null)
+    options.setHydrated(false)
+    throw error
+  }
 
   await navigateAfterLogin({
     inviteToken: options.inviteToken,

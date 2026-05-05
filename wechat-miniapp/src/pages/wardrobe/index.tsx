@@ -18,7 +18,7 @@ import { SectionCard } from '../../components/section-card'
 import { colors, inputStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useCreateFolder, useDeleteFolder, useFolders, useUpdateFolder } from '../../hooks/use-folders'
-import { useCreateItemWithImages, useItems, useItemTypes } from '../../hooks/use-items'
+import { useCreateItemWithImages, useInfiniteItems, useItemTypes } from '../../hooks/use-items'
 import { formatItemTypeLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
 import {
@@ -34,12 +34,12 @@ import {
   WARDROBE_UPLOADED_ITEM_HIGHLIGHT_MS,
 } from './look-and-feel'
 import { isChooseImageCanceled } from '../../lib/choose-image'
+import { toastError, toastErrorFromException, toastSuccess } from '../../lib/toast'
 
 import type { Item, ItemFilter } from '../../services/types'
 
 export default function WardrobePage() {
   const canRender = useAuthGuard()
-  const [page, setPage] = useState(1)
   const [typeIndex, setTypeIndex] = useState(0)
   const [sortIndex, setSortIndex] = useState(0)
   const [filterFavorite, setFilterFavorite] = useState(false)
@@ -97,9 +97,9 @@ export default function WardrobePage() {
     folder_id: folderFilter,
   }
 
-  const { data, isLoading } = useItems(filters, page, 20)
-  const items = data?.items || []
-  const total = data?.total || 0
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteItems(filters, 20)
+  const items = data?.pages.flatMap((p) => p.items) ?? []
+  const total = data?.pages[0]?.total ?? 0
   const hasActiveFilters = Boolean(
     typeFilter || filterFavorite || filterNeedsWash || showArchived || folderFilter
   )
@@ -137,15 +137,20 @@ export default function WardrobePage() {
       })
     })
 
+  // The infinite-query result is a fresh array reference on every refetch, so
+  // we depend on a stable boolean instead of `items` to keep this effect from
+  // firing on every cache touch. The ref guard on top still prevents
+  // re-running for an already-handled upload.
+  const uploadedItemPresent = !!uploadedItemId && items.some((item) => item.id === uploadedItemId)
   useEffect(() => {
     if (!uploadedItemId || isLoading || lastScrolledItemIdRef.current === uploadedItemId) return
-    if (!items.some((item) => item.id === uploadedItemId)) return
+    if (!uploadedItemPresent) return
 
     lastScrolledItemIdRef.current = uploadedItemId
     void scrollToUploadedItem(uploadedItemId).finally(() => {
       setUploadedItemId((current) => (current === uploadedItemId ? null : current))
     })
-  }, [uploadedItemId, isLoading, items])
+  }, [uploadedItemId, isLoading, uploadedItemPresent])
 
   useEffect(() => {
     if (!highlightedItemId) return
@@ -166,15 +171,13 @@ export default function WardrobePage() {
       const result = await Taro.chooseImage({ count: 5, sizeType: ['compressed'] })
       if (result.tempFilePaths.length === 0) return
       const createdItem = await createItem.mutateAsync({ filePaths: result.tempFilePaths })
-      setPage(1)
       setUploadedItemId(createdItem.id)
       setHighlightedItemId(createdItem.id)
       lastScrolledItemIdRef.current = null
-      void Taro.showToast({ title: t('wardrobe_add_success'), icon: 'success' })
+      toastSuccess(t('wardrobe_add_success'))
     } catch (error) {
       if (isChooseImageCanceled(error)) return
-      const message = error instanceof Error ? error.message : t('wardrobe_add_failed')
-      void Taro.showToast({ title: message, icon: 'none' })
+      toastErrorFromException(error, t('wardrobe_add_failed'))
     }
   }
 
@@ -185,10 +188,19 @@ export default function WardrobePage() {
     try {
       await createFolder.mutateAsync({ name })
       setNewFolderName('')
-      void Taro.showToast({ title: t('wardrobe_folder_created'), icon: 'success' })
+      toastSuccess(t('wardrobe_folder_created'))
     } catch {
-      void Taro.showToast({ title: t('wardrobe_folder_create_failed'), icon: 'none' })
+      toastError(t('wardrobe_folder_create_failed'))
     }
+  }
+
+  const clearFilters = () => {
+    setTypeIndex(0)
+    setSortIndex(0)
+    setFilterFavorite(false)
+    setFilterNeedsWash(false)
+    setShowArchived(false)
+    setFolderIndex(0)
   }
 
   const startEditFolder = (folderId: string, name: string) => {
@@ -209,9 +221,9 @@ export default function WardrobePage() {
     try {
       await updateFolder.mutateAsync({ id: folderId, payload: { name } })
       cancelEditFolder()
-      void Taro.showToast({ title: t('wardrobe_folder_updated'), icon: 'success' })
+      toastSuccess(t('wardrobe_folder_updated'))
     } catch {
-      void Taro.showToast({ title: t('wardrobe_folder_update_failed'), icon: 'none' })
+      toastError(t('wardrobe_folder_update_failed'))
     }
   }
 
@@ -223,11 +235,10 @@ export default function WardrobePage() {
       setConfirmDeleteFolderId(null)
       if (folderFilter === folderId) {
         setFolderIndex(0)
-        setPage(1)
       }
-      void Taro.showToast({ title: t('wardrobe_folder_deleted'), icon: 'success' })
+      toastSuccess(t('wardrobe_folder_deleted'))
     } catch {
-      void Taro.showToast({ title: t('wardrobe_folder_delete_failed'), icon: 'none' })
+      toastError(t('wardrobe_folder_delete_failed'))
     }
   }
 
@@ -260,7 +271,6 @@ export default function WardrobePage() {
             options={typeOptions.map((option) => option.label)}
             onChange={(nextIndex) => {
               setTypeIndex(nextIndex)
-              setPage(1)
             }}
           />
           <CompactOptionGroup
@@ -268,7 +278,6 @@ export default function WardrobePage() {
             options={sortOptions.map((option) => option.label)}
             onChange={(nextIndex) => {
               setSortIndex(nextIndex)
-              setPage(1)
             }}
           />
           <View style={actionWrapRowStyle}>
@@ -277,7 +286,6 @@ export default function WardrobePage() {
               ariaLabel={t('wardrobe_filter_favorite')}
               onClick={() => {
                 setFilterFavorite(!filterFavorite)
-                setPage(1)
               }}
               style={getWardrobeChipStyle(filterFavorite, 'favorite')}
             >
@@ -290,7 +298,6 @@ export default function WardrobePage() {
               ariaLabel={t('wardrobe_filter_needs_wash')}
               onClick={() => {
                 setFilterNeedsWash(!filterNeedsWash)
-                setPage(1)
               }}
               style={getWardrobeChipStyle(filterNeedsWash, 'warning')}
             >
@@ -303,7 +310,6 @@ export default function WardrobePage() {
               ariaLabel={t('wardrobe_filter_archived')}
               onClick={() => {
                 setShowArchived(!showArchived)
-                setPage(1)
               }}
               style={getWardrobeChipStyle(showArchived)}
             >
@@ -319,7 +325,6 @@ export default function WardrobePage() {
                 ariaLabel={t('wardrobe_all_folders')}
                 onClick={() => {
                   setFolderIndex(0)
-                  setPage(1)
                 }}
                 style={getWardrobeChipStyle(folderIndex === 0)}
               >
@@ -336,7 +341,6 @@ export default function WardrobePage() {
                     ariaLabel={folder.name}
                     onClick={() => {
                       setFolderIndex(index + 1)
-                      setPage(1)
                     }}
                     style={getWardrobeChipStyle(active)}
                   >
@@ -480,7 +484,18 @@ export default function WardrobePage() {
         <EmptyState
           title={hasActiveFilters ? t('wardrobe_filtered_empty_title') : t('wardrobe_empty_title')}
           description={hasActiveFilters ? t('wardrobe_filtered_empty_description') : t('wardrobe_empty_description')}
-          action={hasActiveFilters ? undefined : (
+          action={hasActiveFilters ? (
+            <View
+              ariaRole='button'
+              ariaLabel={t('wardrobe_clear_filters')}
+              onClick={clearFilters}
+              style={getActionButtonStyle()}
+            >
+              <Text style={{ fontSize: '14px', color: colors.text }}>
+                {t('wardrobe_clear_filters')}
+              </Text>
+            </View>
+          ) : (
             <View
               ariaRole='button'
               ariaLabel={t('wardrobe_add_first_item')}
@@ -503,7 +518,7 @@ export default function WardrobePage() {
                 key={item.id}
                 id={getWardrobeUploadedItemAnchor(item.id)}
                 ariaRole='button'
-                ariaLabel={`查看${itemTitle}详情`}
+                ariaLabel={tf('wardrobe_view_item_detail', { title: itemTitle })}
                 onClick={() => setDetailItem(item)}
                 style={{
                   width: 'calc(50% - 5px)',
@@ -522,9 +537,16 @@ export default function WardrobePage() {
               </View>
             )
           })}
-          {data?.has_more && (
-            <View ariaRole='button' ariaLabel={t('wardrobe_load_more')} onClick={() => setPage((p) => p + 1)} style={{ ...getActionButtonStyle(), width: '100%' }}>
-              <Text style={{ fontSize: '14px', color: colors.text }}>{t('wardrobe_load_more')}</Text>
+          {hasNextPage && (
+            <View
+              ariaRole='button'
+              ariaLabel={t('wardrobe_load_more')}
+              onClick={getEnabledActionHandler(isFetchingNextPage, () => void fetchNextPage())}
+              style={{ ...getActionButtonStyle({ disabled: isFetchingNextPage }), width: '100%' }}
+            >
+              <Text style={{ fontSize: '14px', color: colors.text }}>
+                {isFetchingNextPage ? t('wardrobe_loading') : t('wardrobe_load_more')}
+              </Text>
             </View>
           )}
         </View>

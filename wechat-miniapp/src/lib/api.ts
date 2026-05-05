@@ -6,7 +6,7 @@ import type { ApiTransportRequest } from '@wardrowbe/shared-api'
 import { useAuthStore } from '../stores/auth'
 
 import { API_BASE_PATH, normalizeBusinessApiResourceUrls, resolveApiOrigin } from './app-config'
-const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
+import { ACCESS_TOKEN_STORAGE_KEY } from './storage'
 
 export { resolveApiOrigin }
 

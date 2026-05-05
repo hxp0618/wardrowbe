@@ -17,9 +17,13 @@ import {
   useUnarchiveItem,
 } from '../hooks/use-items'
 import { useGeneratePairings } from '../hooks/use-pairings'
+import { useHideTabBar } from '../hooks/use-hide-tab-bar'
 import { formatChineseDate } from '../lib/date-utils'
 import { formatItemTypeLabel, formatOccasionLabel, formatStyleLabel, formatSubtypeLabel } from '../lib/display'
+import { useI18n } from '../lib/i18n'
 import { getItemPreviewUrls, getPreviewImageUrl } from '../lib/image-preview'
+import { runMutationWithToast } from '../lib/mutation-toast'
+import { toastSuccess } from '../lib/toast'
 import type { Item } from '../services/types'
 import type { Folder } from '../services/folders'
 import {
@@ -32,6 +36,7 @@ import {
 } from './action-style'
 import { buildOccasionOptions } from '../lib/options'
 import { CompactOptionGroup } from './compact-option-group'
+import { ConfirmActionRow } from './confirm-action-row'
 import { PreviewableImage } from './previewable-image'
 import {
   flatActionFormStyle,
@@ -44,7 +49,7 @@ import {
   sheetPanelStyle,
   sheetScrollBodyStyle,
 } from './sheet-style'
-import { colors } from './ui-theme'
+import { colors, pillBaseStyle, solidActionBackgrounds, solidActionTextColor } from './ui-theme'
 
 type ItemDetailSheetProps = {
   item: Item | null
@@ -53,10 +58,16 @@ type ItemDetailSheetProps = {
 }
 
 const OCCASION_OPTIONS = buildOccasionOptions(formatOccasionLabel)
-const WASH_METHODS = ['手洗', '机洗', '干洗', '免洗']
+const WASH_METHOD_KEYS = [
+  'item_detail_wash_method_hand',
+  'item_detail_wash_method_machine',
+  'item_detail_wash_method_dry',
+  'item_detail_wash_method_none',
+] as const
 
 export function ItemDetailSheet(props: ItemDetailSheetProps) {
   const { item: initialItem, visible, onClose } = props
+  const { t, tf } = useI18n()
   const toggleFavorite = useToggleFavorite()
   const toggleNeedsWash = useToggleNeedsWash()
   const reanalyze = useReanalyzeItem()
@@ -87,15 +98,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
     setWashMethodIndex(0)
   }, [initialItem, visible])
 
-  useEffect(() => {
-    if (!visible) return undefined
-
-    void Taro.hideTabBar({ animation: false }).catch(() => undefined)
-
-    return () => {
-      void Taro.showTabBar({ animation: false }).catch(() => undefined)
-    }
-  }, [visible])
+  useHideTabBar(visible)
 
   if (!visible || !currentItem) return null
 
@@ -119,73 +122,83 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
   const typeLabel = formatItemTypeLabel(item.type)
   const subtypeLabel = formatSubtypeLabel(item.subtype)
   const title = item.name || typeLabel
-  const washMethodLabels = WASH_METHODS
+  const washMethodLabels = WASH_METHOD_KEYS.map((key) => t(key))
   const copy = {
-    statusProcessing: '分析中',
-    statusError: '分析失败',
-    statusArchived: '已归档',
-    statusReady: '就绪',
-    favoriteRemoved: '已取消收藏',
-    favoriteAdded: '已收藏',
-    actionFailed: '操作失败',
-    washClean: '已标记干净',
-    washNeeded: '已标记需清洗',
-    reanalyzed: '已重新分析',
-    reanalyzeFailed: '重新分析失败',
-    archived: '已归档',
-    archiveFailed: '归档失败',
-    unarchived: '已取消归档',
-    deleted: '已删除',
-    deleteFailed: '删除失败',
-    wearLogged: '已记录穿着',
-    washLogged: '已记录清洗',
-    logFailed: '记录失败',
-    closeDetail: '关闭详情',
-    wearCount: '穿着次数',
-    quantity: '数量',
-    lastWorn: '上次穿着',
-    tags: '标签',
-    aiDescription: 'AI 描述',
-    notes: '备注',
-    logWear: '记录穿着',
-    occasion: '场景',
-    cancel: '取消',
-    confirm: '确认',
-    logWash: '记录清洗',
-    method: '方式',
-    folders: '文件夹',
-    folderCount: (count: number) => `已加入 ${count} 个`,
-    noFolders: '未加入文件夹',
-    addToFolder: '加入文件夹',
-    removeFromFolder: '移出',
-    folderAdded: '已加入文件夹',
-    folderRemoved: '已移出文件夹',
-    folderActionFailed: '文件夹操作失败',
-    favorite: '收藏',
-    favorited: '已收藏',
-    needsWash: '需清洗',
-    clean: '已干净',
-    wearAction: '记录穿着',
-    washAction: '记录清洗',
-    reanalyze: '重新分析',
-    unarchive: '取消归档',
-    archive: '归档',
-    archiveConfirm: '确认归档',
-    generatePairings: '生成搭配',
-    generatingPairings: '生成中...',
-    pairingsGenerated: (count: number) => `已生成 ${count} 套搭配`,
-    generatePairingsFailed: '生成失败',
-    delete: '删除',
-    deleteConfirm: '确认删除',
+    statusProcessing: t('item_detail_status_processing'),
+    statusError: t('item_detail_status_error'),
+    statusArchived: t('item_detail_status_archived'),
+    statusReady: t('item_detail_status_ready'),
+    favoriteRemoved: t('item_detail_favorite_removed'),
+    favoriteAdded: t('item_detail_favorite_added'),
+    actionFailed: t('item_detail_action_failed'),
+    washClean: t('item_detail_wash_clean'),
+    washNeeded: t('item_detail_wash_needed'),
+    reanalyzed: t('item_detail_reanalyzed'),
+    reanalyzeFailed: t('item_detail_reanalyze_failed'),
+    archived: t('item_detail_archived'),
+    archiveFailed: t('item_detail_archive_failed'),
+    unarchived: t('item_detail_unarchived'),
+    deleted: t('item_detail_deleted'),
+    deleteFailed: t('item_detail_delete_failed'),
+    wearLogged: t('item_detail_wear_logged'),
+    washLogged: t('item_detail_wash_logged'),
+    logFailed: t('item_detail_log_failed'),
+    closeDetail: t('item_detail_close_detail'),
+    wearCount: t('item_detail_wear_count'),
+    quantity: t('item_detail_quantity'),
+    lastWorn: t('item_detail_last_worn'),
+    tags: t('item_detail_tags'),
+    aiDescription: t('item_detail_ai_description'),
+    notes: t('item_detail_notes'),
+    logWear: t('item_detail_log_wear'),
+    occasion: t('item_detail_occasion'),
+    cancel: t('item_detail_cancel'),
+    confirm: t('item_detail_confirm'),
+    logWash: t('item_detail_log_wash'),
+    method: t('item_detail_method'),
+    folders: t('item_detail_folders'),
+    folderCount: (count: number) => tf('item_detail_folder_count', { count }),
+    noFolders: t('item_detail_no_folders'),
+    addToFolder: t('item_detail_add_to_folder'),
+    removeFromFolder: t('item_detail_remove_from_folder'),
+    folderAdded: t('item_detail_folder_added'),
+    folderRemoved: t('item_detail_folder_removed'),
+    folderActionFailed: t('item_detail_folder_action_failed'),
+    favorite: t('item_detail_favorite'),
+    favorited: t('item_detail_favorited'),
+    needsWash: t('item_detail_needs_wash'),
+    clean: t('item_detail_clean'),
+    wearAction: t('item_detail_wear_action'),
+    washAction: t('item_detail_wash_action'),
+    reanalyze: t('item_detail_reanalyze'),
+    unarchive: t('item_detail_unarchive'),
+    archive: t('item_detail_archive'),
+    archiveConfirm: t('item_detail_archive_confirm'),
+    generatePairings: t('item_detail_generate_pairings'),
+    generatingPairings: t('item_detail_generating_pairings'),
+    pairingsGenerated: (count: number) => tf('item_detail_pairings_generated', { count }),
+    generatePairingsFailed: t('item_detail_generate_pairings_failed'),
+    delete: t('item_detail_delete'),
+    deleteConfirm: t('item_detail_delete_confirm'),
   }
   const statusLabel =
     item.status === 'processing' ? copy.statusProcessing
     : item.status === 'error' ? copy.statusError
     : item.status === 'archived' ? copy.statusArchived : copy.statusReady
-  const statusColor =
-    item.status === 'error' ? '#EF4444'
-    : item.status === 'processing' ? '#F59E0B'
-    : item.status === 'archived' ? '#6B7280' : '#22C55E'
+  const statusTone: 'danger' | 'warning' | 'default' | 'success' =
+    item.status === 'error' ? 'danger'
+    : item.status === 'processing' ? 'warning'
+    : item.status === 'archived' ? 'default' : 'success'
+  const statusBadgeStyle = {
+    color:
+      statusTone === 'danger' ? colors.danger
+      : statusTone === 'warning' ? colors.warning
+      : statusTone === 'success' ? colors.success
+      : colors.textMuted,
+    ...(statusTone === 'default'
+      ? { backgroundColor: colors.surfaceMuted, border: `1px solid ${colors.border}` }
+      : getToneActionSurfaceStyle(statusTone)),
+  }
   const detailMetrics = [
     { label: copy.wearCount, value: String(item.wear_count), valueSize: '18px' },
     { label: copy.quantity, value: String(item.quantity), valueSize: '18px' },
@@ -196,101 +209,113 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
 
   const handleToggleFavorite = async () => {
     if (favoritePending) return
-
-    try {
-      const updated = await toggleFavorite.mutateAsync({ id: item.id, favorite: !item.favorite })
-      setCurrentItem(updated)
-      void Taro.showToast({ title: item.favorite ? copy.favoriteRemoved : copy.favoriteAdded, icon: 'success' })
-    } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
+    const outcome = await runMutationWithToast(
+      toggleFavorite,
+      { id: item.id, favorite: !item.favorite },
+      {
+        success: item.favorite ? copy.favoriteRemoved : copy.favoriteAdded,
+        failure: copy.actionFailed,
+      },
+    )
+    if (outcome.ok) setCurrentItem(outcome.result)
   }
 
   const handleToggleWash = async () => {
     if (needsWashPending) return
-
-    try {
-      const updated = await toggleNeedsWash.mutateAsync({ id: item.id, needsWash: !item.needs_wash })
-      setCurrentItem(updated)
-      void Taro.showToast({ title: item.needs_wash ? copy.washClean : copy.washNeeded, icon: 'success' })
-    } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
+    const outcome = await runMutationWithToast(
+      toggleNeedsWash,
+      { id: item.id, needsWash: !item.needs_wash },
+      {
+        success: item.needs_wash ? copy.washClean : copy.washNeeded,
+        failure: copy.actionFailed,
+      },
+    )
+    if (outcome.ok) setCurrentItem(outcome.result)
   }
 
   const handleReanalyze = async () => {
     if (reanalyzePending) return
-
-    try {
-      const updated = await reanalyze.mutateAsync(item.id)
-      setCurrentItem(updated)
-      void Taro.showToast({ title: copy.reanalyzed, icon: 'success' })
-    } catch { void Taro.showToast({ title: copy.reanalyzeFailed, icon: 'none' }) }
+    const outcome = await runMutationWithToast(reanalyze, item.id, {
+      success: copy.reanalyzed,
+      failure: copy.reanalyzeFailed,
+    })
+    if (outcome.ok) setCurrentItem(outcome.result)
   }
 
   const handleArchive = async () => {
     if (archivePending) return
-
-    try {
-      await archive.mutateAsync({ id: item.id })
+    const outcome = await runMutationWithToast(archive, { id: item.id }, {
+      success: copy.archived,
+      failure: copy.archiveFailed,
+    })
+    if (outcome.ok) {
       setShowConfirmArchive(false)
-      void Taro.showToast({ title: copy.archived, icon: 'success' })
       onClose()
-    } catch { void Taro.showToast({ title: copy.archiveFailed, icon: 'none' }) }
+    }
   }
 
   const handleUnarchive = async () => {
     if (unarchivePending) return
-
-    try {
-      const updated = await unarchive.mutateAsync(item.id)
-      setCurrentItem(updated)
-      void Taro.showToast({ title: copy.unarchived, icon: 'success' })
-    } catch { void Taro.showToast({ title: copy.actionFailed, icon: 'none' }) }
+    const outcome = await runMutationWithToast(unarchive, item.id, {
+      success: copy.unarchived,
+      failure: copy.actionFailed,
+    })
+    if (outcome.ok) setCurrentItem(outcome.result)
   }
 
   const handleDelete = async () => {
     if (deletePending) return
-
-    try {
-      await deleteItem.mutateAsync(item.id)
-      void Taro.showToast({ title: copy.deleted, icon: 'success' })
-      onClose()
-    } catch { void Taro.showToast({ title: copy.deleteFailed, icon: 'none' }) }
+    const outcome = await runMutationWithToast(deleteItem, item.id, {
+      success: copy.deleted,
+      failure: copy.deleteFailed,
+    })
+    if (outcome.ok) onClose()
   }
 
   const handleLogWear = async () => {
     if (logWearPending) return
-
-    try {
-      const updated = await logWear.mutateAsync({
+    const outcome = await runMutationWithToast(
+      logWear,
+      {
         id: item.id,
-        occasion: OCCASION_OPTIONS[wearOccasionIndex]?.value || OCCASION_OPTIONS[0].value,
-      })
-      setCurrentItem(updated)
-      void Taro.showToast({ title: copy.wearLogged, icon: 'success' })
+        occasion: OCCASION_OPTIONS[wearOccasionIndex]?.value ?? OCCASION_OPTIONS[0]?.value ?? '',
+      },
+      {
+        success: copy.wearLogged,
+        failure: copy.logFailed,
+      },
+    )
+    if (outcome.ok) {
+      setCurrentItem(outcome.result)
       setShowLogWear(false)
-    } catch { void Taro.showToast({ title: copy.logFailed, icon: 'none' }) }
+    }
   }
 
   const handleLogWash = async () => {
     if (logWashPending) return
-
-    try {
-      const updated = await logWash.mutateAsync({ id: item.id, method: WASH_METHODS[washMethodIndex] })
-      setCurrentItem(updated)
-      void Taro.showToast({ title: copy.washLogged, icon: 'success' })
+    const outcome = await runMutationWithToast(
+      logWash,
+      { id: item.id, method: washMethodLabels[washMethodIndex] },
+      {
+        success: copy.washLogged,
+        failure: copy.logFailed,
+      },
+    )
+    if (outcome.ok) {
+      setCurrentItem(outcome.result)
       setShowLogWash(false)
-    } catch { void Taro.showToast({ title: copy.logFailed, icon: 'none' }) }
+    }
   }
 
   const handleGeneratePairings = async () => {
     if (generatePairingsPending) return
-
-    try {
-      const result = await generatePairings.mutateAsync({
-        itemId: item.id,
-        num_pairings: 5,
-      })
-      void Taro.showToast({ title: copy.pairingsGenerated(result.generated), icon: 'success' })
-    } catch {
-      void Taro.showToast({ title: copy.generatePairingsFailed, icon: 'none' })
+    const outcome = await runMutationWithToast(
+      generatePairings,
+      { itemId: item.id, num_pairings: 5 },
+      { failure: copy.generatePairingsFailed },
+    )
+    if (outcome.ok) {
+      toastSuccess(copy.pairingsGenerated(outcome.result.generated))
     }
   }
 
@@ -303,37 +328,37 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
 
   const handleAddToFolder = async (folder: Folder) => {
     if (addFolderPending) return
-
-    try {
-      await addItemsToFolder.mutateAsync({
-        folderId: folder.id,
-        itemIds: [item.id],
-      })
+    const outcome = await runMutationWithToast(
+      addItemsToFolder,
+      { folderId: folder.id, itemIds: [item.id] },
+      {
+        success: copy.folderAdded,
+        failure: copy.folderActionFailed,
+      },
+    )
+    if (outcome.ok) {
       setCurrentItem({
         ...item,
         folders: [...itemFolders, folderToRef(folder)],
       })
-      void Taro.showToast({ title: copy.folderAdded, icon: 'success' })
-    } catch {
-      void Taro.showToast({ title: copy.folderActionFailed, icon: 'none' })
     }
   }
 
   const handleRemoveFromFolder = async (folderId: string) => {
     if (removeFolderPending) return
-
-    try {
-      await removeItemsFromFolder.mutateAsync({
-        folderId,
-        itemIds: [item.id],
-      })
+    const outcome = await runMutationWithToast(
+      removeItemsFromFolder,
+      { folderId, itemIds: [item.id] },
+      {
+        success: copy.folderRemoved,
+        failure: copy.folderActionFailed,
+      },
+    )
+    if (outcome.ok) {
       setCurrentItem({
         ...item,
         folders: itemFolders.filter((folder) => folder.id !== folderId),
       })
-      void Taro.showToast({ title: copy.folderRemoved, icon: 'success' })
-    } catch {
-      void Taro.showToast({ title: copy.folderActionFailed, icon: 'none' })
     }
   }
 
@@ -361,7 +386,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
             {primaryImageEntry ? (
               <View style={{ marginBottom: '12px' }}>
                 <PreviewableImage
-                  ariaLabel={`查看 ${title} 第 1 张大图`}
+                  ariaLabel={tf('item_detail_view_image_at', { title, index: 1 })}
                   src={primaryImageEntry.displayUrl}
                   previewCurrent={primaryImageEntry.previewUrl}
                   previewUrls={previewImages}
@@ -373,7 +398,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
                       {secondaryImageEntries.map((entry, i) => (
                         <PreviewableImage
                           key={i}
-                          ariaLabel={`查看 ${title} 第 ${i + 2} 张大图`}
+                          ariaLabel={tf('item_detail_view_image_at', { title, index: i + 2 })}
                           src={entry.displayUrl}
                           previewCurrent={entry.previewUrl}
                           previewUrls={previewImages}
@@ -387,7 +412,7 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
             ) : null}
             <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '10px' }}>
               <Text style={{ fontSize: '18px', fontWeight: 600, color: colors.text }}>{title}</Text>
-              <Text style={{ fontSize: '12px', color: statusColor, backgroundColor: `${statusColor}15`, padding: '4px 12px', borderRadius: '999px' }}>{statusLabel}</Text>
+              <Text style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '999px', ...statusBadgeStyle }}>{statusLabel}</Text>
             </View>
             <Text style={{ display: 'block', fontSize: '13px', color: colors.textMuted, marginBottom: '8px' }}>
               {typeLabel}{subtypeLabel ? ` · ${subtypeLabel}` : ''}{item.brand ? ` · ${item.brand}` : ''}
@@ -419,10 +444,10 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
               <View style={{ marginBottom: '12px' }}>
                 <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>{copy.tags}</Text>
                 <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {item.tags.style?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceMuted, padding: '4px 10px', borderRadius: '999px' }}>{formatStyleLabel(s)}</Text>)}
-                  {item.tags.season?.map((s) => <Text key={s} style={{ fontSize: '11px', color: colors.warning, padding: '4px 10px', borderRadius: '999px', ...getToneActionSurfaceStyle('warning') }}>{s}</Text>)}
-                  {item.tags.material && <Text style={{ fontSize: '11px', color: colors.success, padding: '4px 10px', borderRadius: '999px', ...getToneActionSurfaceStyle('success') }}>{item.tags.material}</Text>}
-                  {item.tags.pattern && <Text style={{ fontSize: '11px', color: colors.textMuted, backgroundColor: colors.surfaceSelected, padding: '4px 10px', borderRadius: '999px' }}>{item.tags.pattern}</Text>}
+                  {item.tags.style?.map((s) => <Text key={s} style={{ ...pillBaseStyle, color: colors.textMuted, backgroundColor: colors.surfaceMuted }}>{formatStyleLabel(s)}</Text>)}
+                  {item.tags.season?.map((s) => <Text key={s} style={{ ...pillBaseStyle, color: colors.warning, ...getToneActionSurfaceStyle('warning') }}>{s}</Text>)}
+                  {item.tags.material && <Text style={{ ...pillBaseStyle, color: colors.success, ...getToneActionSurfaceStyle('success') }}>{item.tags.material}</Text>}
+                  {item.tags.pattern && <Text style={{ ...pillBaseStyle, color: colors.textMuted, backgroundColor: colors.surfaceSelected }}>{item.tags.pattern}</Text>}
                 </View>
               </View>
             )}
@@ -509,9 +534,9 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
                     ariaRole='button'
                     ariaLabel={copy.confirm}
                     onClick={getEnabledActionHandler(logWearPending, handleLogWear)}
-                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: logWearPending }), backgroundColor: '#166534' }}
+                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: logWearPending }), backgroundColor: solidActionBackgrounds.success }}
                   >
-                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.confirm}</Text>
+                    <Text style={{ fontSize: '14px', color: solidActionTextColor }}>{copy.confirm}</Text>
                   </View>
                 </View>
               </View>
@@ -541,9 +566,9 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
                     ariaRole='button'
                     ariaLabel={copy.confirm}
                     onClick={getEnabledActionHandler(logWashPending, handleLogWash)}
-                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: logWashPending }), backgroundColor: colors.infoText }}
+                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: logWashPending }), backgroundColor: solidActionBackgrounds.info }}
                   >
-                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.confirm}</Text>
+                    <Text style={{ fontSize: '14px', color: solidActionTextColor }}>{copy.confirm}</Text>
                   </View>
                 </View>
               </View>
@@ -625,24 +650,13 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
                   <Text style={{ fontSize: '14px', color: colors.text }}>{copy.unarchive}</Text>
                 </View>
               ) : showConfirmArchive ? (
-                <View style={{ ...actionRowStyle, gap: '10px' }}>
-                  <View
-                    ariaRole='button'
-                    ariaLabel={copy.cancel}
-                    onClick={() => setShowConfirmArchive(false)}
-                    style={getActionButtonStyle({ flex: 1 })}
-                  >
-                    <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
-                  </View>
-                  <View
-                    ariaRole='button'
-                    ariaLabel={copy.archiveConfirm}
-                    onClick={getEnabledActionHandler(archivePending, handleArchive)}
-                    style={getActionButtonStyle({ variant: 'primary', flex: 1, disabled: archivePending })}
-                  >
-                    <Text style={{ fontSize: '14px', color: colors.accentText }}>{copy.archiveConfirm}</Text>
-                  </View>
-                </View>
+                <ConfirmActionRow
+                  cancelLabel={copy.cancel}
+                  confirmLabel={copy.archiveConfirm}
+                  onCancel={() => setShowConfirmArchive(false)}
+                  onConfirm={handleArchive}
+                  pending={archivePending}
+                />
               ) : (
                 <View
                   ariaRole='button'
@@ -667,24 +681,14 @@ export function ItemDetailSheet(props: ItemDetailSheetProps) {
                   <Text style={{ fontSize: '14px', color: colors.danger }}>{copy.delete}</Text>
                 </View>
               ) : (
-                <View style={{ ...actionRowStyle, gap: '10px' }}>
-                  <View
-                    ariaRole='button'
-                    ariaLabel={copy.cancel}
-                    onClick={() => setShowConfirmDelete(false)}
-                    style={getActionButtonStyle({ flex: 1 })}
-                  >
-                    <Text style={{ fontSize: '14px', color: colors.text }}>{copy.cancel}</Text>
-                  </View>
-                  <View
-                    ariaRole='button'
-                    ariaLabel={copy.deleteConfirm}
-                    onClick={getEnabledActionHandler(deletePending, handleDelete)}
-                    style={{ ...getActionButtonStyle({ variant: 'primary', flex: 1, disabled: deletePending }), backgroundColor: '#dc2626' }}
-                  >
-                    <Text style={{ fontSize: '14px', color: '#FFFFFF' }}>{copy.deleteConfirm}</Text>
-                  </View>
-                </View>
+                <ConfirmActionRow
+                  tone='danger'
+                  cancelLabel={copy.cancel}
+                  confirmLabel={copy.deleteConfirm}
+                  onCancel={() => setShowConfirmDelete(false)}
+                  onConfirm={handleDelete}
+                  pending={deletePending}
+                />
               )}
             </View>
           </View>

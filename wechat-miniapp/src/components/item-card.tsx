@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { Text, View } from '@tarojs/components'
 
 import { formatItemTypeLabel, formatSubtypeLabel } from '../lib/display'
+import { useI18n } from '../lib/i18n'
 import { getDisplayImageUrl, getItemPreviewUrls, getPreviewImageUrl } from '../lib/image-preview'
 import type { Item } from '../services/types'
 import { PreviewableImage } from './previewable-image'
@@ -16,6 +17,7 @@ type ItemCardProps = {
 }
 
 export function ItemCard(props: ItemCardProps) {
+  const { t, tf } = useI18n()
   const imageUrl = getDisplayImageUrl(props.item)
   const previewUrl = getPreviewImageUrl(props.item)
   const previewUrls = getItemPreviewUrls(props.item)
@@ -23,12 +25,10 @@ export function ItemCard(props: ItemCardProps) {
   const subtypeLabel = formatSubtypeLabel(props.item.subtype)
   const title = props.item.name || typeLabel
   const wardrobeVariant = props.variant === 'wardrobe'
-  const copy = {
-    quantityWear: `数量 ${props.item.quantity} · 穿过 ${props.item.wear_count} 次`,
-    favorite: '收藏',
-    needsWash: '需要清洗',
-    archived: '已归档',
-  }
+  const quantityWearText = tf('item_card_quantity_wear', {
+    quantity: props.item.quantity,
+    wear_count: props.item.wear_count,
+  })
   const mediaStyle: CSSProperties = wardrobeVariant
     ? {
         width: '100%',
@@ -62,7 +62,7 @@ export function ItemCard(props: ItemCardProps) {
     >
       {imageUrl ? (
         <PreviewableImage
-          ariaLabel={`查看${title}大图`}
+          ariaLabel={tf('item_card_view_detail_label', { title })}
           src={imageUrl}
           previewCurrent={previewUrl ?? imageUrl}
           previewUrls={previewUrls.length ? previewUrls : [previewUrl ?? imageUrl]}
@@ -123,7 +123,7 @@ export function ItemCard(props: ItemCardProps) {
             color: colors.textSoft,
           }}
         >
-          {copy.quantityWear}
+          {quantityWearText}
         </Text>
         <View
           style={{
@@ -133,9 +133,9 @@ export function ItemCard(props: ItemCardProps) {
             marginTop: wardrobeVariant ? '6px' : '9px',
           }}
         >
-          {props.item.favorite ? <UIBadge label={copy.favorite} tone='danger' /> : null}
-          {props.item.needs_wash ? <UIBadge label={copy.needsWash} tone='warning' /> : null}
-          {props.item.is_archived ? <UIBadge label={copy.archived} /> : null}
+          {props.item.favorite ? <UIBadge label={t('item_card_badge_favorite')} tone='danger' /> : null}
+          {props.item.needs_wash ? <UIBadge label={t('item_card_badge_needs_wash')} tone='warning' /> : null}
+          {props.item.is_archived ? <UIBadge label={t('item_card_badge_archived')} /> : null}
         </View>
       </View>
     </View>

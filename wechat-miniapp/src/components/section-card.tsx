@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 
 import { Text, View } from '@tarojs/components'
 
-import { cardStyle, colors, sectionTitleStyle } from './ui-theme'
+import { cardStyle, colors, sectionTitleStyle, spaceBetweenRowStyle } from './ui-theme'
 
 type SectionCardProps = {
   title: string
@@ -32,10 +32,7 @@ export function SectionCard(props: SectionCardProps) {
     >
       <View
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
+          ...spaceBetweenRowStyle,
           marginBottom: compact ? '8px' : '12px',
         }}
       >

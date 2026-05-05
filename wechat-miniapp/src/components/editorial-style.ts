@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 
-import { colors } from './ui-theme'
+import { colors, toneSurfaceStyle } from './ui-theme'
 
 type EditorialChipTone = 'default' | 'warning'
 
@@ -131,9 +131,8 @@ export function getEditorialChipStyle(
       minHeight: '44px',
       padding: '0 12px',
       borderRadius: '999px',
-      backgroundColor: '#fffbeb',
-      color: '#b45309',
-      border: '1px solid #fcd34d',
+      ...toneSurfaceStyle('warning'),
+      color: colors.warning,
       boxSizing: 'border-box',
       display: 'flex',
       alignItems: 'center',

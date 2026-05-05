@@ -9,7 +9,7 @@ import { getHeaderChromeHeight, resolveHeaderMetrics } from './header-metrics'
 import { MobileDrawer, resolveMobileDrawerKey } from './mobile-drawer'
 import { MobileTabBar, type MobileTabKey } from './mobile-tab-bar'
 import { useAuthStore } from '../stores/auth'
-import { colors, getThemeStyle, pagePadding, subtitleTextStyle, titleTextStyle } from './ui-theme'
+import { colors, getThemeStyle, pagePadding, spaceBetweenRowStyle, subtitleTextStyle, titleTextStyle } from './ui-theme'
 
 type PageShellProps = {
   title?: string
@@ -123,7 +123,7 @@ export function PageShell(props: PageShellProps) {
       }}
     >
       {header}
-      {header ? (
+      {header && menuOpen ? (
         <MobileDrawer
           open={menuOpen}
           activeKey={activeDrawerKey}
@@ -134,21 +134,19 @@ export function PageShell(props: PageShellProps) {
         style={{
           padding: pagePadding,
           paddingTop: resolvePageShellContentPaddingTop(!!header, topChromeHeight),
-          paddingBottom: props.useBuiltInTabBar || showMobileTabBar ? '104px' : '28px',
+          paddingBottom:
+            props.useBuiltInTabBar
+              ? '104px'
+              : showMobileTabBar
+                ? 'calc(104px + env(safe-area-inset-bottom))'
+                : 'calc(28px + env(safe-area-inset-bottom))',
           display: 'flex',
           flexDirection: 'column',
           gap: '14px',
           boxSizing: 'border-box',
         }}
       >
-        <View
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}
-        >
+        <View style={spaceBetweenRowStyle}>
           <View style={{ flex: 1 }}>
             {props.title ? <Text style={titleTextStyle}>{props.title}</Text> : null}
             {props.subtitle ? (

@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   }>,
   itemTypes: [] as Array<{ type: string; count: number }>,
   updateFolderMutateAsync: vi.fn(),
-  useItems: vi.fn(),
+  useInfiniteItems: vi.fn(),
 }))
 
 const messages: Record<string, string> = {
@@ -36,6 +36,7 @@ const messages: Record<string, string> = {
   wardrobe_filter_favorite: '收藏',
   wardrobe_filter_needs_wash: '需清洗',
   wardrobe_filter_sort_title: '筛选与排序',
+  wardrobe_view_item_detail: '查看{title}详情',
   wardrobe_folder_cancel: '取消',
   wardrobe_folder_confirm_delete: '确认删除',
   wardrobe_folder_create: '新建文件夹',
@@ -191,15 +192,21 @@ vi.mock('../../hooks/use-folders', () => ({
 
 vi.mock('../../hooks/use-items', () => ({
   useCreateItemWithImages: () => ({ mutateAsync: mocks.createItem }),
-  useItems: mocks.useItems,
+  useInfiniteItems: mocks.useInfiniteItems,
   useItemTypes: () => ({ data: mocks.itemTypes }),
 }))
 
 vi.mock('../../lib/i18n', () => ({
   useI18n: () => ({
     t: (key: string) => messages[key] ?? key,
-    tf: (key: string, values?: Record<string, string | number>) =>
-      key === 'wardrobe_subtitle' ? `共 ${values?.count ?? 0} 件单品` : messages[key] ?? key,
+    tf: (key: string, values?: Record<string, string | number>) => {
+      if (key === 'wardrobe_subtitle') return `共 ${values?.count ?? 0} 件单品`
+      const template = messages[key] ?? key
+      if (!values) return template
+      return template.replace(/\{(\w+)\}/g, (_, name: string) =>
+        values[name] != null ? String(values[name]) : `{${name}}`
+      )
+    },
   }),
 }))
 
@@ -212,15 +219,23 @@ describe('WardrobePage', () => {
     vi.clearAllMocks()
     mocks.folders = []
     mocks.itemTypes = []
-    mocks.useItems.mockReturnValue({
+    mocks.useInfiniteItems.mockReturnValue({
       data: {
-        has_more: false,
-        items: [],
-        page: 1,
-        page_size: 20,
-        total: 0,
+        pages: [
+          {
+            has_more: false,
+            items: [],
+            page: 1,
+            page_size: 20,
+            total: 0,
+          },
+        ],
+        pageParams: [1],
       },
       isLoading: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+      isFetchingNextPage: false,
     })
   })
 
@@ -256,9 +271,8 @@ describe('WardrobePage', () => {
 
     fireEvent.click(screen.getByText('Workwear'))
 
-    expect(mocks.useItems).toHaveBeenLastCalledWith(
+    expect(mocks.useInfiniteItems).toHaveBeenLastCalledWith(
       expect.objectContaining({ folder_id: 'folder-1' }),
-      1,
       20
     )
   })
@@ -270,36 +284,42 @@ describe('WardrobePage', () => {
     render(<WardrobePage />)
 
     fireEvent.click(screen.getByText('大衣'))
-    expect(mocks.useItems).toHaveBeenLastCalledWith(
+    expect(mocks.useInfiniteItems).toHaveBeenLastCalledWith(
       expect.objectContaining({ type: 'coat' }),
-      1,
       20
     )
 
     fireEvent.click(screen.getByText('最近穿着'))
-    expect(mocks.useItems).toHaveBeenLastCalledWith(
+    expect(mocks.useInfiniteItems).toHaveBeenLastCalledWith(
       expect.objectContaining({ sort_by: 'last_worn', sort_order: 'desc', type: 'coat' }),
-      1,
       20
     )
   })
 
   it('labels wardrobe item cards as direct detail actions', async () => {
-    mocks.useItems.mockReturnValue({
+    mocks.useInfiniteItems.mockReturnValue({
       data: {
-        has_more: false,
-        items: [
+        pages: [
           {
-            id: 'item-1',
-            name: '蓝色衬衫',
-            type: 'shirt',
+            has_more: false,
+            items: [
+              {
+                id: 'item-1',
+                name: '蓝色衬衫',
+                type: 'shirt',
+              },
+            ],
+            page: 1,
+            page_size: 20,
+            total: 1,
           },
         ],
-        page: 1,
-        page_size: 20,
-        total: 1,
+        pageParams: [1],
       },
       isLoading: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+      isFetchingNextPage: false,
     })
     const { default: WardrobePage } = await import('./index')
 

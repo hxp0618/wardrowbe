@@ -17,8 +17,17 @@ type AppHeaderProps = {
 }
 
 function getInitials(name?: string | null): string {
-  if (!name) return 'U'
-  return name
+  const normalizedName = name?.trim()
+  if (!normalizedName) return 'U'
+
+  if (!normalizedName.includes(' ')) {
+    const characters = Array.from(normalizedName)
+    if (characters.some((char) => /\p{Script=Han}/u.test(char))) {
+      return characters.slice(-2).join('').toUpperCase()
+    }
+  }
+
+  return normalizedName
     .split(' ')
     .filter(Boolean)
     .map((part) => part[0])
@@ -189,7 +198,7 @@ export function AppHeader(props: AppHeaderProps) {
               }}
             >
               <Text style={{ color: colors.text, fontSize: '12px', fontWeight: 600 }}>
-                {getInitials(userProfile?.display_name || t('nav_settings'))}
+                {getInitials(userProfile?.display_name)}
               </Text>
             </View>
           ) : null}

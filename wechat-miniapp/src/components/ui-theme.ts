@@ -110,6 +110,61 @@ export const pagePadding = '16px'
 export const cardRadius = '8px'
 export const controlRadius = '12px'
 
+/**
+ * Common flex row layouts. Most call sites combine
+ * `display:'flex'` with one of these alignment patterns. Spread these instead
+ * of repeating the same three properties inline.
+ */
+export const rowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+}
+
+export const spaceBetweenRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '12px',
+}
+
+export const verticalStackStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '12px',
+}
+
+/**
+ * Section separator that draws a hairline above the block plus standard top
+ * padding. Suggest/onboarding/dashboard use this between titled groups.
+ */
+export const sectionDividerStyle: CSSProperties = {
+  borderTop: `1px solid ${colors.border}`,
+  paddingTop: '12px',
+}
+
+/**
+ * Base shape for chip/pill/badge labels (32+ inline call sites use this exact
+ * combination). Callers add their own colors/borders on top via spread.
+ */
+export const pillBaseStyle: CSSProperties = {
+  padding: '4px 10px',
+  borderRadius: '999px',
+  fontSize: '11px',
+}
+
+// Solid colored action buttons (delete confirm, log wear/wash etc.) need a
+// fixed contrast pairing across themes — the foreground stays white and the
+// background uses a high-contrast variant of the semantic color rather than
+// the lighter tone we use for surfaces. Keep these as constants so callers
+// don't sprinkle hex values around the codebase.
+export const solidActionTextColor = '#ffffff'
+export const solidActionBackgrounds = {
+  danger: '#dc2626',
+  success: '#166534',
+  info: '#1d4ed8',
+} as const
+
 export const titleTextStyle: CSSProperties = {
   display: 'block',
   color: colors.text,

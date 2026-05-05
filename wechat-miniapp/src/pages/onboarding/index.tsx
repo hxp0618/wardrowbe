@@ -14,6 +14,7 @@ import { useCreateItemWithImages } from '../../hooks/use-items'
 import { usePreferences, useUpdatePreferences } from '../../hooks/use-preferences'
 import { useCompleteOnboarding, useUpdateUserProfile, useUserProfile } from '../../hooks/use-user'
 import { formatColorLabel, formatItemTypeLabel } from '../../lib/display'
+import { useI18n } from '../../lib/i18n'
 import { ITEM_TYPE_VALUES, WARDROBE_COLOR_OPTIONS, isLightWardrobeColor } from '../../lib/options'
 import {
   applyManualLocationName,
@@ -22,6 +23,7 @@ import {
   toResolvedLocationDraft,
 } from '../../lib/location-form'
 import { isChooseImageCanceled } from '../../lib/choose-image'
+import { toastError, toastErrorFromException, toastSuccess } from '../../lib/toast'
 import { getEditableWechatDisplayName } from '../../lib/wechat-user'
 import { chooseWechatLocation, WechatLocationError } from '../../lib/wechat-location'
 import { geocodeWeatherLocation } from '../../services/outfits'
@@ -30,12 +32,13 @@ const DASHBOARD_PAGE_URL = '/pages/dashboard/index'
 const TOTAL_STEPS = 5
 
 const STYLE_KEYS = ['casual', 'formal', 'sporty', 'minimalist', 'bold'] as const
-const STYLE_LABELS: Record<(typeof STYLE_KEYS)[number], string> = {
-  casual: '休闲',
-  formal: '正式',
-  sporty: '运动',
-  minimalist: '极简',
-  bold: '大胆',
+const STYLE_LABEL_KEYS: Record<(typeof STYLE_KEYS)[number],
+  'onboarding_style_casual' | 'onboarding_style_formal' | 'onboarding_style_sporty' | 'onboarding_style_minimalist' | 'onboarding_style_bold'> = {
+  casual: 'onboarding_style_casual',
+  formal: 'onboarding_style_formal',
+  sporty: 'onboarding_style_sporty',
+  minimalist: 'onboarding_style_minimalist',
+  bold: 'onboarding_style_bold',
 }
 
 async function navigateToDashboard() {
@@ -87,9 +90,10 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 function StepActions(props: {
   showBack?: boolean
   showSkip?: boolean
-  backLabel?: string
-  skipLabel?: string
+  backLabel: string
+  skipLabel: string
   primaryLabel: string
+  loadingLabel: string
   onBack?: () => void
   onSkip?: () => void
   onPrimary: () => void
@@ -101,13 +105,13 @@ function StepActions(props: {
   return (
     <View style={{ ...actionRowStyle, gap: '10px' }}>
       {props.showBack ? (
-        <View ariaRole='button' ariaLabel={props.backLabel || '上一步'} onClick={props.onBack} style={getActionButtonStyle({ flex: 1 })}>
-          <Text style={{ fontSize: '14px', color: colors.text }}>{props.backLabel || '上一步'}</Text>
+        <View ariaRole='button' ariaLabel={props.backLabel} onClick={props.onBack} style={getActionButtonStyle({ flex: 1 })}>
+          <Text style={{ fontSize: '14px', color: colors.text }}>{props.backLabel}</Text>
         </View>
       ) : null}
       {props.showSkip ? (
-        <View ariaRole='button' ariaLabel={props.skipLabel || '先跳过'} onClick={props.onSkip} style={getActionButtonStyle({ flex: 1 })}>
-          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{props.skipLabel || '先跳过'}</Text>
+        <View ariaRole='button' ariaLabel={props.skipLabel} onClick={props.onSkip} style={getActionButtonStyle({ flex: 1 })}>
+          <Text style={{ fontSize: '14px', color: colors.textMuted }}>{props.skipLabel}</Text>
         </View>
       ) : null}
       <View
@@ -117,7 +121,7 @@ function StepActions(props: {
         style={getActionButtonStyle({ variant: 'primary', flex: 1, disabled: primaryDisabled, disabledOpacity: 0.65 })}
       >
         <Text style={{ fontSize: '14px', color: colors.accentText, fontWeight: 600 }}>
-          {props.loading ? '处理中...' : props.primaryLabel}
+          {props.loading ? props.loadingLabel : props.primaryLabel}
         </Text>
       </View>
     </View>
@@ -128,6 +132,7 @@ function ColorPicker(props: {
   selected: string[]
   onChange: (colors: string[]) => void
   tone: 'favorite' | 'avoid'
+  ariaLabelTone: string
 }) {
   const borderColor = props.tone === 'favorite' ? colors.accent : colors.danger
 
@@ -140,7 +145,7 @@ function ColorPicker(props: {
           <View
             key={color.value}
             ariaRole='button'
-            ariaLabel={`${props.tone === 'favorite' ? '选择偏好颜色' : '标记避免颜色'}：${formatColorLabel(color.value)}`}
+            ariaLabel={`${props.ariaLabelTone}：${formatColorLabel(color.value)}`}
             onClick={() => {
               if (active) {
                 props.onChange(props.selected.filter((item) => item !== color.value))
@@ -174,6 +179,7 @@ function ColorPicker(props: {
 
 export default function OnboardingPage() {
   const canRender = useAuthGuard()
+  const { t, tf } = useI18n()
   const { data: userProfile } = useUserProfile()
   const { data: prefs } = usePreferences()
   const updateUserProfile = useUpdateUserProfile()
@@ -241,19 +247,19 @@ export default function OnboardingPage() {
       setLocationName(result.name || result.address || '')
       setLocationLat(result.latitude)
       setLocationLon(result.longitude)
-      void Taro.showToast({ title: '已获取位置', icon: 'success' })
+      toastSuccess(t('onboarding_toast_location_acquired'))
     } catch (error) {
       const message =
         error instanceof WechatLocationError
           ? error.code === 'permission-denied'
-            ? '请先允许小程序访问位置信息'
+            ? t('onboarding_toast_location_permission_denied')
             : error.code === 'canceled'
-              ? '你已取消位置选择'
-              : '微信定位接口暂时不可用'
+              ? t('onboarding_toast_location_canceled')
+              : t('onboarding_toast_location_unavailable')
           : error instanceof Error
             ? error.message
-            : '定位失败'
-      void Taro.showToast({ title: message, icon: 'none' })
+            : t('onboarding_toast_location_failed')
+      toastError(message)
     }
   }
 
@@ -261,7 +267,7 @@ export default function OnboardingPage() {
     const normalizedDisplayName = displayName.trim()
 
     if (!normalizedDisplayName) {
-      void Taro.showToast({ title: '请先设置你的昵称', icon: 'none' })
+      toastError(t('onboarding_toast_nickname_required'))
       return
     }
 
@@ -280,8 +286,7 @@ export default function OnboardingPage() {
       }
       setStep(1)
     } catch (error) {
-      const message = error instanceof Error ? error.message : '保存昵称失败'
-      void Taro.showToast({ title: message, icon: 'none' })
+      toastErrorFromException(error, t('onboarding_toast_save_nickname_failed'))
     }
   }
 
@@ -290,17 +295,16 @@ export default function OnboardingPage() {
       if (familyMode === 'create') {
         if (!familyName.trim()) return
         await createFamily.mutateAsync(familyName.trim())
-        void Taro.showToast({ title: '家庭已创建', icon: 'success' })
+        toastSuccess(t('onboarding_toast_family_created'))
       }
       if (familyMode === 'join') {
         if (!inviteCode.trim()) return
         await joinFamily.mutateAsync(inviteCode.trim().toUpperCase())
-        void Taro.showToast({ title: '已加入家庭', icon: 'success' })
+        toastSuccess(t('onboarding_toast_family_joined'))
       }
       setStep(2)
     } catch (error) {
-      const message = error instanceof Error ? error.message : '操作失败'
-      void Taro.showToast({ title: message, icon: 'none' })
+      toastErrorFromException(error, t('onboarding_toast_action_failed'))
     }
   }
 
@@ -324,11 +328,10 @@ export default function OnboardingPage() {
           location: resolvedLocation,
         })
       )
-      void Taro.showToast({ title: '位置已保存', icon: 'success' })
+      toastSuccess(t('onboarding_toast_location_saved'))
       setStep(3)
     } catch (error) {
-      const message = error instanceof Error ? error.message : '保存失败'
-      void Taro.showToast({ title: message, icon: 'none' })
+      toastErrorFromException(error, t('onboarding_toast_save_failed'))
     }
   }
 
@@ -339,11 +342,10 @@ export default function OnboardingPage() {
         color_avoid: avoidColors,
         style_profile: styleProfile,
       })
-      void Taro.showToast({ title: '偏好已保存', icon: 'success' })
+      toastSuccess(t('onboarding_toast_preferences_saved'))
       setStep(4)
     } catch (error) {
-      const message = error instanceof Error ? error.message : '保存失败'
-      void Taro.showToast({ title: message, icon: 'none' })
+      toastErrorFromException(error, t('onboarding_toast_save_failed'))
     }
   }
 
@@ -354,8 +356,7 @@ export default function OnboardingPage() {
       setUploadPaths(result.tempFilePaths)
     } catch (error) {
       if (isChooseImageCanceled(error)) return
-      const message = error instanceof Error ? error.message : '选图失败'
-      void Taro.showToast({ title: message, icon: 'none' })
+      toastErrorFromException(error, t('onboarding_toast_choose_image_failed'))
     }
   }
 
@@ -372,30 +373,33 @@ export default function OnboardingPage() {
           type: ITEM_TYPE_VALUES[uploadTypeIndex],
         },
       })
-      void Taro.showToast({ title: '首件单品已加入衣橱', icon: 'success' })
+      toastSuccess(t('onboarding_toast_first_item_added'))
       setStep(5)
     } catch (error) {
-      const message = error instanceof Error ? error.message : '上传失败'
-      void Taro.showToast({ title: message, icon: 'none' })
+      toastErrorFromException(error, t('onboarding_toast_upload_failed'))
     }
   }
 
   const handleComplete = async () => {
     try {
       await complete.mutateAsync()
-      void Taro.showToast({ title: '引导完成', icon: 'success' })
+      toastSuccess(t('onboarding_toast_completed'))
       await navigateToDashboard()
     } catch (error) {
-      const message = error instanceof Error ? error.message : '完成失败'
-      void Taro.showToast({ title: message, icon: 'none' })
+      toastErrorFromException(error, t('onboarding_toast_complete_failed'))
     }
   }
 
-  const title = step < TOTAL_STEPS ? '欢迎使用 Wardrowbe' : '准备就绪'
+  const title = step < TOTAL_STEPS ? t('onboarding_title_intro') : t('onboarding_title_done')
   const subtitle =
     step < TOTAL_STEPS
-      ? '用五步完成你的数字衣橱初始化'
-      : '基础信息已经保存，可以进入首页开始使用'
+      ? t('onboarding_subtitle_intro')
+      : t('onboarding_subtitle_done')
+  const stepActionDefaults = {
+    backLabel: t('onboarding_back'),
+    skipLabel: t('onboarding_skip'),
+    loadingLabel: t('onboarding_processing'),
+  }
 
   return (
     <PageShell header={null} title={title} subtitle={subtitle}>
@@ -403,18 +407,20 @@ export default function OnboardingPage() {
 
       {step === 0 ? (
         <>
-          <SectionCard compact title='开始之前'>
+          <SectionCard compact title={t('onboarding_section_intro')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Text style={{ fontSize: '18px', fontWeight: 600, color: colors.text }}>
-                {displayName ? `欢迎回来，${displayName.split(' ')[0]}` : '先设置一个你的昵称'}
+                {displayName
+                  ? tf('onboarding_welcome_named', { name: displayName.split(' ')[0] })
+                  : t('onboarding_welcome_unnamed')}
               </Text>
               <View style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
-                  这是 Wardrowbe 内显示的昵称，不会直接读取你的微信真实昵称，后续也可以在设置里随时修改。
+                  {t('onboarding_intro_description')}
                 </Text>
                 <Input
                   value={displayName}
-                  placeholder='例如：小雨 / Ada'
+                  placeholder={t('onboarding_nickname_placeholder')}
                   onInput={(event) => setDisplayName(event.detail.value)}
                   maxlength={100}
                   style={inputStyle}
@@ -424,7 +430,8 @@ export default function OnboardingPage() {
           </SectionCard>
 
           <StepActions
-            primaryLabel='保存昵称并继续'
+            {...stepActionDefaults}
+            primaryLabel={t('onboarding_save_nickname_continue')}
             onPrimary={handleStartOnboarding}
             disabled={!displayName.trim()}
             loading={updateUserProfile.isPending}
@@ -434,32 +441,39 @@ export default function OnboardingPage() {
 
       {step === 1 ? (
         <>
-          <SectionCard compact title='家庭设置'>
+          <SectionCard compact title={t('onboarding_section_family')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
-                这一步是可选的。你可以创建家庭空间，或者用邀请码加入已有家庭。
+                {t('onboarding_family_description')}
               </Text>
               <CompactOptionGroup
                 activeIndex={familyModeIndex}
-                options={['创建家庭', '加入家庭']}
+                options={[t('onboarding_family_mode_create'), t('onboarding_family_mode_join')]}
                 onChange={(nextIndex) => setFamilyMode(nextIndex === 0 ? 'create' : 'join')}
               />
               {familyMode === 'create' ? (
-                <Input value={familyName} placeholder='输入家庭名称' onInput={(event) => setFamilyName(event.detail.value)} style={inputStyle} />
+                <Input value={familyName} placeholder={t('onboarding_family_name_placeholder')} onInput={(event) => setFamilyName(event.detail.value)} style={inputStyle} />
               ) : null}
               {familyMode === 'join' ? (
-                <Input value={inviteCode} placeholder='输入邀请码' onInput={(event) => setInviteCode(event.detail.value.toUpperCase())} style={inputStyle} />
+                <Input value={inviteCode} placeholder={t('onboarding_invite_code_placeholder')} onInput={(event) => setInviteCode(event.detail.value.toUpperCase())} style={inputStyle} />
               ) : null}
             </View>
           </SectionCard>
 
           <StepActions
+            {...stepActionDefaults}
             showBack
             showSkip
             onBack={() => setStep(0)}
             onSkip={() => setStep(2)}
             onPrimary={handleFamilyContinue}
-            primaryLabel={familyMode === 'join' ? '加入并继续' : familyMode === 'create' ? '创建并继续' : '继续'}
+            primaryLabel={
+              familyMode === 'join'
+                ? t('onboarding_family_continue_join')
+                : familyMode === 'create'
+                  ? t('onboarding_family_continue_create')
+                  : t('onboarding_family_continue')
+            }
             disabled={(familyMode === 'create' && !familyName.trim()) || (familyMode === 'join' && !inviteCode.trim())}
             loading={createFamily.isPending || joinFamily.isPending}
           />
@@ -468,17 +482,17 @@ export default function OnboardingPage() {
 
       {step === 2 ? (
         <>
-          <SectionCard compact title='位置设置'>
+          <SectionCard compact title={t('onboarding_section_location')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
-                推荐会结合天气。你可以直接选择位置，也可以手动填写城市名称。
+                {t('onboarding_location_description')}
               </Text>
-              <View ariaRole='button' ariaLabel='选择当前位置' onClick={handleDetectLocation} style={getActionButtonStyle()}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>选择当前位置</Text>
+              <View ariaRole='button' ariaLabel={t('onboarding_location_choose')} onClick={handleDetectLocation} style={getActionButtonStyle()}>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{t('onboarding_location_choose')}</Text>
               </View>
               <Input
                 value={locationName}
-                placeholder='例如：上海市'
+                placeholder={t('onboarding_location_placeholder')}
                 onInput={(event) => {
                   const nextLocation = applyManualLocationName(
                     {
@@ -496,23 +510,24 @@ export default function OnboardingPage() {
               />
               {locationLat != null && locationLon != null ? (
                 <Text style={{ fontSize: '12px', color: colors.textSoft }}>
-                  已记录坐标：{locationLat.toFixed(4)}, {locationLon.toFixed(4)}
+                  {tf('onboarding_location_coordinates', { lat: locationLat.toFixed(4), lon: locationLon.toFixed(4) })}
                 </Text>
               ) : locationName.trim() ? (
                 <Text style={{ fontSize: '12px', color: colors.warning }}>
-                  保存时会自动解析天气坐标；解析失败时可以改用当前位置。
+                  {t('onboarding_location_warning')}
                 </Text>
               ) : null}
             </View>
           </SectionCard>
 
           <StepActions
+            {...stepActionDefaults}
             showBack
             showSkip
             onBack={() => setStep(1)}
             onSkip={() => setStep(3)}
             onPrimary={handleSaveLocation}
-            primaryLabel='保存并继续'
+            primaryLabel={t('onboarding_save_continue')}
             disabled={!locationName.trim()}
             loading={updateUserProfile.isPending}
           />
@@ -521,11 +536,11 @@ export default function OnboardingPage() {
 
       {step === 3 ? (
         <>
-          <SectionCard compact title='偏好设置'>
+          <SectionCard compact title={t('onboarding_section_preferences')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>颜色偏好</Text>
-                <Text style={{ fontSize: '13px', color: colors.textMuted }}>选择你偏爱的颜色</Text>
+                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>{t('onboarding_color_favorites')}</Text>
+                <Text style={{ fontSize: '13px', color: colors.textMuted }}>{t('onboarding_color_favorites_hint')}</Text>
                 <ColorPicker
                   selected={favoriteColors}
                   onChange={(next) => {
@@ -533,17 +548,18 @@ export default function OnboardingPage() {
                     setAvoidColors((prev) => prev.filter((item) => !next.includes(item)))
                   }}
                   tone='favorite'
+                  ariaLabelTone={t('onboarding_pick_favorite_color')}
                 />
                 {favoriteColors.length ? (
                   <Text style={{ fontSize: '12px', color: colors.textSoft }}>
-                    已选：{favoriteColors.map((value) => formatColorLabel(value)).join('、')}
+                    {tf('onboarding_color_selected', { labels: favoriteColors.map((value) => formatColorLabel(value)).join('、') })}
                   </Text>
                 ) : null}
               </View>
 
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '14px', borderTop: `1px solid ${colors.border}` }}>
-                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>避免颜色</Text>
-                <Text style={{ fontSize: '13px', color: colors.textMuted }}>标记你不太想看到的颜色</Text>
+                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>{t('onboarding_color_avoid')}</Text>
+                <Text style={{ fontSize: '13px', color: colors.textMuted }}>{t('onboarding_color_avoid_hint')}</Text>
                 <ColorPicker
                   selected={avoidColors}
                   onChange={(next) => {
@@ -551,20 +567,21 @@ export default function OnboardingPage() {
                     setFavoriteColors((prev) => prev.filter((item) => !next.includes(item)))
                   }}
                   tone='avoid'
+                  ariaLabelTone={t('onboarding_pick_avoid_color')}
                 />
                 {avoidColors.length ? (
                   <Text style={{ fontSize: '12px', color: colors.textSoft }}>
-                    已选：{avoidColors.map((value) => formatColorLabel(value)).join('、')}
+                    {tf('onboarding_color_selected', { labels: avoidColors.map((value) => formatColorLabel(value)).join('、') })}
                   </Text>
                 ) : null}
               </View>
 
               <View style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingTop: '14px', borderTop: `1px solid ${colors.border}` }}>
-                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>风格倾向</Text>
+                <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>{t('onboarding_style_profile')}</Text>
                 {STYLE_KEYS.map((key) => (
                   <View key={key}>
                     <View style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <Text style={{ fontSize: '14px', color: colors.text }}>{STYLE_LABELS[key]}</Text>
+                      <Text style={{ fontSize: '14px', color: colors.text }}>{t(STYLE_LABEL_KEYS[key])}</Text>
                       <Text style={{ fontSize: '12px', color: colors.textMuted }}>{styleProfile[key]}%</Text>
                     </View>
                     <Slider
@@ -588,12 +605,13 @@ export default function OnboardingPage() {
           </SectionCard>
 
           <StepActions
+            {...stepActionDefaults}
             showBack
             showSkip
             onBack={() => setStep(2)}
             onSkip={() => setStep(4)}
             onPrimary={handleSavePreferences}
-            primaryLabel='保存并继续'
+            primaryLabel={t('onboarding_save_continue')}
             loading={updatePreferences.isPending}
           />
         </>
@@ -601,7 +619,7 @@ export default function OnboardingPage() {
 
       {step === 4 ? (
         <>
-          <SectionCard compact title='上传第一件单品'>
+          <SectionCard compact title={t('onboarding_section_first_item')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {uploadPaths[0] ? (
                 <PreviewableImage
@@ -612,13 +630,13 @@ export default function OnboardingPage() {
                 />
               ) : (
                 <View style={{ height: '160px', borderRadius: '8px', border: `1px dashed ${colors.borderStrong}`, backgroundColor: colors.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
-                  <Text style={{ fontSize: '15px', color: colors.text }}>拍摄或选择衣物图片</Text>
-                  <Text style={{ fontSize: '12px', color: colors.textMuted }}>支持 1-5 张图片，首张会作为主图</Text>
+                  <Text style={{ fontSize: '15px', color: colors.text }}>{t('onboarding_pick_image_title')}</Text>
+                  <Text style={{ fontSize: '12px', color: colors.textMuted }}>{t('onboarding_pick_image_hint')}</Text>
                 </View>
               )}
 
-              <View ariaRole='button' ariaLabel={uploadPaths.length ? '重新选择图片' : '选择图片'} onClick={handleChooseImage} style={getActionButtonStyle()}>
-                <Text style={{ fontSize: '14px', color: colors.text }}>{uploadPaths.length ? '重新选择图片' : '选择图片'}</Text>
+              <View ariaRole='button' ariaLabel={uploadPaths.length ? t('onboarding_reselect_image') : t('onboarding_choose_image')} onClick={handleChooseImage} style={getActionButtonStyle()}>
+                <Text style={{ fontSize: '14px', color: colors.text }}>{uploadPaths.length ? t('onboarding_reselect_image') : t('onboarding_choose_image')}</Text>
               </View>
 
               {uploadPaths.length ? (
@@ -628,19 +646,20 @@ export default function OnboardingPage() {
                     options={ITEM_TYPE_VALUES.map((type) => formatItemTypeLabel(type))}
                     onChange={setUploadTypeIndex}
                   />
-                  <Text style={{ fontSize: '12px', color: colors.textSoft }}>已选择 {uploadPaths.length} 张图片</Text>
+                  <Text style={{ fontSize: '12px', color: colors.textSoft }}>{tf('onboarding_image_count', { count: uploadPaths.length })}</Text>
                 </>
               ) : null}
             </View>
           </SectionCard>
 
           <StepActions
+            {...stepActionDefaults}
             showBack
             showSkip
             onBack={() => setStep(3)}
             onSkip={() => setStep(5)}
             onPrimary={handleUploadFirstItem}
-            primaryLabel={uploadPaths.length ? '加入衣橱并继续' : '继续'}
+            primaryLabel={uploadPaths.length ? t('onboarding_first_item_continue') : t('onboarding_family_continue')}
             loading={createItem.isPending}
           />
         </>
@@ -648,23 +667,24 @@ export default function OnboardingPage() {
 
       {step === 5 ? (
         <>
-          <SectionCard compact title='准备完成'>
+          <SectionCard compact title={t('onboarding_section_done')}>
             <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <View style={{ width: '72px', height: '72px', borderRadius: '999px', backgroundColor: 'rgba(52, 211, 153, 0.14)', border: '1px solid rgba(52, 211, 153, 0.24)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: '28px', color: colors.success, fontWeight: 700 }}>✓</Text>
               </View>
-              <Text style={{ fontSize: '18px', fontWeight: 600, color: colors.text }}>基础设置已经完成</Text>
+              <Text style={{ fontSize: '18px', fontWeight: 600, color: colors.text }}>{t('onboarding_done_heading')}</Text>
               <Text style={{ fontSize: '13px', color: colors.textMuted, lineHeight: 1.6 }}>
-                下一步会进入首页。之后你还可以继续补充衣橱、通知、家庭和更多偏好设置。
+                {t('onboarding_done_description')}
               </Text>
             </View>
           </SectionCard>
 
           <StepActions
+            {...stepActionDefaults}
             showBack
             onBack={() => setStep(4)}
             onPrimary={handleComplete}
-            primaryLabel='进入首页'
+            primaryLabel={t('onboarding_enter_dashboard')}
             loading={complete.isPending}
           />
         </>

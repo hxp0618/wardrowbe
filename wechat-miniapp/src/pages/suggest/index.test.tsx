@@ -107,11 +107,18 @@ vi.mock('../../hooks/use-outfits', () => ({
   useWeatherForecast: mocks.useWeatherForecast,
 }))
 
-vi.mock('../../lib/i18n', () => ({
-  useI18n: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('../../lib/i18n', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/i18n')>('../../lib/i18n')
+  return {
+    ...actual,
+    useI18n: () => ({
+      locale: 'zh' as const,
+      t: actual.translate,
+      tf: actual.formatMessage,
+      greeting: actual.formatGreeting,
+    }),
+  }
+})
 
 describe('SuggestPage weather queries', () => {
   afterEach(() => {

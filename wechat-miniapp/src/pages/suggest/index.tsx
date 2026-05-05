@@ -13,7 +13,7 @@ import {
 } from '../../components/editorial-style'
 import { OutfitImageGrid } from '../../components/outfit-image-grid'
 import { PageShell } from '../../components/page-shell'
-import { cardStyle, colors } from '../../components/ui-theme'
+import { cardStyle, colors, sectionDividerStyle, spaceBetweenRowStyle, verticalStackStyle } from '../../components/ui-theme'
 import { useAuthGuard } from '../../hooks/use-auth-guard'
 import {
   useAcceptOutfit,
@@ -32,6 +32,7 @@ import {
 import { formatItemTypeLabel, formatOccasionLabel, formatTemperature, formatWeatherConditionLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
 import { OCCASION_VALUES, WEATHER_CONDITION_VALUES } from '../../lib/options'
+import { toastError, toastSuccess } from '../../lib/toast'
 
 import type { Outfit, SuggestRequest } from '../../services/types'
 
@@ -40,26 +41,11 @@ const OCCASIONS = OCCASION_VALUES.map((value) => ({
   value,
 }))
 
-const WEATHER_CONDITION_LABELS = {
-  sunny: '晴',
-  cloudy: '阴',
-  rainy: '雨',
-} as const
-const WEATHER_CONDITIONS = WEATHER_CONDITION_VALUES.map((value) => ({
-  label: WEATHER_CONDITION_LABELS[value],
-  value,
-}))
-const DATE_PRESETS = [
-  { label: '今天', offset: 0 },
-  { label: '明天', offset: 1 },
-  { label: '3 天后', offset: 3 },
-  { label: '一周后', offset: 7 },
-]
 const MAX_TARGET_DATE_OFFSET_DAYS = 15
 
 function ResultBlock(props: { title: string; children: ReactNode }) {
   return (
-    <View style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <View style={{ ...sectionDividerStyle, display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <Text style={{ fontSize: '13px', fontWeight: 600, color: colors.textMuted }}>{props.title}</Text>
       {props.children}
     </View>
@@ -109,46 +95,60 @@ export default function SuggestPage() {
   )
   const weatherLoading = userProfileLoading || currentWeatherLoading
   const forecastLoading = forecastDays > 0 && (userProfileLoading || forecastQueryLoading)
-  const { t } = useI18n()
+  const { t, tf } = useI18n()
   const occasionOptions = OCCASIONS
-  const weatherConditionOptions = WEATHER_CONDITIONS
-  const datePresets = DATE_PRESETS
+  const weatherConditionOptions = WEATHER_CONDITION_VALUES.map((value) => ({
+    label: t(
+      value === 'sunny'
+        ? 'suggest_weather_condition_sunny'
+        : value === 'cloudy'
+          ? 'suggest_weather_condition_cloudy'
+          : 'suggest_weather_condition_rainy'
+    ),
+    value,
+  }))
+  const datePresets = [
+    { label: t('suggest_date_preset_today'), offset: 0 },
+    { label: t('suggest_date_preset_tomorrow'), offset: 1 },
+    { label: t('suggest_date_preset_3_days'), offset: 3 },
+    { label: t('suggest_date_preset_one_week'), offset: 7 },
+  ]
   const text = {
-    hintRain: '今天更适合带伞或准备防水层。',
-    hintCold: '气温偏低，建议增加外套或针织层。',
-    hintCool: '偏凉，轻薄外套或叠穿会更稳妥。',
-    hintHot: '偏热，优先轻薄透气单品。',
-    hintWindy: '风比较明显，建议考虑防风层。',
-    hintDefault: '天气条件平稳，可以按场景优先考虑风格。',
-    suggestFailed: '推荐失败',
-    accepted: '已接受',
-    actionFailed: '操作失败',
-    restart: '重新开始',
-    resultWeatherTitle: '天气',
-    resultRecommendationTitle: '为你推荐',
-    tryAnother: '换一套',
-    wearThis: '就穿它',
-    reject: '拒绝',
-    targetWeatherTitle: '目标日期天气',
-    currentWeatherTitle: '当前天气',
-    weatherLoading: '加载天气中...',
-    weatherLow: (value: string) => `最低 ${value}`,
-    weatherFeelsLike: (value: string) => `体感 ${value}`,
-    weatherWind: (value: number) => `风速 ${Math.round(value)}km/h`,
-    weatherPrecipitation: (value: number) => `降水 ${value}%`,
-    weatherSkip: '未设置位置，将跳过天气',
-    errorTitle: '错误',
-    chooseOccasion: '选择场景',
-    wearDate: '穿着日期',
-    weatherOverride: '天气覆盖',
-    collapse: '收起',
-    expand: '展开',
-    weatherOverrideHint: '手动设置天气条件（可选）',
-    temperature: (value: string) => `温度：${value}`,
-    generating: '生成中...',
-    generate: '生成推荐',
-    resultHeroTitle: '已生成今日推荐',
-    resultPrecipitation: (value: number) => `降水 ${value}%`,
+    hintRain: t('suggest_hint_rain'),
+    hintCold: t('suggest_hint_cold'),
+    hintCool: t('suggest_hint_cool'),
+    hintHot: t('suggest_hint_hot'),
+    hintWindy: t('suggest_hint_windy'),
+    hintDefault: t('suggest_hint_default'),
+    suggestFailed: t('suggest_failed'),
+    accepted: t('suggest_accepted'),
+    actionFailed: t('suggest_action_failed'),
+    restart: t('suggest_restart'),
+    resultWeatherTitle: t('suggest_result_weather_title'),
+    resultRecommendationTitle: t('suggest_result_recommendation_title'),
+    tryAnother: t('suggest_try_another'),
+    wearThis: t('suggest_wear_this'),
+    reject: t('suggest_reject'),
+    targetWeatherTitle: t('suggest_target_weather_title'),
+    currentWeatherTitle: t('suggest_current_weather_title'),
+    weatherLoading: t('suggest_weather_loading'),
+    weatherLow: (value: string) => tf('suggest_weather_low', { value }),
+    weatherFeelsLike: (value: string) => tf('suggest_weather_feels_like', { value }),
+    weatherWind: (value: number) => tf('suggest_weather_wind', { value: Math.round(value) }),
+    weatherPrecipitation: (value: number) => tf('suggest_weather_precipitation', { value }),
+    weatherSkip: t('suggest_weather_skip'),
+    errorTitle: t('suggest_error_title'),
+    chooseOccasion: t('suggest_choose_occasion'),
+    wearDate: t('suggest_wear_date'),
+    weatherOverride: t('suggest_weather_override'),
+    collapse: t('suggest_collapse'),
+    expand: t('suggest_expand'),
+    weatherOverrideHint: t('suggest_weather_override_hint'),
+    temperature: (value: string) => tf('suggest_temperature', { value }),
+    generating: t('suggest_generating'),
+    generate: t('suggest_generate'),
+    resultHeroTitle: t('suggest_result_hero_title'),
+    resultPrecipitation: (value: number) => tf('suggest_weather_precipitation', { value }),
   }
 
   useEffect(() => {
@@ -218,25 +218,31 @@ export default function SuggestPage() {
     if (!outfit || resultActionPending) return
     try {
       await acceptOutfit.mutateAsync(outfit.id)
-      void Taro.showToast({ title: text.accepted, icon: 'success' })
+      toastSuccess(text.accepted)
       setOutfit(null)
       setSelectedOccasion(null)
-    } catch { void Taro.showToast({ title: text.actionFailed, icon: 'none' }) }
+    } catch { toastError(text.actionFailed) }
   }
 
   const handleReject = async () => {
     if (!outfit || resultActionPending) return
+    let rejectFailed = false
     try {
       await rejectOutfit.mutateAsync(outfit.id)
-    } catch { /* ignore */ }
+    } catch {
+      rejectFailed = true
+      toastError(text.actionFailed)
+    }
     setOutfit(null)
-    handleGenerate()
+    if (!rejectFailed) {
+      await handleGenerate()
+    }
   }
-  const handleTryAnother = () => {
+  const handleTryAnother = async () => {
     if (resultActionPending) return
 
     setOutfit(null)
-    handleGenerate()
+    await handleGenerate()
   }
 
   const handleNewRequest = () => {
@@ -347,11 +353,8 @@ export default function SuggestPage() {
             ariaLabel={text.weatherOverride}
             onClick={() => setShowWeatherOverride(!showWeatherOverride)}
             style={{
+              ...spaceBetweenRowStyle,
               minHeight: '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
             }}
           >
             <Text style={{ fontSize: '17px', fontWeight: 600, color: colors.text }}>{text.weatherOverride}</Text>
@@ -379,7 +382,7 @@ export default function SuggestPage() {
         </View>
 
         {outfit ? (
-          <View style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <View style={{ ...sectionDividerStyle, ...verticalStackStyle }}>
             <View style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <Text style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>{text.resultHeroTitle}</Text>
               <View style={getEditorialChipStyle(true)}>

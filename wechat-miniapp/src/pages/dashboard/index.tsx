@@ -51,6 +51,46 @@ function getSummaryShortcutStyle(withDivider: boolean): CSSProperties {
   }
 }
 
+function SummaryShortcut(props: {
+  label: string
+  value: number | string
+  hint: string
+  withDivider?: boolean
+  onClick: () => void
+}) {
+  return (
+    <View
+      ariaRole='button'
+      ariaLabel={props.label}
+      onClick={props.onClick}
+      style={getSummaryShortcutStyle(!!props.withDivider)}
+    >
+      <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>{props.label}</Text>
+      <Text style={{ display: 'block', marginTop: '6px', fontSize: '24px', lineHeight: 1, fontWeight: 700, color: colors.text }}>
+        {props.value}
+      </Text>
+      <Text style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: colors.textMuted }}>{props.hint}</Text>
+    </View>
+  )
+}
+
+function MetricCell(props: { label: string; value: string; withDivider?: boolean }) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        paddingRight: props.withDivider ? '12px' : undefined,
+        borderRight: props.withDivider ? `1px solid ${colors.border}` : undefined,
+      }}
+    >
+      <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted }}>{props.label}</Text>
+      <Text style={{ display: 'block', marginTop: '6px', fontSize: '24px', fontWeight: 700, color: colors.text }}>
+        {props.value}
+      </Text>
+    </View>
+  )
+}
+
 export default function DashboardPage() {
   const canRender = useAuthGuard()
   const { data: userProfile, isLoading: userProfileLoading } = useUserProfile()
@@ -165,48 +205,26 @@ export default function DashboardPage() {
             borderTop: `1px solid ${colors.border}`,
           }}
         >
-          <View
-            ariaRole='button'
-            ariaLabel={t('dashboard_stat_wardrobe')}
+          <SummaryShortcut
+            withDivider
+            label={t('dashboard_stat_wardrobe')}
+            value={totalItems}
+            hint={t('dashboard_stat_wardrobe_hint')}
             onClick={navigateToWardrobe}
-            style={{
-              ...getSummaryShortcutStyle(true),
-            }}
-          >
-            <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>{t('dashboard_stat_wardrobe')}</Text>
-            <Text style={{ display: 'block', marginTop: '6px', fontSize: '24px', lineHeight: 1, fontWeight: 700, color: colors.text }}>
-              {totalItems}
-            </Text>
-            <Text style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: colors.textMuted }}>{t('dashboard_stat_wardrobe_hint')}</Text>
-          </View>
-          <View
-            ariaRole='button'
-            ariaLabel={t('dashboard_stat_pending')}
+          />
+          <SummaryShortcut
+            withDivider
+            label={t('dashboard_stat_pending')}
+            value={pendingData?.total ?? pendingOutfits.length}
+            hint={t('dashboard_stat_pending_hint')}
             onClick={navigateToPendingHistory}
-            style={{
-              ...getSummaryShortcutStyle(true),
-            }}
-          >
-            <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>{t('dashboard_stat_pending')}</Text>
-            <Text style={{ display: 'block', marginTop: '6px', fontSize: '24px', lineHeight: 1, fontWeight: 700, color: colors.text }}>
-              {pendingData?.total ?? pendingOutfits.length}
-            </Text>
-            <Text style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: colors.textMuted }}>{t('dashboard_stat_pending_hint')}</Text>
-          </View>
-          <View
-            ariaRole='button'
-            ariaLabel={t('dashboard_stat_reminders')}
+          />
+          <SummaryShortcut
+            label={t('dashboard_stat_reminders')}
+            value={enabledSchedules.length}
+            hint={t('dashboard_stat_reminders_hint')}
             onClick={navigateToNotifications}
-            style={{
-              ...getSummaryShortcutStyle(false),
-            }}
-          >
-            <Text style={{ display: 'block', fontSize: '11px', color: colors.textSoft }}>{t('dashboard_stat_reminders')}</Text>
-            <Text style={{ display: 'block', marginTop: '6px', fontSize: '24px', lineHeight: 1, fontWeight: 700, color: colors.text }}>
-              {enabledSchedules.length}
-            </Text>
-            <Text style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: colors.textMuted }}>{t('dashboard_stat_reminders_hint')}</Text>
-          </View>
+          />
         </View>
         <View style={{ ...actionRowStyle, gap: '10px' }}>
           <View ariaRole='button' ariaLabel={t('dashboard_add_item')} onClick={navigateToWardrobe} style={getActionButtonStyle({ variant: 'primary', compact: true, flex: 1 })}>
@@ -318,22 +336,15 @@ export default function DashboardPage() {
           style={getEditorialCardStyle()}
         >
           <View style={{ display: 'flex', gap: '12px' }}>
-            <View style={{ flex: 1, paddingRight: '12px', borderRight: `1px solid ${colors.border}` }}>
-              <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted }}>
-                {t('dashboard_weekly_outfits')}
-              </Text>
-              <Text style={{ display: 'block', marginTop: '6px', fontSize: '24px', fontWeight: 700, color: colors.text }}>
-                {String(analytics.wardrobe.outfits_this_week)}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ display: 'block', fontSize: '12px', color: colors.textMuted }}>
-                {t('dashboard_acceptance_rate')}
-              </Text>
-              <Text style={{ display: 'block', marginTop: '6px', fontSize: '24px', fontWeight: 700, color: colors.text }}>
-                {analytics.wardrobe.acceptance_rate != null ? `${analytics.wardrobe.acceptance_rate}%` : '--'}
-              </Text>
-            </View>
+            <MetricCell
+              withDivider
+              label={t('dashboard_weekly_outfits')}
+              value={String(analytics.wardrobe.outfits_this_week)}
+            />
+            <MetricCell
+              label={t('dashboard_acceptance_rate')}
+              value={analytics.wardrobe.acceptance_rate != null ? `${analytics.wardrobe.acceptance_rate}%` : '--'}
+            />
           </View>
         </SectionCard>
       )}

@@ -3,11 +3,11 @@ import Taro from '@tarojs/taro'
 import { useMemo } from 'react'
 
 import { getActionButtonStyle, getEnabledActionHandler, getToneActionSurfaceStyle } from '../../components/action-style'
+import { AuthGuardedPage } from '../../components/auth-guarded-page'
 import { EmptyState } from '../../components/empty-state'
 import { PageShell } from '../../components/page-shell'
 import { SectionCard } from '../../components/section-card'
 import { colors } from '../../components/ui-theme'
-import { useAuthGuard } from '../../hooks/use-auth-guard'
 import { useJoinFamilyByToken } from '../../hooks/use-family'
 import { useI18n } from '../../lib/i18n'
 
@@ -15,16 +15,10 @@ export default function InvitePage() {
   const { t } = useI18n()
   const router = Taro.getCurrentInstance().router
   const initialToken = useMemo(() => router?.params?.token ?? '', [router?.params?.token])
-  const canRender = useAuthGuard(
-    initialToken
-      ? `/pages/login/index?inviteToken=${encodeURIComponent(initialToken)}`
-      : '/pages/login/index'
-  )
+  const loginPageUrl = initialToken
+    ? `/pages/login/index?inviteToken=${encodeURIComponent(initialToken)}`
+    : '/pages/login/index'
   const joinByToken = useJoinFamilyByToken()
-
-  if (!canRender) {
-    return null
-  }
 
   const acceptDisabled = joinByToken.isPending || joinByToken.isSuccess
 
@@ -43,7 +37,8 @@ export default function InvitePage() {
   }
 
   return (
-    <PageShell header={null} title={t('page_invite_title')} subtitle={t('page_invite_subtitle')}>
+    <AuthGuardedPage loginPageUrl={loginPageUrl}>
+      <PageShell header={null} title={t('page_invite_title')} subtitle={t('page_invite_subtitle')}>
       {!initialToken ? (
         <SectionCard compact title={t('invite_status_title')}>
           <EmptyState
@@ -87,6 +82,7 @@ export default function InvitePage() {
           </SectionCard>
         </>
       )}
-    </PageShell>
+      </PageShell>
+    </AuthGuardedPage>
   )
 }

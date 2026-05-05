@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   archiveItem,
@@ -28,6 +28,16 @@ export function useItems(filters: ItemFilter = {}, page = 1, pageSize = 20) {
   return useQuery({
     queryKey: ['miniapp', 'items', filters, page, pageSize],
     queryFn: () => listItems(filters, page, pageSize),
+    enabled: useAuthQueryEnabled(),
+  })
+}
+
+export function useInfiniteItems(filters: ItemFilter = {}, pageSize = 20) {
+  return useInfiniteQuery({
+    queryKey: ['miniapp', 'items', 'infinite', filters, pageSize],
+    queryFn: ({ pageParam }) => listItems(filters, pageParam as number, pageSize),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     enabled: useAuthQueryEnabled(),
   })
 }
@@ -190,7 +200,7 @@ export function useWearStats(itemId: string) {
 
 export function useWearHistory(itemId: string, limit = 10) {
   return useQuery({
-    queryKey: ['miniapp', 'wear-history', itemId],
+    queryKey: ['miniapp', 'wear-history', itemId, limit],
     queryFn: () => getWearHistory(itemId, limit),
     enabled: useAuthQueryEnabled(!!itemId),
   })

@@ -17,7 +17,7 @@ import {
   sortByOutfitDateDescending,
   toLocalISODate,
 } from '../../lib/date-utils'
-import { formatOutfitDetailLabel } from '../../lib/display'
+import { formatOutfitDetailLabel, formatOccasionLabel, formatOutfitStatusLabel } from '../../lib/display'
 import { useI18n } from '../../lib/i18n'
 import { OCCASION_VALUES, OUTFIT_STATUS_VALUES } from '../../lib/options'
 import type { Outfit } from '../../services/types'
@@ -33,9 +33,15 @@ export default function HistoryPage() {
   const [selectedDate, setSelectedDate] = useState<string>(toLocalISODate(new Date()))
   const [detailOutfit, setDetailOutfit] = useState<Outfit | null>(null)
   const { t, tf } = useI18n()
-  const occasionOptions = ['全部场景', '休闲', '办公', '正式', '约会', '运动', '户外']
-  const statusOptions = ['全部状态', '待确认', '已接受', '已拒绝', '已查看']
-  const loadingText = '正在加载历史记录...'
+  const occasionOptions = [
+    t('history_filter_occasion_all'),
+    ...OCCASION_VALUES.map((value) => formatOccasionLabel(value)),
+  ]
+  const statusOptions = [
+    t('history_filter_status_all'),
+    ...OUTFIT_STATUS_VALUES.map((value) => formatOutfitStatusLabel(value)),
+  ]
+  const loadingText = t('history_loading')
   const todayString = toLocalISODate(new Date())
   const [year, month] = monthValue.split('-').map(Number)
   const occasion = occasionIndex === 0 ? undefined : OCCASION_VALUES[occasionIndex - 1]
